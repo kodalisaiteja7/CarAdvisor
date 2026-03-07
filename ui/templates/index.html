@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}Car Advisor — Used Car Buying Report{% endblock %}
+
+{% block content %}
+<div x-data="carForm()" class="max-w-2xl mx-auto">
+
+    <!-- Hero -->
+    <div class="text-center mb-10">
+        <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl">
+            Know Before You Buy
+        </h1>
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
+            Enter a vehicle's details to get a data-driven report on known issues,
+            predicted failures, and what to inspect &mdash; tailored to the exact mileage.
+        </p>
+    </div>
+
+    {% if error %}
+    <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Form -->
+    <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
+
+        <!-- Year -->
+        <div>
+            <label class="block text-sm font-medium mb-1" for="year">Year</label>
+            <select id="year" x-model="year" @change="onYearChange"
+                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
+                <option value="">Select year</option>
+                <template x-for="y in years" :key="y">
+                    <option :value="y" x-text="y"></option>
+                </template>
+            </select>
+        </div>
+
+        <!-- Make -->
+        <div>
+            <label class="block text-sm font-medium mb-1" for="make">Make</label>
+            <select id="make" x-model="make" @change="onMakeChange" :disabled="!year"
+                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
+                <option value="">Select make</option>
+                <template x-for="m in makes" :key="m">
+                    <option :value="m" x-text="m"></option>
+                </template>
+            </select>
+            <p x-show="loadingMakes" class="text-xs text-gray-500 mt-1">Loading makes...</p>
+        </div>
+
+        <!-- Model -->
+        <div>
+            <label class="block text-sm font-medium mb-1" for="model">Model</label>
+            <select id="model" x-model="model" :disabled="!make"
+                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
+                <option value="">Select model</option>
+                <template x-for="m in models" :key="m">
+                    <option :value="m" x-text="m"></option>
+                </template>
+            </select>
+            <p x-show="loadingModels" class="text-xs text-gray-500 mt-1">Loading models...</p>
+        </div>
+
+        <!-- Mileage -->
+        <div>
+            <label class="block text-sm font-medium mb-1" for="mileage">
+                Mileage: <span class="font-bold text-brand-600 dark:text-brand-400" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
+            </label>
+            <input type="range" id="mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
+                   class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-brand-600">
+            <div class="flex items-center gap-3 mt-2">
+                <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
+                       class="w-36 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                <span class="text-sm text-gray-500">miles</span>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" :disabled="!canSubmit || analyzing"
+                class="w-full py-3 px-6 rounded-lg font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span x-show="!analyzing">Generate Report</span>
+            <span x-show="analyzing" class="flex items-center justify-center gap-2">
+                <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                Analyzing...
+            </span>
+        </button>
+    </form>
+
+    <!-- Progress -->
+    <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 fade-in">
+        <h3 class="font-semibold text-lg mb-4">Analysis Progress</h3>
+        <div class="space-y-3">
+            <template x-for="(evt, i) in progressEvents" :key="i">
+                <div class="flex items-center gap-3">
+                    <span x-show="evt.status === 'scraping'" class="flex-shrink-0">
+                        <svg class="animate-spin h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    </span>
+                    <span x-show="evt.status === 'complete'" class="flex-shrink-0 text-green-500">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                    <span x-show="evt.status === 'failed'" class="flex-shrink-0 text-red-500">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </span>
+                    <span x-show="evt.status === 'done'" class="flex-shrink-0 text-green-500">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </span>
+                    <div>
+                        <span class="font-medium" x-text="evt.source"></span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-1" x-text="evt.message"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+function carForm() {
+    return {
+        year: '',
+        make: '',
+        model: '',
+        mileage: 75000,
+        years: [],
+        makes: [],
+        models: [],
+        loadingMakes: false,
+        loadingModels: false,
+        analyzing: false,
+        progressEvents: [],
+
+        get canSubmit() {
+            return this.year && this.make && this.model && this.mileage > 0;
+        },
+
+        async init() {
+            try {
+                const resp = await fetch('/api/years');
+                this.years = await resp.json();
+            } catch (e) {
+                this.years = Array.from({length: 27}, (_, i) => 2026 - i);
+            }
+        },
+
+        async onYearChange() {
+            this.make = '';
+            this.model = '';
+            this.makes = [];
+            this.models = [];
+            if (!this.year) return;
+            this.loadingMakes = true;
+            try {
+                const resp = await fetch(`/api/makes?year=${this.year}`);
+                this.makes = await resp.json();
+            } catch (e) { console.error(e); }
+            this.loadingMakes = false;
+        },
+
+        async onMakeChange() {
+            this.model = '';
+            this.models = [];
+            if (!this.make || !this.year) return;
+            this.loadingModels = true;
+            try {
+                const resp = await fetch(`/api/models?make=${encodeURIComponent(this.make)}&year=${this.year}`);
+                this.models = await resp.json();
+            } catch (e) { console.error(e); }
+            this.loadingModels = false;
+        },
+
+        async submit() {
+            this.analyzing = true;
+            this.progressEvents = [];
+            try {
+                const resp = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        make: this.make,
+                        model: this.model,
+                        year: parseInt(this.year),
+                        mileage: parseInt(this.mileage),
+                    }),
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    this.analyzing = false;
+                    alert(data.error);
+                    return;
+                }
+
+                const reportId = data.report_id;
+                const evtSource = new EventSource(`/api/progress/${reportId}`);
+                evtSource.onmessage = (e) => {
+                    const evt = JSON.parse(e.data);
+                    this.progressEvents.push(evt);
+                    if (evt.status === 'done') {
+                        evtSource.close();
+                        setTimeout(() => { window.location.href = `/report/${evt.message}`; }, 600);
+                    } else if (evt.status === 'error') {
+                        evtSource.close();
+                        this.analyzing = false;
+                        alert('Analysis failed: ' + evt.message);
+                    }
+                };
+                evtSource.onerror = () => {
+                    evtSource.close();
+                    this.analyzing = false;
+                };
+            } catch (e) {
+                console.error(e);
+                this.analyzing = false;
+                alert('Request failed');
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

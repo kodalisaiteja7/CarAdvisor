@@ -1,0 +1,149 @@
+"""Severity & frequency scoring engine.
+
+Produces a composite Reliability Risk Score (0-100) for a vehicle at a
+given mileage, ranks the top issues, and assigns a letter grade.
+"""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+
+from analysis.mileage_model import MileageAnalysis, MileageClassifiedProblem, MileagePhase
+from config.settings import SEVERITY_WEIGHTS
+
+logger = logging.getLogger(__name__)
+
+GRADE_THRESHOLDS = [
+    (15, "A"),
+    (30, "B"),
+    (50, "C"),
+    (70, "D"),
+    (100, "F"),
+]
+
+DEFAULT_REPAIR_COSTS = {
+    "Engine": (1500, 4000),
+    "Transmission": (1200, 3500),
+    "Electrical": (200, 800),
+    "Suspension": (300, 1200),
+    "Brakes": (200, 800),
+    "Body/Paint": (300, 2000),
+    "Interior": (100, 500),
+    "HVAC": (300, 1200),
+    "Steering": (400, 1500),
+    "Fuel System": (300, 1000),
+    "Exhaust": (200, 800),
+    "Cooling": (400, 1200),
+}
+
+
+@dataclass
+class ScoredProblem:
+    classified: MileageClassifiedProblem
+    weighted_score: float
+    rank: int = 0
+
+    @property
+    def probability(self) -> str:
+        if self.weighted_score >= 6:
+            return "High"
+        if self.weighted_score >= 3:
+            return "Medium"
+        return "Low"
+
+
+@dataclass
+class VehicleScore:
+    reliability_risk_score: float  # 0-100
+    letter_grade: str
+    top_issues: list[ScoredProblem] = field(default_factory=list)
+    total_problems: int = 0
+    mileage_analysis: MileageAnalysis | None = None
+
+
+def _estimate_repair_cost(problem) -> float:
+    """Return an average repair cost, using defaults when data is missing."""
+    if problem.repair_cost_low is not None and problem.repair_cost_high is not None:
+        return (problem.repair_cost_low + problem.repair_cost_high) / 2
+
+    defaults = DEFAULT_REPAIR_COSTS.get(problem.category, (300, 1000))
+    return (defaults[0] + defaults[1]) / 2
+
+
+def _score_single(cp: MileageClassifiedProblem) -> float:
+    """Compute a weighted score for one classified problem (0-10 scale)."""
+    p = cp.problem
+
+    count_norm = min(10.0, p.complaint_count / 50 * 10)
+    severity_norm = p.severity
+    safety_norm = p.safety_impact
+
+    avg_cost = _estimate_repair_cost(p)
+    cost_norm = min(10.0, avg_cost / 500)
+
+    w = SEVERITY_WEIGHTS
+    raw = (
+        w["complaint_count"] * count_norm
+        + w["severity"] * severity_norm
+        + w["safety_impact"] * safety_norm
+        + w["repair_cost"] * cost_norm
+    )
+
+    phase_multiplier = {
+        MileagePhase.CURRENT: 1.5,
+        MileagePhase.UPCOMING: 1.2,
+        MileagePhase.PAST: 0.5,
+        MileagePhase.FUTURE: 0.4,
+        MileagePhase.UNKNOWN: 0.7,
+    }
+    raw *= phase_multiplier.get(cp.phase, 1.0)
+    raw *= cp.relevance_score
+
+    return min(10.0, raw)
+
+
+def _letter_grade(score: float) -> str:
+    for threshold, grade in GRADE_THRESHOLDS:
+        if score <= threshold:
+            return grade
+    return "F"
+
+
+def score_vehicle(mileage_analysis: MileageAnalysis) -> VehicleScore:
+    """Score a vehicle's reliability at its analysed mileage point."""
+    scored: list[ScoredProblem] = []
+    for cp in mileage_analysis.classified_problems:
+        ws = _score_single(cp)
+        scored.append(ScoredProblem(classified=cp, weighted_score=ws))
+
+    scored.sort(key=lambda s: s.weighted_score, reverse=True)
+    for i, sp in enumerate(scored, start=1):
+        sp.rank = i
+
+    top_10 = scored[:10]
+
+    if scored:
+        top_n = min(15, len(scored))
+        top_scores = [s.weighted_score for s in scored[:top_n]]
+        weighted_avg = sum(top_scores) / len(top_scores)
+
+        source_count = len({
+            src
+            for sp in scored
+            for src in sp.classified.problem.sources
+        })
+        source_factor = min(1.3, 0.7 + source_count * 0.15)
+
+        risk = weighted_avg * 10 * source_factor
+        risk = min(100.0, risk)
+    else:
+        risk = 0.0
+
+    return VehicleScore(
+        reliability_risk_score=round(risk, 1),
+        letter_grade=_letter_grade(risk),
+        top_issues=top_10,
+        total_problems=len(scored),
+        mileage_analysis=mileage_analysis,
+    )
