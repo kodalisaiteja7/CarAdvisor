@@ -13,6 +13,7 @@ from analysis.aggregator import AggregatedVehicleData
 from analysis.llm_enhancer import enhance_inspection_checklist, enhance_report_sections
 from analysis.mileage_model import MileageAnalysis, MileagePhase
 from analysis.scorer import VehicleScore, ScoredProblem
+from utils.trace import get_trace
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +25,19 @@ def generate_report(
     mileage_analysis: MileageAnalysis,
     vehicle_score: VehicleScore,
     user_mileage: int,
+    options: dict | None = None,
 ) -> dict:
     """Build the complete report dict with all 7 sections."""
+    options = options or {}
     vehicle = {
         "make": agg.make,
         "model": agg.model,
         "year": agg.year,
         "mileage": user_mileage,
+        "trim": options.get("trim"),
+        "engine": options.get("engine"),
+        "transmission": options.get("transmission"),
+        "drivetrain": options.get("drivetrain"),
     }
 
     checklist = _build_inspection_checklist(
@@ -62,7 +69,14 @@ def generate_report(
         },
     }
 
+    trace = get_trace()
+    if trace:
+        trace.log_sections("pre_llm", report["sections"])
+
     report = enhance_report_sections(vehicle, report)
+
+    if trace:
+        trace.log_sections("post_llm", report["sections"])
 
     return report
 

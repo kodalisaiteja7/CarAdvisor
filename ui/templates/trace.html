@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Debug Trace — {{ report_id }}{% endblock %}
+
+{% block content %}
+<div x-data="traceViewer()" class="max-w-7xl mx-auto">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">Debug Trace</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Report <code class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs font-mono">{{ report_id }}</code>
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a href="/report/{{ report_id }}" class="text-sm px-4 py-2 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition">
+                Back to Report
+            </a>
+            <a href="/api/trace/{{ report_id }}" target="_blank" class="text-sm px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                Raw JSON
+            </a>
+        </div>
+    </div>
+
+    <template x-if="loading">
+        <div class="text-center py-20 text-gray-500">
+            <svg class="animate-spin h-8 w-8 mx-auto mb-3 text-brand-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            Loading trace data...
+        </div>
+    </template>
+
+    <template x-if="error">
+        <div class="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+            <span x-text="error"></span>
+        </div>
+    </template>
+
+    <template x-if="!loading && !error && trace">
+        <div class="space-y-6">
+
+            <!-- Tabs -->
+            <div class="flex gap-1 border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide">
+                <template x-for="tab in tabs" :key="tab.id">
+                    <button @click="activeTab = tab.id"
+                            :class="activeTab === tab.id ? 'border-brand-600 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
+                            class="px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition"
+                            x-text="tab.label">
+                    </button>
+                </template>
+            </div>
+
+            <!-- 1. User Query -->
+            <div x-show="activeTab === 'query'" class="space-y-4 fade-in">
+                <h2 class="text-lg font-semibold">User Query</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+                    <pre class="text-sm overflow-x-auto whitespace-pre-wrap font-mono" x-text="JSON.stringify(trace.user_query, null, 2)"></pre>
+                </div>
+            </div>
+
+            <!-- 2. Scrapers -->
+            <div x-show="activeTab === 'scrapers'" class="space-y-4 fade-in">
+                <h2 class="text-lg font-semibold">Scraper Results</h2>
+                <template x-for="(data, name) in trace.scrapers" :key="name">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+                        <button @click="data._open = !data._open" class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <div class="flex items-center gap-3">
+                                <span x-text="name" class="font-semibold"></span>
+                                <span :class="data.status === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'"
+                                      class="px-2 py-0.5 rounded text-xs font-medium" x-text="data.status"></span>
+                            </div>
+                            <div class="flex items-center gap-4 text-sm text-gray-500">
+                                <template x-if="data.summary">
+                                    <span>
+                                        <span x-text="data.summary.problems_count"></span> problems,
+                                        <span x-text="data.summary.recalls_count"></span> recalls
+                                    </span>
+                                </template>
+                                <svg :class="data._open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </button>
+                        <div x-show="data._open" x-cloak class="border-t border-gray-100 dark:border-gray-700">
+                            <!-- Summary -->
+                            <template x-if="data.summary">
+                                <div class="p-4 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-100 dark:border-gray-700">
+                                    <h4 class="text-xs font-semibold uppercase text-gray-400 mb-2">Summary</h4>
+                                    <pre class="text-sm font-mono whitespace-pre-wrap" x-text="JSON.stringify(data.summary, null, 2)"></pre>
+                                </div>
+                            </template>
+                            <!-- Raw Data -->
+                            <div class="p-4" x-data="{ showRaw: false }">
+                                <button @click="showRaw = !showRaw" class="text-xs text-brand-600 dark:text-brand-400 hover:underline mb-2">
+                                    <span x-text="showRaw ? 'Hide' : 'Show'"></span> raw data
+                                </button>
+                                <div x-show="showRaw" x-cloak>
+                                    <pre class="text-xs font-mono whitespace-pre-wrap max-h-96 overflow-y-auto bg-gray-900 text-green-400 p-4 rounded-lg" x-text="JSON.stringify(data.raw_data, null, 2)"></pre>
+                                </div>
+                            </div>
+                            <!-- Error -->
+                            <template x-if="data.error">
+                                <div class="p-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm">
+                                    <span x-text="data.error"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- 3. Analysis -->
+            <div x-show="activeTab === 'analysis'" class="space-y-4 fade-in">
+                <h2 class="text-lg font-semibold">Analysis Pipeline</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5">
+                    <pre class="text-sm overflow-x-auto whitespace-pre-wrap font-mono" x-text="JSON.stringify(trace.analysis, null, 2)"></pre>
+                </div>
+            </div>
+
+            <!-- 4. LLM Calls -->
+            <div x-show="activeTab === 'llm'" class="space-y-4 fade-in">
+                <h2 class="text-lg font-semibold">LLM Calls (<span x-text="trace.llm_calls?.length || 0"></span>)</h2>
+                <template x-for="(call, idx) in (trace.llm_calls || [])" :key="idx">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+                        <button @click="call._open = !call._open" class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <div class="flex items-center gap-3">
+                                <span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-mono" x-text="'#' + call.call_number"></span>
+                                <span class="font-semibold" x-text="call.purpose"></span>
+                                <span :class="{
+                                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400': call.status === 'success',
+                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': call.status !== 'success'
+                                }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="call.status"></span>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span>Prompt: <span x-text="call.prompt_char_count?.toLocaleString()"></span> chars</span>
+                                <span>Response: <span x-text="call.response_char_count?.toLocaleString()"></span> chars</span>
+                                <svg :class="call._open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </button>
+                        <div x-show="call._open" x-cloak class="border-t border-gray-100 dark:border-gray-700">
+                            <!-- Prompt -->
+                            <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                                <h4 class="text-xs font-semibold uppercase text-gray-400 mb-2 flex items-center gap-2">
+                                    Prompt (context sent to LLM)
+                                    <span class="font-normal text-gray-400" x-text="call.prompt_char_count?.toLocaleString() + ' chars'"></span>
+                                </h4>
+                                <pre class="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200 p-4 rounded-lg" x-text="call.prompt"></pre>
+                            </div>
+                            <!-- Raw Response -->
+                            <div class="p-4 border-b border-gray-100 dark:border-gray-700">
+                                <h4 class="text-xs font-semibold uppercase text-gray-400 mb-2 flex items-center gap-2">
+                                    Raw LLM Response
+                                    <span class="font-normal text-gray-400" x-text="call.response_char_count?.toLocaleString() + ' chars'"></span>
+                                </h4>
+                                <template x-if="call.response_raw">
+                                    <pre class="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-gray-900 text-green-400 p-4 rounded-lg" x-text="call.response_raw"></pre>
+                                </template>
+                                <template x-if="!call.response_raw">
+                                    <p class="text-sm text-red-500 italic">No response (LLM call failed or returned null)</p>
+                                </template>
+                            </div>
+                            <!-- Parsed Output -->
+                            <div class="p-4">
+                                <h4 class="text-xs font-semibold uppercase text-gray-400 mb-2">Parsed / Extracted Output</h4>
+                                <template x-if="call.response_parsed">
+                                    <pre class="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 p-4 rounded-lg" x-text="JSON.stringify(call.response_parsed, null, 2)"></pre>
+                                </template>
+                                <template x-if="!call.response_parsed">
+                                    <p class="text-sm text-red-500 italic">Parsing failed — no structured data extracted</p>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="!trace.llm_calls || trace.llm_calls.length === 0">
+                    <div class="p-6 text-center text-gray-500 bg-white dark:bg-gray-800 rounded-xl shadow">
+                        No LLM calls recorded (LLM may be disabled or API key not set)
+                    </div>
+                </template>
+            </div>
+
+            <!-- 5. Sections Before LLM -->
+            <div x-show="activeTab === 'pre_llm'" class="space-y-4 fade-in">
+                <h2 class="text-lg font-semibold">Sections — Before LLM Enhancement</h2>
+                <p class="text-sm text-gray-500">Raw data-driven sections before any LLM enhancement was applied.</p>
+                <template x-for="(data, name) in (trace.sections_pre_llm || {})" :key="name">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+                        <button @click="data._open = !data._open" class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <span class="font-semibold" x-text="name"></span>
+                            <svg :class="data._open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div x-show="data._open" x-cloak class="border-t border-gray-100 dark:border-gray-700 p-4">
+                            <pre class="text-xs font-mono whitespace-pre-wrap max-h-96 overflow-y-auto" x-text="JSON.stringify(data, null, 2)"></pre>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- 6. Sections After LLM -->
+            <div x-show="activeTab === 'post_llm'" class="space-y-4 fade-in">
+                <h2 class="text-lg font-semibold">Sections — After LLM Enhancement</h2>
+                <p class="text-sm text-gray-500">Final sections with LLM-generated content merged in.</p>
+                <template x-for="(data, name) in (trace.sections_post_llm || {})" :key="name">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+                        <button @click="data._open = !data._open" class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                            <span class="font-semibold" x-text="name"></span>
+                            <svg :class="data._open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div x-show="data._open" x-cloak class="border-t border-gray-100 dark:border-gray-700 p-4">
+                            <pre class="text-xs font-mono whitespace-pre-wrap max-h-96 overflow-y-auto" x-text="JSON.stringify(data, null, 2)"></pre>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+        </div>
+    </template>
+</div>
+
+<script>
+function traceViewer() {
+    return {
+        trace: null,
+        loading: true,
+        error: null,
+        activeTab: 'query',
+        tabs: [
+            { id: 'query', label: 'User Query' },
+            { id: 'scrapers', label: 'Scrapers' },
+            { id: 'analysis', label: 'Analysis' },
+            { id: 'llm', label: 'LLM Calls' },
+            { id: 'pre_llm', label: 'Before LLM' },
+            { id: 'post_llm', label: 'After LLM' },
+        ],
+
+        async init() {
+            try {
+                const resp = await fetch('/api/trace/{{ report_id }}');
+                if (!resp.ok) {
+                    this.error = 'Trace not found for this report.';
+                    this.loading = false;
+                    return;
+                }
+                this.trace = await resp.json();
+                if (this.trace.error) {
+                    this.error = this.trace.error;
+                    this.trace = null;
+                }
+            } catch (e) {
+                this.error = 'Failed to load trace: ' + e.message;
+            }
+            this.loading = false;
+        }
+    };
+}
+</script>
+{% endblock %}

@@ -52,7 +52,7 @@
         <!-- Model -->
         <div>
             <label class="block text-sm font-medium mb-1" for="model">Model</label>
-            <select id="model" x-model="model" :disabled="!make"
+            <select id="model" x-model="model" @change="onModelChange" :disabled="!make"
                     class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
                 <option value="">Select model</option>
                 <template x-for="m in models" :key="m">
@@ -73,6 +73,78 @@
                 <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
                        class="w-36 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
                 <span class="text-sm text-gray-500">miles</span>
+            </div>
+        </div>
+
+        <!-- Advanced Options -->
+        <div>
+            <button type="button" @click="showAdvanced = !showAdvanced"
+                    class="flex items-center gap-2 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition">
+                <svg :class="showAdvanced ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                Advanced Options
+                <span class="text-xs text-gray-400 font-normal">(optional)</span>
+                <span x-show="loadingTrims" class="text-xs text-gray-500 ml-1">loading...</span>
+            </button>
+
+            <div x-show="showAdvanced" x-cloak class="mt-4 space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                <p class="text-xs text-gray-500 dark:text-gray-400">These details help generate more specific and accurate results.</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Trim -->
+                    <div>
+                        <label class="block text-sm font-medium mb-1" for="trim">Trim / Package</label>
+                        <select id="trim" x-model="trim" @change="onTrimChange"
+                                :disabled="vehicleTrims.length === 0 && !loadingTrims"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
+                            <option value="">Any</option>
+                            <template x-for="t in vehicleTrims" :key="t.value">
+                                <option :value="t.value" x-text="t.label"></option>
+                            </template>
+                        </select>
+                        <p x-show="loadingTrims" class="text-xs text-gray-500 mt-1">Loading trims...</p>
+                        <p x-show="!loadingTrims && vehicleTrims.length === 0 && model" class="text-xs text-gray-400 mt-1">No specific trims found</p>
+                    </div>
+
+                    <!-- Engine -->
+                    <div>
+                        <label class="block text-sm font-medium mb-1" for="engine">Engine</label>
+                        <select id="engine" x-model="engine"
+                                :disabled="vehicleEngines.length === 0 && !loadingEngines"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
+                            <option value="">Any</option>
+                            <template x-for="e in vehicleEngines" :key="e">
+                                <option :value="e" x-text="e"></option>
+                            </template>
+                        </select>
+                        <p x-show="loadingEngines" class="text-xs text-gray-500 mt-1">Loading engines...</p>
+                    </div>
+
+                    <!-- Transmission -->
+                    <div>
+                        <label class="block text-sm font-medium mb-1" for="transmission">Transmission</label>
+                        <select id="transmission" x-model="transmission"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                            <option value="">Any</option>
+                            <option value="Automatic">Automatic</option>
+                            <option value="Manual">Manual</option>
+                            <option value="CVT">CVT</option>
+                            <option value="DCT">Dual-Clutch (DCT)</option>
+                        </select>
+                    </div>
+
+                    <!-- Drivetrain -->
+                    <div>
+                        <label class="block text-sm font-medium mb-1" for="drivetrain">Drivetrain</label>
+                        <select id="drivetrain" x-model="drivetrain"
+                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                            <option value="">Any</option>
+                            <option value="FWD">Front-Wheel Drive (FWD)</option>
+                            <option value="RWD">Rear-Wheel Drive (RWD)</option>
+                            <option value="AWD">All-Wheel Drive (AWD)</option>
+                            <option value="4WD">Four-Wheel Drive (4WD)</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -122,11 +194,20 @@ function carForm() {
         make: '',
         model: '',
         mileage: 75000,
+        trim: '',
+        engine: '',
+        transmission: '',
+        drivetrain: '',
+        showAdvanced: false,
         years: [],
         makes: [],
         models: [],
+        vehicleTrims: [],
+        vehicleEngines: [],
         loadingMakes: false,
         loadingModels: false,
+        loadingTrims: false,
+        loadingEngines: false,
         analyzing: false,
         progressEvents: [],
 
@@ -143,11 +224,21 @@ function carForm() {
             }
         },
 
+        _resetAdvanced() {
+            this.trim = '';
+            this.engine = '';
+            this.transmission = '';
+            this.drivetrain = '';
+            this.vehicleTrims = [];
+            this.vehicleEngines = [];
+        },
+
         async onYearChange() {
             this.make = '';
             this.model = '';
             this.makes = [];
             this.models = [];
+            this._resetAdvanced();
             if (!this.year) return;
             this.loadingMakes = true;
             try {
@@ -160,6 +251,7 @@ function carForm() {
         async onMakeChange() {
             this.model = '';
             this.models = [];
+            this._resetAdvanced();
             if (!this.make || !this.year) return;
             this.loadingModels = true;
             try {
@@ -167,6 +259,36 @@ function carForm() {
                 this.models = await resp.json();
             } catch (e) { console.error(e); }
             this.loadingModels = false;
+        },
+
+        async onModelChange() {
+            this._resetAdvanced();
+            if (!this.year || !this.make || !this.model) return;
+            this.loadingTrims = true;
+            try {
+                const resp = await fetch(
+                    `/api/vehicle-trims?year=${this.year}&make=${encodeURIComponent(this.make)}&model=${encodeURIComponent(this.model)}`
+                );
+                this.vehicleTrims = await resp.json();
+                if (this.vehicleTrims.length > 0) {
+                    this.showAdvanced = true;
+                }
+            } catch (e) { console.error(e); }
+            this.loadingTrims = false;
+        },
+
+        async onTrimChange() {
+            this.engine = '';
+            this.vehicleEngines = [];
+            if (!this.trim) return;
+            this.loadingEngines = true;
+            try {
+                const resp = await fetch(
+                    `/api/vehicle-engines?year=${this.year}&make=${encodeURIComponent(this.make)}&trim=${encodeURIComponent(this.trim)}`
+                );
+                this.vehicleEngines = await resp.json();
+            } catch (e) { console.error(e); }
+            this.loadingEngines = false;
         },
 
         async submit() {
@@ -181,6 +303,10 @@ function carForm() {
                         model: this.model,
                         year: parseInt(this.year),
                         mileage: parseInt(this.mileage),
+                        trim: this.trim ? (this.vehicleTrims.find(t => t.value === this.trim)?.label || this.trim) : null,
+                        engine: this.engine || null,
+                        transmission: this.transmission || null,
+                        drivetrain: this.drivetrain || null,
                     }),
                 });
                 const data = await resp.json();

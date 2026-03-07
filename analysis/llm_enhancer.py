@@ -15,6 +15,7 @@ import re
 import anthropic
 
 from config.settings import LLM_MODEL, LLM_MAX_TOKENS
+from utils.trace import get_trace
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +163,20 @@ def _llm_call(prompt: str, max_tokens: int | None = None) -> str | None:
 
 
 def _vehicle_str(vehicle: dict) -> str:
-    return f"{vehicle.get('year')} {vehicle.get('make')} {vehicle.get('model')} with {vehicle.get('mileage', 0):,} miles"
+    base = f"{vehicle.get('year')} {vehicle.get('make')} {vehicle.get('model')}"
+    details = []
+    if vehicle.get("trim"):
+        details.append(vehicle["trim"])
+    if vehicle.get("engine"):
+        details.append(vehicle["engine"])
+    if vehicle.get("transmission"):
+        details.append(vehicle["transmission"])
+    if vehicle.get("drivetrain"):
+        details.append(vehicle["drivetrain"])
+    if details:
+        base += f" ({', '.join(details)})"
+    base += f" with {vehicle.get('mileage', 0):,} miles"
+    return base
 
 
 # ------------------------------------------------------------------
@@ -235,8 +249,18 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
         prompt = _build_checklist_prompt(vehicle, batch)
         text = _llm_call(prompt)
 
+        trace = get_trace()
+
         if text is None:
             logger.warning("Checklist batch %d: LLM call returned None", batch_num)
+            if trace:
+                trace.log_llm_call(
+                    purpose=f"inspection_checklist_batch_{batch_num}",
+                    prompt=prompt,
+                    response_raw=None,
+                    response_parsed=None,
+                    status="llm_returned_none",
+                )
             continue
 
         items = _extract_list(text)
@@ -245,9 +269,25 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
                 "Checklist batch %d: failed to parse response. First 300 chars: %.300s",
                 batch_num, text[:300],
             )
+            if trace:
+                trace.log_llm_call(
+                    purpose=f"inspection_checklist_batch_{batch_num}",
+                    prompt=prompt,
+                    response_raw=text,
+                    response_parsed=None,
+                    status="parse_failed",
+                )
             continue
 
         logger.info("Checklist batch %d: successfully parsed %d items", batch_num, len(items))
+        if trace:
+            trace.log_llm_call(
+                purpose=f"inspection_checklist_batch_{batch_num}",
+                prompt=prompt,
+                response_raw=text,
+                response_parsed=items,
+                status="success",
+            )
         for item in items:
             if isinstance(item, dict) and "index" in item:
                 enhanced_map[item["index"]] = item
@@ -363,15 +403,42 @@ Vehicle data:
 {json.dumps(context, indent=2)}"""
 
     text = _llm_call(prompt, max_tokens=LLM_MAX_TOKENS)
+
+    trace = get_trace()
+
     if text is None:
+        if trace:
+            trace.log_llm_call(
+                purpose="report_sections_enhancement",
+                prompt=prompt,
+                response_raw=None,
+                response_parsed=None,
+                status="llm_returned_none",
+            )
         return report
 
     result = _extract_json(text)
     if not isinstance(result, dict):
         logger.warning("Could not extract JSON object from report enhancement LLM response")
+        if trace:
+            trace.log_llm_call(
+                purpose="report_sections_enhancement",
+                prompt=prompt,
+                response_raw=text,
+                response_parsed=None,
+                status="parse_failed",
+            )
         return report
 
     logger.info("LLM report enhancement successful, keys: %s", list(result.keys()))
+    if trace:
+        trace.log_llm_call(
+            purpose="report_sections_enhancement",
+            prompt=prompt,
+            response_raw=text,
+            response_parsed=result,
+            status="success",
+        )
 
     # Executive summary
     if result.get("executive_summary"):
