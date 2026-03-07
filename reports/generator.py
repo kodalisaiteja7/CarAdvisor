@@ -10,6 +10,7 @@ import logging
 from dataclasses import asdict
 
 from analysis.aggregator import AggregatedVehicleData
+from analysis.llm_enhancer import enhance_inspection_checklist, enhance_report_sections
 from analysis.mileage_model import MileageAnalysis, MileagePhase
 from analysis.scorer import VehicleScore, ScoredProblem
 
@@ -25,13 +26,20 @@ def generate_report(
     user_mileage: int,
 ) -> dict:
     """Build the complete report dict with all 7 sections."""
-    return {
-        "vehicle": {
-            "make": agg.make,
-            "model": agg.model,
-            "year": agg.year,
-            "mileage": user_mileage,
-        },
+    vehicle = {
+        "make": agg.make,
+        "model": agg.model,
+        "year": agg.year,
+        "mileage": user_mileage,
+    }
+
+    checklist = _build_inspection_checklist(
+        mileage_analysis, vehicle_score, user_mileage
+    )
+    checklist = enhance_inspection_checklist(vehicle, checklist)
+
+    report = {
+        "vehicle": vehicle,
         "meta": {
             "sources_used": agg.sources_used,
             "source_count": agg.source_count,
@@ -41,9 +49,7 @@ def generate_report(
         },
         "sections": {
             "vehicle_summary": _build_vehicle_summary(agg, vehicle_score),
-            "inspection_checklist": _build_inspection_checklist(
-                mileage_analysis, vehicle_score, user_mileage
-            ),
+            "inspection_checklist": checklist,
             "current_risk": _build_current_risk(mileage_analysis, vehicle_score),
             "future_forecast": _build_future_forecast(
                 mileage_analysis, agg, user_mileage
@@ -55,6 +61,10 @@ def generate_report(
             ),
         },
     }
+
+    report = enhance_report_sections(vehicle, report)
+
+    return report
 
 
 # ------------------------------------------------------------------

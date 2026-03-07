@@ -181,13 +181,18 @@ def _run_analysis(
         _emit(report_id, "system", "error", "All scrapers failed")
         return
 
-    _emit(report_id, "analysis", "scraping", "Aggregating and analyzing data...")
+    _emit(report_id, "Analysis", "scraping", "Aggregating and analyzing data...")
 
     try:
         agg = aggregate(results)
         ma = analyze_mileage(agg, mileage)
         vs = score_vehicle(ma)
+        _emit(report_id, "Analysis", "complete", "Data analysis complete")
+
+        _emit(report_id, "AI Insights", "scraping", "Generating AI-powered insights and guidance...")
         report = generate_report(agg, ma, vs, mileage)
+        _emit(report_id, "AI Insights", "complete", "AI insights generated")
+
         _reports[report_id] = report
         _emit(report_id, "system", "done", report_id)
     except Exception as exc:

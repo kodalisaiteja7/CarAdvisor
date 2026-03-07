@@ -5,7 +5,7 @@
 <div x-data="{ openSection: 'summary' }">
 
     <!-- Header -->
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
         <div class="min-w-0">
             <h1 class="text-3xl font-extrabold truncate">{{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }}</h1>
             <p class="text-gray-500 dark:text-gray-400 mt-1">
@@ -14,7 +14,7 @@
                 {{ report.meta.total_problems_found }} issue{{ "s" if report.meta.total_problems_found != 1 }} found
             </p>
         </div>
-        <div class="flex items-center gap-4 flex-shrink-0">
+        <div class="flex items-center gap-3 flex-shrink-0">
             {% set score = report.sections.vehicle_summary.reliability_risk_score %}
             {% set grade = report.sections.vehicle_summary.letter_grade %}
             {% if score <= 35 %}
@@ -35,11 +35,39 @@
                     <div class="text-xs font-medium uppercase tracking-wider">Risk / 100</div>
                 </div>
             </div>
-            <a href="/" class="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+            <button onclick="window.print()" class="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition print-hide" title="Print Report">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Print
+            </button>
+            <a href="/" class="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition print-hide">
                 New Search
             </a>
         </div>
     </div>
+
+    <!-- ============================================================= -->
+    <!-- Executive Summary Card (LLM-generated) -->
+    <!-- ============================================================= -->
+    {% set exec_summary = report.sections.get("executive_summary", {}) %}
+    {% if exec_summary.get("text") %}
+    <div class="mb-6 bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 border border-brand-200 dark:border-brand-800 rounded-2xl p-6 print-section">
+        <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-14 h-14 rounded-xl {{ badge_color }} border flex items-center justify-center">
+                <span class="text-2xl font-black">{{ grade }}</span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                    <h2 class="text-lg font-bold">Buyer's Verdict</h2>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"/></svg>
+                        AI Insight
+                    </span>
+                </div>
+                <p class="text-gray-700 dark:text-gray-300 leading-relaxed break-words">{{ exec_summary.text }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Section tabs -->
     {% set sections = [
@@ -51,7 +79,7 @@
         ("redflags", "Red Flags"),
         ("negotiation", "Negotiation"),
     ] %}
-    <div class="flex overflow-x-auto gap-1 mb-6 border-b border-gray-200 dark:border-gray-700 pb-px scrollbar-hide">
+    <div class="flex overflow-x-auto gap-1 mb-6 border-b border-gray-200 dark:border-gray-700 pb-px scrollbar-hide print-hide">
         {% for id, label in sections %}
         <button @click="openSection = '{{ id }}'"
                 :class="openSection === '{{ id }}' ? 'border-brand-600 text-brand-600 dark:text-brand-400 dark:border-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
@@ -61,16 +89,22 @@
         {% endfor %}
     </div>
 
+    <!-- Reusable AI badge macro -->
+    {% macro ai_badge() %}
+    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"/></svg>
+        AI Enhanced
+    </span>
+    {% endmacro %}
+
     <!-- ============================================================= -->
     <!-- Section 1: Vehicle Summary -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'summary'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'summary'" x-cloak class="fade-in space-y-6 print-section">
         {% set vs = report.sections.vehicle_summary %}
         {% set cr = report.sections.current_risk %}
 
-        <!-- Risk Profile Radar + Score Overview -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Radar Chart -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
                 <h2 class="text-lg font-bold mb-4">Risk Profile by System</h2>
                 <div class="relative" style="max-height: 340px;">
@@ -79,7 +113,6 @@
                 <p class="text-xs text-gray-400 text-center mt-2">0 = low risk, 100 = high risk</p>
             </div>
 
-            <!-- Score Breakdown -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex flex-col">
                 <h2 class="text-lg font-bold mb-4">Score Overview</h2>
                 <div class="grid grid-cols-2 gap-4 mb-6">
@@ -101,7 +134,6 @@
                     </div>
                 </div>
 
-                <!-- Phase distribution bar -->
                 {% set phases = cr.phase_summary %}
                 {% set total_p = (phases.get('current', 0) + phases.get('upcoming', 0) + phases.get('past', 0) + phases.get('future', 0) + phases.get('unknown', 0)) or 1 %}
                 <h3 class="text-sm font-semibold mb-2">Issue Distribution by Mileage Phase</h3>
@@ -137,7 +169,6 @@
             </div>
         </div>
 
-        <!-- Complaint Volume by System - bar chart -->
         {% if cr.system_risks %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h2 class="text-lg font-bold mb-4">Complaint Volume by System</h2>
@@ -204,58 +235,131 @@
     <!-- ============================================================= -->
     <!-- Section 2: Inspection Checklist -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'checklist'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'checklist'" x-cloak class="fade-in space-y-6 print-section">
         {% set cl = report.sections.inspection_checklist %}
+
+        {% macro render_checklist_item(item, border_color, bg_color, cost_color) %}
+        <div class="mb-5 border {{ border_color }} rounded-xl {{ bg_color }} overflow-hidden" x-data="{ open: false }">
+            <button @click="open = !open" class="w-full flex items-start justify-between p-4 text-left gap-3 hover:opacity-90 transition">
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200">{{ item.system }}</span>
+                        {% if item.estimated_cost_if_bad %}
+                        <span class="text-xs font-semibold {{ cost_color }}">{{ item.estimated_cost_if_bad }}</span>
+                        {% endif %}
+                        {% if item.llm_enhanced %}{{ ai_badge() }}{% endif %}
+                    </div>
+                    <h3 class="font-bold text-base mt-2 break-words">
+                        {% if item.title %}{{ item.title }}{% else %}{{ item.system }} Inspection{% endif %}
+                    </h3>
+                    {% if item.why_it_matters %}
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">{{ item.why_it_matters }}</p>
+                    {% endif %}
+                </div>
+                <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 mt-1 flex-shrink-0 transition-transform text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <div x-show="open" x-cloak class="px-4 pb-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
+
+                {% if item.how_to_check %}
+                <div class="pt-4">
+                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                        How to Check
+                    </h4>
+                    <ol class="space-y-2 ml-1">
+                        {% for step in item.how_to_check %}
+                        <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xs font-bold mt-0.5">{{ loop.index }}</span>
+                            <span class="break-words">{{ step }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                </div>
+                {% endif %}
+
+                {% if item.red_flags %}
+                <div>
+                    <h4 class="text-sm font-bold text-red-700 dark:text-red-400 mb-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                        Red Flags
+                    </h4>
+                    <ul class="space-y-1.5 ml-1">
+                        {% for flag in item.red_flags %}
+                        <li class="flex items-start gap-2 text-sm text-red-700 dark:text-red-400">
+                            <span class="flex-shrink-0 mt-1">&#x2716;</span>
+                            <span class="break-words">{{ flag }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if item.ask_the_seller %}
+                <div>
+                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Ask the Seller
+                    </h4>
+                    <ul class="space-y-1.5 ml-1">
+                        {% for q in item.ask_the_seller %}
+                        <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <span class="flex-shrink-0 text-brand-500 font-bold">Q:</span>
+                            <span class="break-words italic">"{{ q }}"</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                {% if not item.how_to_check and not item.red_flags %}
+                <div class="pt-3">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ item.what_to_look_for }}</p>
+                </div>
+                {% endif %}
+
+                <div class="flex flex-wrap items-center gap-2 pt-1">
+                    {% for s in item.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300">{{ s }}</span>{% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endmacro %}
 
         {% if cl.must_check %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-xl font-bold mb-1 text-red-600 dark:text-red-400">MUST CHECK</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Known failure points at this mileage</p>
-            {% for item in cl.must_check %}
-            <div class="mb-4 p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50/50 dark:bg-red-900/10">
-                <div class="font-semibold break-words">{{ item.system }}</div>
-                <p class="text-sm mt-1 text-gray-700 dark:text-gray-300 break-words">{{ item.description }}</p>
-                <p class="text-sm mt-2 text-gray-600 dark:text-gray-400 break-words">{{ item.what_to_look_for }}</p>
-                {% if item.estimated_cost_if_bad %}
-                <p class="text-sm mt-1 font-medium text-red-600 dark:text-red-400">Estimated repair cost: {{ item.estimated_cost_if_bad }}</p>
-                {% endif %}
-                <div class="flex flex-wrap gap-1 mt-2">
-                    {% for s in item.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700">{{ s }}</span>{% endfor %}
-                </div>
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                <h2 class="text-xl font-bold text-red-600 dark:text-red-400">MUST CHECK</h2>
             </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Known failure points at this mileage &mdash; do not skip these</p>
+            {% for item in cl.must_check %}
+                {{ render_checklist_item(item, "border-red-200 dark:border-red-800", "bg-red-50/40 dark:bg-red-900/10", "text-red-600 dark:text-red-400") }}
             {% endfor %}
         </div>
         {% endif %}
 
         {% if cl.recommended %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-xl font-bold mb-1 text-yellow-600 dark:text-yellow-400">RECOMMENDED</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Emerging issues for this mileage range</p>
-            {% for item in cl.recommended %}
-            <div class="mb-4 p-4 border border-yellow-200 dark:border-yellow-800 rounded-lg bg-yellow-50/50 dark:bg-yellow-900/10">
-                <div class="font-semibold break-words">{{ item.system }}</div>
-                <p class="text-sm mt-1 text-gray-700 dark:text-gray-300 break-words">{{ item.description }}</p>
-                <p class="text-sm mt-2 text-gray-600 dark:text-gray-400 break-words">{{ item.what_to_look_for }}</p>
-                {% if item.estimated_cost_if_bad %}
-                <p class="text-sm mt-1 font-medium text-yellow-600 dark:text-yellow-400">Estimated repair cost: {{ item.estimated_cost_if_bad }}</p>
-                {% endif %}
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                <h2 class="text-xl font-bold text-yellow-600 dark:text-yellow-400">RECOMMENDED</h2>
             </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Emerging issues for this mileage range</p>
+            {% for item in cl.recommended %}
+                {{ render_checklist_item(item, "border-yellow-200 dark:border-yellow-800", "bg-yellow-50/40 dark:bg-yellow-900/10", "text-yellow-600 dark:text-yellow-400") }}
             {% endfor %}
         </div>
         {% endif %}
 
         {% if cl.standard %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-xl font-bold mb-1">STANDARD</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">General used car inspection items</p>
-            {% for item in cl.standard %}
-            <div class="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <div class="font-medium break-words">{{ item.system }} &mdash; {{ item.description }}</div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 break-words">{{ item.what_to_look_for }}</p>
-                {% if item.estimated_cost_if_bad %}
-                <p class="text-xs text-gray-500 mt-1">{{ item.estimated_cost_if_bad }}</p>
-                {% endif %}
+            <div class="flex items-center gap-2 mb-1">
+                <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                <h2 class="text-xl font-bold">STANDARD</h2>
             </div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">General used car inspection items</p>
+            {% for item in cl.standard %}
+                {{ render_checklist_item(item, "border-gray-200 dark:border-gray-700", "bg-gray-50/40 dark:bg-gray-800/40", "text-gray-600 dark:text-gray-400") }}
             {% endfor %}
         </div>
         {% endif %}
@@ -264,7 +368,7 @@
     <!-- ============================================================= -->
     <!-- Section 3: Current Risk -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'risk'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'risk'" x-cloak class="fade-in space-y-6 print-section">
         {% set cr = report.sections.current_risk %}
 
         {% if cr.system_risks %}
@@ -310,6 +414,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
+                            {% if issue.llm_enhanced %}{{ ai_badge() }}{% endif %}
                             <span class="text-xs px-2 py-1 rounded-full font-medium
                                 {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
                                 {% elif issue.probability == 'Medium' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
@@ -321,7 +426,21 @@
                     </button>
                     <div x-show="expanded === {{ issue.rank }}" x-cloak class="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-gray-700">
                         <p class="text-sm text-gray-600 dark:text-gray-400 pt-3 break-words">{{ issue.description }}</p>
-                        {% if issue.test_drive_tips %}
+
+                        {% if issue.test_drive_narrative %}
+                        <div class="p-3 bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Test Drive Guidance
+                            </h4>
+                            <p class="text-sm text-blue-700 dark:text-blue-300 break-words">{{ issue.test_drive_narrative }}</p>
+                            {% if issue.what_to_listen_for %}
+                            <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 break-words"><span class="font-medium">Listen for:</span> {{ issue.what_to_listen_for }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% if issue.test_drive_tips and not issue.test_drive_narrative %}
                         <div>
                             <h4 class="text-sm font-semibold mb-1">Test Drive Tips</h4>
                             <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
@@ -351,10 +470,9 @@
     <!-- ============================================================= -->
     <!-- Section 4: Future Forecast -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'forecast'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'forecast'" x-cloak class="fade-in space-y-6 print-section">
         {% set ff = report.sections.future_forecast %}
 
-        <!-- Cost forecast chart -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h2 class="text-lg font-bold mb-4">Estimated Repair Costs Ahead</h2>
             <div style="max-height: 280px;">
@@ -365,11 +483,21 @@
         {% for window in ff.forecast_windows %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                <h2 class="text-xl font-bold">{{ window.window_label }}</h2>
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xl font-bold">{{ window.window_label }}</h2>
+                    {% if window.llm_enhanced %}{{ ai_badge() }}{% endif %}
+                </div>
                 {% if window.estimated_total_cost %}
                 <span class="text-lg font-bold text-red-600 dark:text-red-400">{{ window.estimated_total_cost }}</span>
                 {% endif %}
             </div>
+
+            {% if window.narrative %}
+            <div class="p-3 bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
+                <p class="text-sm text-blue-700 dark:text-blue-300 break-words">{{ window.narrative }}</p>
+            </div>
+            {% endif %}
+
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Predicted issues by {{ "{:,}".format(window.target_mileage) }} miles</p>
             {% if window.predicted_issues %}
             <div class="space-y-3">
@@ -396,13 +524,33 @@
     <!-- ============================================================= -->
     <!-- Section 5: Owner Experience -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'experience'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'experience'" x-cloak class="fade-in space-y-6 print-section">
         {% set oe = report.sections.owner_experience %}
+
+        {% if oe.get("owner_themes") %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+            <div class="flex items-center gap-2 mb-4">
+                <h2 class="text-lg font-bold">What Owners Are Saying</h2>
+                {{ ai_badge() }}
+            </div>
+            <div class="space-y-3">
+                {% for theme in oe.owner_themes %}
+                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                    <svg class="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 break-words">{{ theme }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h2 class="text-lg font-bold mb-4">Owner Reports ({{ oe.report_count }})</h2>
+            {% if not oe.get("owner_themes") %}
             <p class="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4 break-words">
                 {{ oe.note }}
             </p>
+            {% endif %}
             {% if oe.sample_reports %}
             <div class="space-y-4" x-data="{ showAll: false }">
                 {% for report_text in oe.sample_reports[:5] %}
@@ -430,7 +578,7 @@
     <!-- ============================================================= -->
     <!-- Section 6: Red Flags -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'redflags'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'redflags'" x-cloak class="fade-in space-y-6 print-section">
         {% set rf = report.sections.red_flags %}
 
         {% if rf.catastrophic_failures %}
@@ -467,7 +615,10 @@
         {% endif %}
 
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Recommendations</h2>
+            <div class="flex items-center gap-2 mb-4">
+                <h2 class="text-lg font-bold">Recommendations</h2>
+                {% if rf.get("llm_enhanced") %}{{ ai_badge() }}{% endif %}
+            </div>
             <ul class="space-y-3">
                 {% for rec in rf.recommendations %}
                 <li class="flex items-start gap-3">
@@ -482,7 +633,7 @@
     <!-- ============================================================= -->
     <!-- Section 7: Negotiation Ammunition -->
     <!-- ============================================================= -->
-    <section x-show="openSection === 'negotiation'" x-cloak class="fade-in space-y-6">
+    <section x-show="openSection === 'negotiation'" x-cloak class="fade-in space-y-6 print-section">
         {% set neg = report.sections.negotiation %}
 
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
@@ -498,7 +649,10 @@
 
         {% if neg.talking_points %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Talking Points</h2>
+            <div class="flex items-center gap-2 mb-4">
+                <h2 class="text-lg font-bold">Talking Points</h2>
+                {% if neg.get("llm_enhanced") %}{{ ai_badge() }}{% endif %}
+            </div>
             <div class="space-y-4">
                 {% for tp in neg.talking_points %}
                 <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -511,8 +665,17 @@
                         <span class="text-sm font-bold text-red-600 dark:text-red-400 whitespace-nowrap flex-shrink-0">{{ tp.estimated_cost }}</span>
                         {% endif %}
                     </div>
+
+                    {% if tp.get("script") %}
+                    <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <h4 class="text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1 uppercase tracking-wider">What to Say</h4>
+                        <p class="text-sm text-blue-700 dark:text-blue-300 italic break-words">"{{ tp.script }}"</p>
+                    </div>
+                    {% else %}
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 italic break-words">"{{ tp.leverage }}"</p>
-                    <p class="text-xs text-gray-400 mt-1">{{ tp.complaint_count }} complaint{{ "s" if tp.complaint_count != 1 }} filed</p>
+                    {% endif %}
+
+                    <p class="text-xs text-gray-400 mt-2">{{ tp.complaint_count }} complaint{{ "s" if tp.complaint_count != 1 }} filed</p>
                 </div>
                 {% endfor %}
             </div>

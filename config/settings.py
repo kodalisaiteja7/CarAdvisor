@@ -51,3 +51,8 @@ NHTSA_API_BASE = "https://api.nhtsa.gov"
 REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID", "")
 REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET", "")
 REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "CarAdvisor/1.0")
+
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+LLM_ENABLED = bool(ANTHROPIC_API_KEY)
+LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-4-20250514")
+LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 8192))
