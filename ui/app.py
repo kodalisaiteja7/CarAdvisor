@@ -14,8 +14,6 @@ from config.settings import FLASK_SECRET_KEY
 from database.models import init_db
 from scrapers.nhtsa import NHTSAScraper
 from scrapers.carcomplaints import CarComplaintsScraper
-from scrapers.repairpal import RepairPalScraper
-from scrapers.edmunds import EdmundsScraper
 from analysis.aggregator import aggregate
 from analysis.mileage_model import analyze_mileage
 from analysis.scorer import score_vehicle
@@ -39,8 +37,6 @@ _traces: dict[str, dict] = {}
 SCRAPERS = [
     ("NHTSA", NHTSAScraper),
     ("CarComplaints", CarComplaintsScraper),
-    ("RepairPal", RepairPalScraper),
-    ("Edmunds", EdmundsScraper),
 ]
 
 

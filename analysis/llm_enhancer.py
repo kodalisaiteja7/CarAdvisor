@@ -317,6 +317,66 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
 # ------------------------------------------------------------------
 
 
+def _mileage_assessment(mileage: int, risk_score: float, phase_summary: dict) -> dict:
+    """Build a structured mileage assessment for the LLM.
+
+    This ensures the LLM understands that lower mileage = better buy,
+    and higher mileage = more accumulated risk, regardless of how the
+    individual issues are phased.
+    """
+    if mileage <= 30_000:
+        tier = "very_low"
+        tier_label = "Very Low Mileage"
+        guidance = (
+            "This is a very low mileage vehicle. Most known failure modes "
+            "have NOT yet occurred. The buyer has maximum remaining life. "
+            "This should be rated as a BETTER buy than the same vehicle "
+            "at higher mileage. Upcoming issues are things to watch for "
+            "in the future, NOT reasons to avoid the purchase."
+        )
+    elif mileage <= 60_000:
+        tier = "low"
+        tier_label = "Low Mileage"
+        guidance = (
+            "This is a low mileage vehicle with plenty of life remaining. "
+            "Some issues may be starting to appear but the vehicle has "
+            "not yet entered most high-failure zones. This should be "
+            "rated more favorably than the same vehicle at higher mileage."
+        )
+    elif mileage <= 100_000:
+        tier = "moderate"
+        tier_label = "Moderate Mileage"
+        guidance = (
+            "This vehicle is in the moderate mileage range. It has passed "
+            "through some failure zones and is approaching others. Evaluate "
+            "based on what issues are currently relevant and upcoming."
+        )
+    elif mileage <= 150_000:
+        tier = "high"
+        tier_label = "High Mileage"
+        guidance = (
+            "This is a high mileage vehicle that has been through most "
+            "common failure zones. Accumulated wear is a significant factor. "
+            "The buyer should budget for maintenance and repairs. This should "
+            "be rated LESS favorably than the same vehicle at lower mileage."
+        )
+    else:
+        tier = "very_high"
+        tier_label = "Very High Mileage"
+        guidance = (
+            "This is a very high mileage vehicle. Maximum accumulated wear "
+            "and exposure to failure zones. Should be rated as the most risky "
+            "option compared to the same vehicle at lower mileages."
+        )
+
+    return {
+        "tier": tier,
+        "tier_label": tier_label,
+        "guidance": guidance,
+        "risk_score_out_of_100": round(risk_score, 1),
+    }
+
+
 def enhance_report_sections(vehicle: dict, report: dict) -> dict:
     """Enhance all remaining report sections with a single LLM call.
 
@@ -359,10 +419,18 @@ def enhance_report_sections(vehicle: dict, report: dict) -> dict:
 
     sample_reports_brief = [r[:200] for r in oe.get("sample_reports", [])[:8]]
 
+    mileage = vehicle.get("mileage", 0)
+    phase_summary = cr.get("phase_summary", {})
+    risk_score = vs.get("reliability_risk_score", 0)
+
+    mileage_assessment = _mileage_assessment(mileage, risk_score, phase_summary)
+
     context = {
         "vehicle": _vehicle_str(vehicle),
-        "risk_score": vs.get("reliability_risk_score"),
-        "letter_grade": vs.get("letter_grade"),
+        "mileage": mileage,
+        "mileage_assessment": mileage_assessment,
+        "internal_risk_score": risk_score,
+        "phase_distribution": phase_summary,
         "total_complaints": vs.get("total_complaints"),
         "total_recalls": vs.get("total_recalls"),
         "top_issues": top_issues_brief,
@@ -376,24 +444,37 @@ def enhance_report_sections(vehicle: dict, report: dict) -> dict:
 
     prompt = f"""You are an expert automotive advisor helping a regular car buyer evaluate a used {_vehicle_str(vehicle)}.
 
+CRITICAL MILEAGE RULES — you MUST follow these:
+- The vehicle has {mileage:,} miles. The mileage assessment tier is: "{mileage_assessment['tier_label']}".
+- {mileage_assessment['guidance']}
+- The internal risk score is {mileage_assessment['risk_score_out_of_100']}/100 (higher = more risky). Use this to calibrate your verdict.
+- ABSOLUTE RULE: A vehicle at lower mileage MUST ALWAYS receive a more favorable verdict than the SAME vehicle at higher mileage. Never call a low-mileage vehicle "risky" while the same vehicle at higher mileage would be "fair" or "good".
+- "Upcoming" or "future" issues for a low-mileage car are things the buyer has NOT yet encountered — this is a POSITIVE, not a negative. It means the car still has its best years ahead.
+- "Past" issues for a high-mileage car mean the car has ALREADY been through those failure zones — this represents accumulated wear and risk, NOT safety.
+
+Phase distribution for this vehicle: {json.dumps(phase_summary)}
+(past = already went through that failure zone, current = in the zone now, upcoming = approaching, future = far away)
+
 Below is a summary of data collected from multiple sources about this vehicle. Using this data, produce a JSON object with ALL of the following keys:
 
-1. "executive_summary" — A 3-4 sentence buyer-friendly verdict. Start with the overall assessment (good/fair/risky buy), mention the top 1-2 concerns, and end with a clear recommendation. Write as if talking directly to the buyer.
+1. "executive_summary" — A 3-4 sentence buyer-friendly verdict. Start with the overall assessment (good/fair/risky buy), mention the top 1-2 concerns, and end with a clear recommendation. Write as if talking directly to the buyer. Do NOT mention any numeric risk scores or letter grades. Your assessment MUST align with the mileage tier and risk score above.
 
-2. "risk_narratives" — An array matching each top issue. For each, produce an object with:
+2. "verdict_reasoning" — An array of 3-5 short bullet-point strings explaining WHY you reached that verdict. Each bullet should cite specific data (e.g., complaint counts, specific failure types, recall status, mileage context). Include at least one bullet about how the vehicle's mileage affects the assessment. Be specific and reference the actual data provided.
+
+3. "risk_narratives" — An array matching each top issue. For each, produce an object with:
    - "system": the system name (match exactly from input)
    - "test_drive_narrative": 1-2 sentences describing what to specifically look/listen for during a test drive, tailored to this vehicle
    - "what_to_listen_for": 1 sentence about specific sounds, smells, or feelings that indicate a problem
 
-3. "owner_themes" — An array of 3-5 strings. Each is a bullet point summarizing a common theme from owner reports (e.g., "Owners frequently report transmission shudder at highway speeds around 60k miles"). If there are no owner reports, return general known issues for this vehicle.
+4. "owner_themes" — An array of 3-5 strings. Each is a bullet point summarizing a common theme from owner reports (e.g., "Owners frequently report transmission shudder at highway speeds around 60k miles"). If there are no owner reports, return general known issues for this vehicle.
 
-4. "red_flag_recommendations" — An array of 3-5 strings. Each is a specific, actionable recommendation tailored to THIS vehicle's actual issues (not generic advice). Reference specific systems and failure modes found in the data.
+5. "red_flag_recommendations" — An array of 3-5 strings. Each is a specific, actionable recommendation tailored to THIS vehicle's actual issues (not generic advice). Reference specific systems and failure modes found in the data.
 
-5. "negotiation_scripts" — An array matching each talking point. For each, produce an object with:
+6. "negotiation_scripts" — An array matching each talking point. For each, produce an object with:
    - "system": the system name (match exactly from input)
    - "script": A natural-sounding 1-2 sentence thing the buyer could say to the seller to negotiate on this issue. Be specific and reference the data.
 
-6. "forecast_narratives" — An array matching each forecast window. For each, produce an object with:
+7. "forecast_narratives" — An array matching each forecast window. For each, produce an object with:
    - "window_label": the window label (match exactly from input)
    - "narrative": A 1-2 sentence plain-language summary of what to budget for in that window (e.g., "In the next 20k miles, budget $X-$Y for potential transmission and engine work")
 
@@ -440,10 +521,11 @@ Vehicle data:
             status="success",
         )
 
-    # Executive summary
+    # Executive summary + verdict reasoning
     if result.get("executive_summary"):
         sections["executive_summary"] = {
             "text": result["executive_summary"],
+            "verdict_reasoning": result.get("verdict_reasoning", []),
             "llm_enhanced": True,
         }
 

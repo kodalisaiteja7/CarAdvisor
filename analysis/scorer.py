@@ -91,16 +91,27 @@ def _score_single(cp: MileageClassifiedProblem) -> float:
     )
 
     phase_multiplier = {
-        MileagePhase.CURRENT: 1.5,
-        MileagePhase.UPCOMING: 1.2,
-        MileagePhase.PAST: 0.5,
-        MileagePhase.FUTURE: 0.4,
-        MileagePhase.UNKNOWN: 0.7,
+        MileagePhase.CURRENT: 1.0,
+        MileagePhase.UPCOMING: 0.7,
+        MileagePhase.PAST: 0.95,
+        MileagePhase.FUTURE: 0.25,
+        MileagePhase.UNKNOWN: 0.45,
     }
     raw *= phase_multiplier.get(cp.phase, 1.0)
     raw *= cp.relevance_score
 
     return min(10.0, raw)
+
+
+def _mileage_wear_factor(mileage: int) -> float:
+    """Higher mileage = more accumulated wear = higher baseline risk.
+
+    A used car at 120k miles has been through more failure zones than one
+    at 30k, so the overall risk must reflect that cumulative exposure even
+    if specific problem windows are now in the past.
+    """
+    factor = 0.6 + 0.6 * min(1.5, mileage / 120_000)
+    return round(min(1.5, factor), 3)
 
 
 def _letter_grade(score: float) -> str:
@@ -135,7 +146,8 @@ def score_vehicle(mileage_analysis: MileageAnalysis) -> VehicleScore:
         })
         source_factor = min(1.3, 0.7 + source_count * 0.15)
 
-        risk = weighted_avg * 10 * source_factor
+        mileage_factor = _mileage_wear_factor(mileage_analysis.mileage)
+        risk = weighted_avg * 10 * source_factor * mileage_factor
         risk = min(100.0, risk)
     else:
         risk = 0.0

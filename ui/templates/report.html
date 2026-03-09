@@ -23,26 +23,6 @@
                title="View debug trace for this report">
                 Debug Trace
             </a>
-            {% set score = report.sections.vehicle_summary.reliability_risk_score %}
-            {% set grade = report.sections.vehicle_summary.letter_grade %}
-            {% if score <= 35 %}
-                {% set badge_color = "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800" %}
-            {% elif score <= 60 %}
-                {% set badge_color = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800" %}
-            {% else %}
-                {% set badge_color = "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800" %}
-            {% endif %}
-            <div class="flex items-center gap-3 {{ badge_color }} border rounded-xl px-5 py-3">
-                <div class="text-center">
-                    <div class="text-3xl font-black">{{ grade }}</div>
-                    <div class="text-xs font-medium uppercase tracking-wider">Grade</div>
-                </div>
-                <div class="border-l border-current/20 h-10 mx-1"></div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold">{{ score }}</div>
-                    <div class="text-xs font-medium uppercase tracking-wider">Risk / 100</div>
-                </div>
-            </div>
             <button onclick="window.print()" class="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition print-hide" title="Print Report">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                 Print
@@ -60,14 +40,30 @@
     {% if exec_summary.get("text") %}
     <div class="mb-6 bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 border border-brand-200 dark:border-brand-800 rounded-2xl p-6 print-section">
         <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-14 h-14 rounded-xl {{ badge_color }} border flex items-center justify-center">
-                <span class="text-2xl font-black">{{ grade }}</span>
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center">
+                <svg class="w-5 h-5 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </div>
             <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2 mb-2">
-                    <h2 class="text-lg font-bold">Buyer's Verdict</h2>
-                </div>
+                <h2 class="text-lg font-bold mb-2">Buyer's Verdict</h2>
                 <p class="text-gray-700 dark:text-gray-300 leading-relaxed break-words">{{ exec_summary.text }}</p>
+
+                {% set reasoning = exec_summary.get("verdict_reasoning", []) %}
+                {% if reasoning %}
+                <div class="mt-4 pt-4 border-t border-brand-200 dark:border-brand-700/50">
+                    <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Why This Verdict
+                    </h3>
+                    <ul class="space-y-2">
+                        {% for reason in reasoning %}
+                        <li class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-brand-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                            <span>{{ reason }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -75,13 +71,13 @@
 
     <!-- Section tabs -->
     {% set sections = [
-        ("summary", "Vehicle Summary"),
-        ("checklist", "Inspection Checklist"),
-        ("risk", "Current Risk"),
-        ("forecast", "Future Forecast"),
-        ("experience", "Owner Experience"),
+        ("summary", "Overview"),
+        ("checklist", "Inspection Guide"),
+        ("risk", "Known Issues"),
+        ("forecast", "Cost Forecast"),
+        ("experience", "Owner Reviews"),
         ("redflags", "Red Flags"),
-        ("negotiation", "Negotiation"),
+        ("negotiation", "Price Negotiation"),
     ] %}
     <div class="flex overflow-x-auto gap-1 mb-6 border-b border-gray-200 dark:border-gray-700 pb-px scrollbar-hide print-hide">
         {% for id, label in sections %}
@@ -103,79 +99,44 @@
         {% set vs = report.sections.vehicle_summary %}
         {% set cr = report.sections.current_risk %}
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                <h2 class="text-lg font-bold mb-4">Risk Profile by System</h2>
-                <div class="relative" style="max-height: 340px;">
-                    <canvas id="radarChart"></canvas>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-center gap-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
-                <p class="text-xs text-gray-400 text-center mt-2">0 = low risk, 100 = high risk</p>
+                <div>
+                    <div class="text-2xl font-black">{{ vs.total_complaints }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Total Complaints</div>
+                </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 flex flex-col">
-                <h2 class="text-lg font-bold mb-4">Score Overview</h2>
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div class="text-3xl font-black {% if score <= 35 %}text-green-600{% elif score <= 60 %}text-yellow-600{% else %}text-red-600{% endif %}">{{ score }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Risk Score</div>
-                    </div>
-                    <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div class="text-3xl font-black">{{ vs.total_complaints }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Complaints</div>
-                    </div>
-                    <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div class="text-3xl font-black text-red-600 dark:text-red-400">{{ vs.total_recalls }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Recalls</div>
-                    </div>
-                    <div class="text-center p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                        <div class="text-3xl font-black">{{ report.meta.source_count }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Data Sources</div>
-                    </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-center gap-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                 </div>
-
-                {% set phases = cr.phase_summary %}
-                {% set total_p = (phases.get('current', 0) + phases.get('upcoming', 0) + phases.get('past', 0) + phases.get('future', 0) + phases.get('unknown', 0)) or 1 %}
-                <h3 class="text-sm font-semibold mb-2">Issue Distribution by Mileage Phase</h3>
-                <div class="flex rounded-full overflow-hidden h-6 mb-2">
-                    {% if phases.get('current', 0) > 0 %}
-                    <div class="bg-red-500 flex items-center justify-center text-xs text-white font-bold" style="width: {{ phases.get('current', 0) / total_p * 100 }}%">{{ phases.get('current', 0) }}</div>
-                    {% endif %}
-                    {% if phases.get('upcoming', 0) > 0 %}
-                    <div class="bg-yellow-500 flex items-center justify-center text-xs text-white font-bold" style="width: {{ phases.get('upcoming', 0) / total_p * 100 }}%">{{ phases.get('upcoming', 0) }}</div>
-                    {% endif %}
-                    {% if phases.get('past', 0) > 0 %}
-                    <div class="bg-green-500 flex items-center justify-center text-xs text-white font-bold" style="width: {{ phases.get('past', 0) / total_p * 100 }}%">{{ phases.get('past', 0) }}</div>
-                    {% endif %}
-                    {% if phases.get('future', 0) + phases.get('unknown', 0) > 0 %}
-                    <div class="bg-gray-400 flex items-center justify-center text-xs text-white font-bold" style="width: {{ (phases.get('future', 0) + phases.get('unknown', 0)) / total_p * 100 }}%">{{ phases.get('future', 0) + phases.get('unknown', 0) }}</div>
-                    {% endif %}
+                <div>
+                    <div class="text-2xl font-black text-red-600 dark:text-red-400">{{ vs.total_recalls }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Recalls</div>
                 </div>
-                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Current ({{ phases.get('current', 0) }})</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span> Upcoming ({{ phases.get('upcoming', 0) }})</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Past ({{ phases.get('past', 0) }})</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span> Future/Unknown ({{ phases.get('future', 0) + phases.get('unknown', 0) }})</span>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-center gap-4">
+                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
                 </div>
-
-                <div class="mt-auto pt-4">
-                    <h3 class="text-sm font-semibold mb-2">Data Sources</h3>
-                    <div class="flex flex-wrap gap-2">
-                        {% for s in vs.sources %}
-                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">{{ s }}</span>
-                        {% endfor %}
-                    </div>
+                <div>
+                    <div class="text-2xl font-black">{{ report.meta.source_count }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">Data Sources</div>
                 </div>
             </div>
         </div>
 
-        {% if cr.system_risks %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Complaint Volume by System</h2>
-            <div style="max-height: 300px;">
-                <canvas id="complaintBarChart"></canvas>
+            <h2 class="text-lg font-bold mb-3">Data Sources</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for s in vs.sources %}
+                <span class="px-3 py-1.5 rounded-full text-sm font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">{{ s }}</span>
+                {% endfor %}
             </div>
         </div>
-        {% endif %}
 
         {% if vs.ratings_by_source %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
@@ -370,31 +331,10 @@
     <section x-show="openSection === 'risk'" x-cloak class="fade-in space-y-6 print-section">
         {% set cr = report.sections.current_risk %}
 
-        {% if cr.system_risks %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Risk by System</h2>
-            <div class="space-y-3">
-                {% for sr in cr.system_risks %}
-                <div>
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="font-medium">{{ sr.system }}</span>
-                        <span class="text-gray-500 dark:text-gray-400">{{ sr.risk_score }}/100 ({{ sr.problem_count }} issue{{ "s" if sr.problem_count != 1 }})</span>
-                    </div>
-                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                        {% if sr.risk_score > 60 %}{% set bar_color = "bg-red-500" %}
-                        {% elif sr.risk_score > 30 %}{% set bar_color = "bg-yellow-500" %}
-                        {% else %}{% set bar_color = "bg-green-500" %}{% endif %}
-                        <div class="{{ bar_color }} h-3 rounded-full transition-all" style="width: {{ [sr.risk_score, 100] | min }}%"></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
         {% if cr.top_issues %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Top Issues at {{ "{:,}".format(cr.mileage) }} miles</h2>
+            <h2 class="text-lg font-bold mb-1">Known Issues at {{ "{:,}".format(cr.mileage) }} miles</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Ranked by complaint frequency and severity. Expand each item for details.</p>
             <div class="space-y-3" x-data="{ expanded: null }">
                 {% for issue in cr.top_issues %}
                 <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
@@ -463,6 +403,12 @@
                 {% endfor %}
             </div>
         </div>
+        {% else %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
+            <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h3 class="text-lg font-semibold mb-1">No Major Issues Found</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">No significant issues were found at this mileage based on available complaint data.</p>
+        </div>
         {% endif %}
     </section>
 
@@ -471,13 +417,6 @@
     <!-- ============================================================= -->
     <section x-show="openSection === 'forecast'" x-cloak class="fade-in space-y-6 print-section">
         {% set ff = report.sections.future_forecast %}
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Estimated Repair Costs Ahead</h2>
-            <div style="max-height: 280px;">
-                <canvas id="forecastChart"></canvas>
-            </div>
-        </div>
 
         {% for window in ff.forecast_windows %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
@@ -580,21 +519,46 @@
     <section x-show="openSection === 'redflags'" x-cloak class="fade-in space-y-6 print-section">
         {% set rf = report.sections.red_flags %}
 
+        {% if not rf.catastrophic_failures and not rf.open_recalls %}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
+            <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <h3 class="text-lg font-semibold mb-1">No Red Flags Detected</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">No catastrophic failure risks or open recalls were found for this vehicle. Standard inspection is still recommended.</p>
+        </div>
+        {% endif %}
+
         {% if rf.catastrophic_failures %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-xl font-bold mb-4 text-red-600 dark:text-red-400">Catastrophic Failure Risks</h2>
+            <h2 class="text-xl font-bold mb-4 text-red-600 dark:text-red-400 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                Major Failure Risks
+            </h2>
+            <div class="space-y-4">
             {% for cf in rf.catastrophic_failures %}
-            <div class="mb-4 p-4 border-2 border-red-300 dark:border-red-700 rounded-lg bg-red-50/50 dark:bg-red-900/10">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div class="p-4 border-2 border-red-300 dark:border-red-700 rounded-lg bg-red-50/50 dark:bg-red-900/10">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                     <span class="font-bold text-lg">{{ cf.system }}</span>
-                    <span class="text-sm px-3 py-1 rounded-full bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200 font-medium whitespace-nowrap self-start">
-                        Severity {{ cf.severity }}/10
-                    </span>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        {% if cf.severity >= 8 %}
+                        <span class="text-xs px-3 py-1 rounded-full bg-red-600 text-white font-semibold">Critical</span>
+                        {% elif cf.severity >= 6 %}
+                        <span class="text-xs px-3 py-1 rounded-full bg-orange-500 text-white font-semibold">Severe</span>
+                        {% else %}
+                        <span class="text-xs px-3 py-1 rounded-full bg-yellow-500 text-white font-semibold">Warning</span>
+                        {% endif %}
+                        {% if cf.safety_impact is defined and cf.safety_impact >= 7 %}
+                        <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-medium flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                            Safety
+                        </span>
+                        {% endif %}
+                    </div>
                 </div>
-                <p class="text-sm mt-2 text-gray-600 dark:text-gray-400 break-words">{{ cf.description }}</p>
-                <p class="text-sm mt-1">{{ cf.complaint_count }} complaint{{ "s" if cf.complaint_count != 1 }} filed</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ cf.description }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{ cf.complaint_count }} complaint{{ "s" if cf.complaint_count != 1 }} filed</p>
             </div>
             {% endfor %}
+            </div>
         </div>
         {% endif %}
 
@@ -656,9 +620,20 @@
                 {% for tp in neg.talking_points %}
                 <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                        <div class="min-w-0">
-                            <span class="font-semibold">{{ tp.system }}</span>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">{{ tp.issue }}</p>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="font-semibold">{{ tp.system }}</span>
+                                {% if tp.get("risk_level") %}
+                                    {% if tp.risk_level == "High" %}
+                                    <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-medium">High Priority</span>
+                                    {% elif tp.risk_level == "Medium" %}
+                                    <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 font-medium">Medium Priority</span>
+                                    {% else %}
+                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 font-medium">Low Priority</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ tp.issue }}</p>
                         </div>
                         {% if tp.estimated_cost %}
                         <span class="text-sm font-bold text-red-600 dark:text-red-400 whitespace-nowrap flex-shrink-0">{{ tp.estimated_cost }}</span>
@@ -684,147 +659,4 @@
 
 </div>
 
-<!-- Charts initialization -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#9ca3af' : '#6b7280';
-    const gridColor = isDark ? 'rgba(75, 85, 99, 0.4)' : 'rgba(209, 213, 219, 0.6)';
-
-    // --- Radar Chart ---
-    const radarCtx = document.getElementById('radarChart');
-    if (radarCtx) {
-        const systemRisks = {{ cr.system_risks | tojson }};
-        const labels = systemRisks.map(s => s.system);
-        const dataValues = systemRisks.map(s => s.risk_score);
-
-        new Chart(radarCtx, {
-            type: 'radar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Risk Score',
-                    data: dataValues,
-                    backgroundColor: 'rgba(249, 115, 22, 0.2)',
-                    borderColor: 'rgba(249, 115, 22, 0.8)',
-                    borderWidth: 2,
-                    pointBackgroundColor: 'rgba(249, 115, 22, 1)',
-                    pointBorderColor: '#fff',
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 100,
-                        ticks: { stepSize: 20, color: textColor, backdropColor: 'transparent', font: { size: 10 } },
-                        grid: { color: gridColor },
-                        angleLines: { color: gridColor },
-                        pointLabels: { color: textColor, font: { size: 11, weight: '600' } },
-                    }
-                }
-            }
-        });
-    }
-
-    // --- Complaint Volume Bar Chart ---
-    const barCtx = document.getElementById('complaintBarChart');
-    if (barCtx) {
-        const systemRisks = {{ cr.system_risks | tojson }};
-        const barLabels = systemRisks.map(s => s.system);
-        const barCounts = systemRisks.map(s => s.problem_count);
-        const barColors = systemRisks.map(s => {
-            if (s.risk_score > 60) return 'rgba(239, 68, 68, 0.7)';
-            if (s.risk_score > 30) return 'rgba(234, 179, 8, 0.7)';
-            return 'rgba(34, 197, 94, 0.7)';
-        });
-
-        new Chart(barCtx, {
-            type: 'bar',
-            data: {
-                labels: barLabels,
-                datasets: [{
-                    label: 'Issues Found',
-                    data: barCounts,
-                    backgroundColor: barColors,
-                    borderRadius: 6,
-                    barThickness: 28,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                indexAxis: 'y',
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 12 } } },
-                }
-            }
-        });
-    }
-
-    // --- Forecast Cost Chart ---
-    const forecastCtx = document.getElementById('forecastChart');
-    if (forecastCtx) {
-        const windows = {{ ff.forecast_windows | tojson }};
-        const fLabels = ['Current'].concat(windows.map(w => w.window_label));
-        const fData = [0];
-        let cumulative = 0;
-        windows.forEach(w => {
-            let cost = 0;
-            if (w.estimated_total_cost) {
-                const nums = w.estimated_total_cost.match(/[\d,]+/g);
-                if (nums && nums.length >= 2) {
-                    cost = (parseFloat(nums[0].replace(/,/g,'')) + parseFloat(nums[1].replace(/,/g,''))) / 2;
-                } else if (nums && nums.length === 1) {
-                    cost = parseFloat(nums[0].replace(/,/g,''));
-                }
-            }
-            cumulative += cost;
-            fData.push(Math.round(cumulative));
-        });
-
-        new Chart(forecastCtx, {
-            type: 'line',
-            data: {
-                labels: fLabels,
-                datasets: [{
-                    label: 'Cumulative Estimated Cost ($)',
-                    data: fData,
-                    borderColor: 'rgba(239, 68, 68, 0.8)',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 5,
-                    pointBackgroundColor: 'rgba(239, 68, 68, 1)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: true, labels: { color: textColor } },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) { return '$' + ctx.parsed.y.toLocaleString(); }
-                        }
-                    }
-                },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: { grid: { color: gridColor }, ticks: { color: textColor, callback: v => '$' + v.toLocaleString() }, beginAtZero: true },
-                }
-            }
-        });
-    }
-});
-</script>
 {% endblock %}
