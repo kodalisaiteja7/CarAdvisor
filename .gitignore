@@ -11,3 +11,5 @@ dist/
 build/
 .cursor/
 logs/
+dataset/
+data/chroma_store/

@@ -3,6 +3,10 @@
 Classifies every known problem relative to the user's current mileage
 so that the same vehicle at different mileages produces meaningfully
 different risk profiles.
+
+When NHTSA bulk data is available, uses data-driven failure curves
+(actual mileage distributions from millions of complaints) instead of
+the fixed bracket system.
 """
 
 from __future__ import annotations
@@ -28,6 +32,8 @@ class MileagePhase(str, Enum):
 
 UPCOMING_WINDOW = 40_000  # miles ahead to consider "upcoming"
 
+_failure_curve_cache: dict[str, dict | None] = {}
+
 
 @dataclass
 class MileageClassifiedProblem:
@@ -42,6 +48,7 @@ class SystemRisk:
     system: str
     risk_score: float  # 0-100
     problem_count: int
+    total_complaints: int = 0
     top_problems: list[MileageClassifiedProblem] = field(default_factory=list)
 
 
@@ -79,12 +86,48 @@ def _get_bracket_label(mileage: int) -> str:
     return "unknown"
 
 
+def _get_failure_curve(make: str, model: str, year: int, system: str) -> dict | None:
+    """Fetch the data-driven mileage failure distribution for a vehicle+system.
+
+    Returns percentile dict (p10, p25, median, p75, p90) or None.
+    Results are cached in-memory for the process lifetime.
+    """
+    cache_key = f"{make}|{model}|{year}|{system}"
+    if cache_key in _failure_curve_cache:
+        return _failure_curve_cache[cache_key]
+
+    try:
+        from data.stats_builder import get_mileage_curve
+        curve = get_mileage_curve(make, model, year, system)
+    except Exception:
+        curve = None
+
+    _failure_curve_cache[cache_key] = curve
+    return curve
+
+
 def classify_problem(
-    problem: NormalizedProblem, user_mileage: int
+    problem: NormalizedProblem,
+    user_mileage: int,
+    make: str = "",
+    model: str = "",
+    year: int = 0,
 ) -> MileageClassifiedProblem:
-    """Determine how a problem relates to the user's current mileage."""
+    """Determine how a problem relates to the user's current mileage.
+
+    When bulk NHTSA data is available, uses the actual failure distribution
+    for this vehicle+system to determine phase boundaries. Falls back to
+    the problem's own mileage range when bulk data is unavailable.
+    """
     low = problem.mileage_low
     high = problem.mileage_high
+
+    curve = None
+    if make and model and year:
+        curve = _get_failure_curve(make, model, year, problem.category)
+
+    if curve and curve.get("count", 0) >= 10:
+        return _classify_with_curve(problem, user_mileage, curve)
 
     if low is None or high is None:
         return MileageClassifiedProblem(
@@ -136,6 +179,83 @@ def classify_problem(
     )
 
 
+def _classify_with_curve(
+    problem: NormalizedProblem,
+    user_mileage: int,
+    curve: dict,
+) -> MileageClassifiedProblem:
+    """Classify a problem using actual failure distribution data.
+
+    The curve provides percentile-based windows:
+    - p10..p90 defines the overall failure zone
+    - p25..p75 is the peak failure zone (CURRENT)
+    - Below p10 with upcoming window: UPCOMING
+    - Above p90: PAST
+    """
+    p10 = curve.get("p10", 0)
+    p25 = curve.get("p25", 0)
+    median = curve.get("median", 0)
+    p75 = curve.get("p75", 0)
+    p90 = curve.get("p90", 0)
+
+    if user_mileage > p90:
+        distance = user_mileage - p90
+        relevance = max(0.1, 1.0 - distance / 80_000)
+        return MileageClassifiedProblem(
+            problem=problem,
+            phase=MileagePhase.PAST,
+            distance_to_onset=-(user_mileage - median),
+            relevance_score=relevance,
+        )
+
+    if p25 <= user_mileage <= p75:
+        range_size = max(p75 - p25, 1)
+        position = (user_mileage - p25) / range_size
+        relevance = 0.8 + 0.2 * (1 - abs(position - 0.5) * 2)
+        return MileageClassifiedProblem(
+            problem=problem,
+            phase=MileagePhase.CURRENT,
+            distance_to_onset=0,
+            relevance_score=relevance,
+        )
+
+    if p10 <= user_mileage < p25:
+        relevance = 0.6 + 0.3 * ((user_mileage - p10) / max(p25 - p10, 1))
+        return MileageClassifiedProblem(
+            problem=problem,
+            phase=MileagePhase.CURRENT,
+            distance_to_onset=0,
+            relevance_score=relevance,
+        )
+
+    if p75 < user_mileage <= p90:
+        relevance = 0.6 + 0.3 * (1 - (user_mileage - p75) / max(p90 - p75, 1))
+        return MileageClassifiedProblem(
+            problem=problem,
+            phase=MileagePhase.CURRENT,
+            distance_to_onset=0,
+            relevance_score=relevance,
+        )
+
+    distance_to_onset = p10 - user_mileage
+    if distance_to_onset <= UPCOMING_WINDOW:
+        relevance = max(0.3, 1.0 - distance_to_onset / UPCOMING_WINDOW)
+        return MileageClassifiedProblem(
+            problem=problem,
+            phase=MileagePhase.UPCOMING,
+            distance_to_onset=distance_to_onset,
+            relevance_score=relevance,
+        )
+
+    relevance = max(0.05, 1.0 - distance_to_onset / 150_000)
+    return MileageClassifiedProblem(
+        problem=problem,
+        phase=MileagePhase.FUTURE,
+        distance_to_onset=distance_to_onset,
+        relevance_score=relevance,
+    )
+
+
 def _compute_system_risk(
     system: str, classified: list[MileageClassifiedProblem]
 ) -> SystemRisk:
@@ -163,12 +283,14 @@ def _compute_system_risk(
     avg_score = sum(top_n) / len(top_n)
     risk_score = min(100.0, avg_score * 8)
 
+    total_complaints = sum(cp.problem.complaint_count for cp in system_problems)
     system_problems.sort(key=lambda c: c.relevance_score, reverse=True)
 
     return SystemRisk(
         system=system,
         risk_score=round(risk_score, 1),
         problem_count=len(system_problems),
+        total_complaints=total_complaints,
         top_problems=system_problems[:5],
     )
 
@@ -177,7 +299,13 @@ def analyze_mileage(
     data: AggregatedVehicleData, user_mileage: int
 ) -> MileageAnalysis:
     """Run the full mileage-aware analysis on aggregated vehicle data."""
-    classified = [classify_problem(p, user_mileage) for p in data.problems]
+    classified = [
+        classify_problem(
+            p, user_mileage,
+            make=data.make, model=data.model, year=data.year,
+        )
+        for p in data.problems
+    ]
 
     phase_counts = {}
     for phase in MileagePhase:

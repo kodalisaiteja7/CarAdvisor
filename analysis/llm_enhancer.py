@@ -377,11 +377,20 @@ def _mileage_assessment(mileage: int, risk_score: float, phase_summary: dict) ->
     }
 
 
-def enhance_report_sections(vehicle: dict, report: dict) -> dict:
+def enhance_report_sections(
+    vehicle: dict,
+    report: dict,
+    vector_complaints: list[dict] | None = None,
+    bulk_stats: dict | None = None,
+) -> dict:
     """Enhance all remaining report sections with a single LLM call.
 
     Adds executive_summary, enriches current_risk, owner_experience,
     red_flags, negotiation, and future_forecast sections.
+
+    When vector_complaints and bulk_stats are provided (from NHTSA bulk data),
+    they are included in the LLM prompt as additional context for richer,
+    more data-driven responses.
     """
     sections = report.get("sections", {})
     vs = sections.get("vehicle_summary", {})
@@ -442,6 +451,38 @@ def enhance_report_sections(vehicle: dict, report: dict) -> dict:
         "total_upcoming_maintenance": neg.get("total_upcoming_maintenance"),
     }
 
+    rag_section = ""
+    if vector_complaints:
+        real_complaints = [
+            {"text": c["narrative"][:300], "mileage": c.get("mileage", 0), "system": c.get("system", "")}
+            for c in vector_complaints[:15]
+        ]
+        context["real_owner_complaints"] = real_complaints
+        rag_section += f"""
+Real owner complaints from NHTSA database (these are actual reports from owners of this vehicle):
+{json.dumps(real_complaints, indent=2)}
+"""
+
+    if bulk_stats:
+        baseline_context = {
+            "this_model_complaints": bulk_stats.get("total_complaints", 0),
+            "average_model_complaints": bulk_stats.get("global_mean_complaints", 0),
+            "percentile": bulk_stats.get("complaints_percentile", 50),
+            "interpretation": bulk_stats.get("interpretation", ""),
+            "crash_rate": bulk_stats.get("crash_rate", 0),
+            "fire_rate": bulk_stats.get("fire_rate", 0),
+            "severity_index": bulk_stats.get("severity_index", 0),
+        }
+        context["complaint_baseline"] = baseline_context
+        tc = bulk_stats.get("total_complaints", 0)
+        pct = bulk_stats.get("complaints_percentile", 50)
+        avg = bulk_stats.get("global_mean_complaints", 0)
+        interp = bulk_stats.get("interpretation", "")
+        rag_section += f"""
+Complaint volume context: This model has {tc} complaints in the NHTSA database, placing it in the {pct:.0f}th percentile (higher = more complaints than peers). The average vehicle has {avg:.0f} complaints. Assessment: {interp}.
+Crash rate: {bulk_stats.get('crash_rate', 0):.1%} of complaints involved crashes. Fire rate: {bulk_stats.get('fire_rate', 0):.1%}.
+"""
+
     prompt = f"""You are an expert automotive advisor helping a regular car buyer evaluate a used {_vehicle_str(vehicle)}.
 
 CRITICAL MILEAGE RULES — you MUST follow these:
@@ -479,7 +520,7 @@ Below is a summary of data collected from multiple sources about this vehicle. U
    - "narrative": A 1-2 sentence plain-language summary of what to budget for in that window (e.g., "In the next 20k miles, budget $X-$Y for potential transmission and engine work")
 
 Keep all text concise and buyer-friendly. Return ONLY a valid JSON object, no markdown fences or other text.
-
+{rag_section}
 Vehicle data:
 {json.dumps(context, indent=2)}"""
 

@@ -2,6 +2,10 @@
 
 Produces a composite Reliability Risk Score (0-100) for a vehicle at a
 given mileage, ranks the top issues, and assigns a letter grade.
+
+When NHTSA bulk data is available, uses calibrated severity weights and
+normalizes complaint counts against per-model baselines instead of using
+fixed thresholds.
 """
 
 from __future__ import annotations
@@ -13,6 +17,9 @@ from analysis.mileage_model import MileageAnalysis, MileageClassifiedProblem, Mi
 from config.settings import SEVERITY_WEIGHTS
 
 logger = logging.getLogger(__name__)
+
+_cached_weights: dict[str, dict | None] = {}
+_cached_baseline: dict[str, dict | None] = {}
 
 GRADE_THRESHOLDS = [
     (15, "A"),
@@ -71,18 +78,60 @@ def _estimate_repair_cost(problem) -> float:
     return (defaults[0] + defaults[1]) / 2
 
 
-def _score_single(cp: MileageClassifiedProblem) -> float:
-    """Compute a weighted score for one classified problem (0-10 scale)."""
+def _get_bulk_weights(make: str, model: str, year: int) -> dict | None:
+    """Fetch calibrated severity weights from bulk data (cached)."""
+    cache_key = f"{make}|{model}|{year}"
+    if cache_key in _cached_weights:
+        return _cached_weights[cache_key]
+    try:
+        from data.stats_builder import get_calibrated_weights
+        w = get_calibrated_weights(make, model, year)
+    except Exception:
+        w = None
+    _cached_weights[cache_key] = w
+    return w
+
+
+def _get_bulk_baseline(make: str, model: str, year: int) -> dict | None:
+    """Fetch complaint count baseline from bulk data (cached)."""
+    cache_key = f"{make}|{model}|{year}"
+    if cache_key in _cached_baseline:
+        return _cached_baseline[cache_key]
+    try:
+        from data.stats_builder import get_complaint_baseline
+        b = get_complaint_baseline(make, model, year)
+    except Exception:
+        b = None
+    _cached_baseline[cache_key] = b
+    return b
+
+
+def _score_single(
+    cp: MileageClassifiedProblem,
+    weights: dict | None = None,
+    baseline: dict | None = None,
+) -> float:
+    """Compute a weighted score for one classified problem (0-10 scale).
+
+    When bulk data is available:
+    - Uses calibrated severity weights instead of hand-tuned defaults
+    - Normalizes complaint counts against the per-model baseline
+    """
     p = cp.problem
 
-    count_norm = min(10.0, p.complaint_count / 50 * 10)
+    if baseline and baseline.get("median_model_complaints"):
+        median = baseline["median_model_complaints"]
+        count_norm = min(10.0, (p.complaint_count / max(median, 1)) * 5)
+    else:
+        count_norm = min(10.0, p.complaint_count / 50 * 10)
+
     severity_norm = p.severity
     safety_norm = p.safety_impact
 
     avg_cost = _estimate_repair_cost(p)
     cost_norm = min(10.0, avg_cost / 500)
 
-    w = SEVERITY_WEIGHTS
+    w = weights or SEVERITY_WEIGHTS
     raw = (
         w["complaint_count"] * count_norm
         + w["severity"] * severity_norm
@@ -114,6 +163,40 @@ def _mileage_wear_factor(mileage: int) -> float:
     return round(min(1.5, factor), 3)
 
 
+def _compute_inherent_risk(scored: list[ScoredProblem], mileage: int) -> float:
+    """Compute a mileage-scaled floor based on inherent vehicle risk.
+
+    When all problems are PAST (high mileage), per-problem scores drop
+    because relevance is low. But a car that has been through ALL failure
+    zones carries accumulated mechanical wear. This function computes a
+    baseline from raw severity data (ignoring mileage phase entirely)
+    and scales it with mileage to guarantee monotonically increasing risk.
+
+    The formula: floor = avg_severity * (base + growth * mileage_ratio)
+    This ensures a car at 150k with 10 known issues is never rated safer
+    than the same car at 25k.
+    """
+    if not scored:
+        return 0.0
+
+    raw_severities = []
+    for sp in scored:
+        p = sp.classified.problem
+        sev = (p.severity * 0.4
+               + p.safety_impact * 0.3
+               + min(10.0, p.complaint_count / 30) * 0.3)
+        raw_severities.append(sev)
+
+    raw_severities.sort(reverse=True)
+    top_n = raw_severities[:min(10, len(raw_severities))]
+    avg_severity = sum(top_n) / len(top_n)
+
+    mileage_ratio = 1.0 + min(2.0, mileage / 100_000)
+    floor = avg_severity * 4.0 * (mileage_ratio ** 1.5)
+
+    return min(80.0, floor)
+
+
 def _letter_grade(score: float) -> str:
     for threshold, grade in GRADE_THRESHOLDS:
         if score <= threshold:
@@ -121,11 +204,33 @@ def _letter_grade(score: float) -> str:
     return "F"
 
 
-def score_vehicle(mileage_analysis: MileageAnalysis) -> VehicleScore:
-    """Score a vehicle's reliability at its analysed mileage point."""
+def score_vehicle(
+    mileage_analysis: MileageAnalysis,
+    make: str = "",
+    model: str = "",
+    year: int = 0,
+) -> VehicleScore:
+    """Score a vehicle's reliability at its analysed mileage point.
+
+    When make/model/year are provided, attempts to load calibrated weights
+    and complaint baselines from bulk NHTSA data for more accurate scoring.
+    """
+    weights = None
+    baseline = None
+    if make and model and year:
+        weights = _get_bulk_weights(make, model, year)
+        baseline = _get_bulk_baseline(make, model, year)
+        if weights:
+            logger.info("Using calibrated weights for %s %s %d", make, model, year)
+        if baseline:
+            logger.info(
+                "Using complaint baseline for %s %s %d: %s",
+                make, model, year, baseline.get("interpretation", ""),
+            )
+
     scored: list[ScoredProblem] = []
     for cp in mileage_analysis.classified_problems:
-        ws = _score_single(cp)
+        ws = _score_single(cp, weights=weights, baseline=baseline)
         scored.append(ScoredProblem(classified=cp, weighted_score=ws))
 
     scored.sort(key=lambda s: s.weighted_score, reverse=True)
@@ -148,6 +253,10 @@ def score_vehicle(mileage_analysis: MileageAnalysis) -> VehicleScore:
 
         mileage_factor = _mileage_wear_factor(mileage_analysis.mileage)
         risk = weighted_avg * 10 * source_factor * mileage_factor
+
+        inherent_floor = _compute_inherent_risk(scored, mileage_analysis.mileage)
+        risk = max(risk, inherent_floor)
+
         risk = min(100.0, risk)
     else:
         risk = 0.0

@@ -56,3 +56,6 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 LLM_ENABLED = bool(ANTHROPIC_API_KEY)
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-4-20250514")
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 8192))
+
+BULK_DB_PATH = BASE_DIR / "nhtsa_bulk.db"
+CHROMA_STORE_PATH = BASE_DIR / "data" / "chroma_store"

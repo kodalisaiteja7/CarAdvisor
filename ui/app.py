@@ -55,7 +55,77 @@ def report_page(report_id: str):
     report = _reports.get(report_id)
     if not report:
         return render_template("index.html", error="Report not found"), 404
+    _postprocess_current_risk(report)
     return render_template("report.html", report=report, report_id=report_id)
+
+
+def _postprocess_current_risk(report: dict):
+    """Merge same-system issues, filter out 'Other', sort by complaint count."""
+    cr = report.get("sections", {}).get("current_risk", {})
+    if not cr:
+        return
+
+    top_issues = cr.get("top_issues", [])
+    merged: dict[str, dict] = {}
+    for issue in top_issues:
+        sys = issue.get("system", "")
+        if sys == "Other":
+            continue
+        if sys not in merged:
+            merged[sys] = {
+                "system": sys,
+                "description": issue.get("description", ""),
+                "probability": issue.get("probability", "Low"),
+                "severity": issue.get("severity", 0),
+                "phase": issue.get("phase", "unknown"),
+                "complaint_count": issue.get("complaint_count", 0),
+                "test_drive_tips": list(issue.get("test_drive_tips") or []),
+                "diagnostic_tests": list(issue.get("diagnostic_tests") or []),
+                "sources": list(issue.get("sources") or []),
+                "test_drive_narrative": issue.get("test_drive_narrative"),
+                "what_to_listen_for": issue.get("what_to_listen_for"),
+                "llm_enhanced": issue.get("llm_enhanced", False),
+            }
+        else:
+            m = merged[sys]
+            m["complaint_count"] += issue.get("complaint_count", 0)
+            new_sev = issue.get("severity", 0)
+            if new_sev > m["severity"]:
+                m["severity"] = new_sev
+            if new_sev >= 7:
+                m["probability"] = "High"
+            elif new_sev >= 4 and m["probability"] != "High":
+                m["probability"] = "Medium"
+            desc = issue.get("description", "")
+            if desc and desc not in m["description"]:
+                m["description"] += " | " + desc
+            phase_priority = {"current": 0, "upcoming": 1, "past": 2, "future": 3, "unknown": 4}
+            if phase_priority.get(issue.get("phase"), 5) < phase_priority.get(m["phase"], 5):
+                m["phase"] = issue["phase"]
+            for tip in issue.get("test_drive_tips") or []:
+                if tip not in m["test_drive_tips"]:
+                    m["test_drive_tips"].append(tip)
+            for test in issue.get("diagnostic_tests") or []:
+                if test not in m["diagnostic_tests"]:
+                    m["diagnostic_tests"].append(test)
+            for src in issue.get("sources") or []:
+                if src not in m["sources"]:
+                    m["sources"].append(src)
+            if issue.get("test_drive_narrative") and not m["test_drive_narrative"]:
+                m["test_drive_narrative"] = issue["test_drive_narrative"]
+            if issue.get("what_to_listen_for") and not m["what_to_listen_for"]:
+                m["what_to_listen_for"] = issue["what_to_listen_for"]
+            if issue.get("llm_enhanced"):
+                m["llm_enhanced"] = True
+
+    issues = sorted(merged.values(), key=lambda x: x["complaint_count"], reverse=True)
+    for i, issue in enumerate(issues, start=1):
+        issue["rank"] = i
+    cr["top_issues"] = issues
+
+    cr["system_risks"] = [
+        sr for sr in cr.get("system_risks", []) if sr.get("system") != "Other"
+    ]
 
 
 # ------------------------------------------------------------------
@@ -260,7 +330,7 @@ def _run_analysis(
     try:
         agg = aggregate(results)
         ma = analyze_mileage(agg, mileage)
-        vs = score_vehicle(ma)
+        vs = score_vehicle(ma, make=make, model=model, year=year)
 
         trace.log_analysis(
             total_complaints=agg.total_complaints,
@@ -276,8 +346,35 @@ def _run_analysis(
 
         _emit(report_id, "Analysis", "complete", "Data analysis complete")
 
+        bulk_stats = None
+        vector_complaints = None
+        try:
+            _emit(report_id, "Bulk Data", "scraping", "Looking up NHTSA bulk statistics...")
+            from data.stats_builder import get_model_stats
+            from data.vector_search import search_similar_complaints
+            bulk_stats = get_model_stats(make, model, year)
+            if bulk_stats:
+                logger.info(
+                    "Bulk stats found: %d complaints, %sth percentile",
+                    bulk_stats.get("total_complaints", 0),
+                    bulk_stats.get("complaints_percentile", "?"),
+                )
+            vector_complaints = search_similar_complaints(
+                make, model, year, mileage=mileage,
+            )
+            if vector_complaints:
+                logger.info("Retrieved %d similar complaints from vector store", len(vector_complaints))
+            _emit(report_id, "Bulk Data", "complete", "Bulk data retrieved")
+        except Exception as exc:
+            logger.info("Bulk data not available (this is OK if not set up): %s", exc)
+            _emit(report_id, "Bulk Data", "complete", "Bulk data not available (using scraper data only)")
+
         _emit(report_id, "AI Insights", "scraping", "Generating AI-powered insights and guidance...")
-        report = generate_report(agg, ma, vs, mileage, options=options)
+        report = generate_report(
+            agg, ma, vs, mileage, options=options,
+            vector_complaints=vector_complaints,
+            bulk_stats=bulk_stats,
+        )
         _emit(report_id, "AI Insights", "complete", "AI insights generated")
 
         _reports[report_id] = report

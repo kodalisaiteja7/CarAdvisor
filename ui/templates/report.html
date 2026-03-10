@@ -99,58 +99,100 @@
         {% set vs = report.sections.vehicle_summary %}
         {% set cr = report.sections.current_risk %}
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-center gap-4">
-                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                </div>
-                <div>
-                    <div class="text-2xl font-black">{{ vs.total_complaints }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">Total Complaints</div>
-                </div>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-center gap-4">
-                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-                </div>
-                <div>
-                    <div class="text-2xl font-black text-red-600 dark:text-red-400">{{ vs.total_recalls }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">Recalls</div>
-                </div>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-5 flex items-center gap-4">
-                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
-                </div>
-                <div>
-                    <div class="text-2xl font-black">{{ report.meta.source_count }}</div>
-                    <div class="text-sm text-gray-500 dark:text-gray-400">Data Sources</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-3">Data Sources</h2>
-            <div class="flex flex-wrap gap-2">
-                {% for s in vs.sources %}
-                <span class="px-3 py-1.5 rounded-full text-sm font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300">{{ s }}</span>
-                {% endfor %}
-            </div>
-        </div>
-
-        {% if vs.ratings_by_source %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Ratings by Source</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {% for source, rating in vs.ratings_by_source.items() %}
-                <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <span class="font-medium capitalize">{{ source }}</span>
-                    <span class="text-lg font-bold">{{ rating }}</span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+        <!-- Score Overview -->
+        {% set risk_score = vs.reliability_risk_score | default(0) %}
+        {% if risk_score > 70 %}
+            {% set risk_border = 'border-red-500' %}{% set risk_text = 'text-red-600 dark:text-red-400' %}
+        {% elif risk_score > 50 %}
+            {% set risk_border = 'border-orange-500' %}{% set risk_text = 'text-orange-600 dark:text-orange-400' %}
+        {% elif risk_score > 30 %}
+            {% set risk_border = 'border-yellow-500' %}{% set risk_text = 'text-yellow-600 dark:text-yellow-400' %}
+        {% elif risk_score > 15 %}
+            {% set risk_border = 'border-blue-500' %}{% set risk_text = 'text-blue-600 dark:text-blue-400' %}
+        {% else %}
+            {% set risk_border = 'border-green-500' %}{% set risk_text = 'text-green-600 dark:text-green-400' %}
         {% endif %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Score Overview -->
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <h2 class="text-lg font-bold mb-4">Score Overview</h2>
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div class="border-l-4 {{ risk_border }} bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
+                        <div class="text-3xl font-black {{ risk_text }}">{{ risk_score }}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Risk Score</div>
+                    </div>
+                    <div class="border-l-4 border-gray-800 dark:border-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
+                        <div class="text-3xl font-black">{{ vs.total_complaints }}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Total Complaints</div>
+                    </div>
+                    <div class="border-l-4 border-red-500 bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
+                        <div class="text-3xl font-black">{{ vs.total_recalls }}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Recalls</div>
+                    </div>
+                    <div class="border-l-4 border-blue-500 bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
+                        <div class="text-3xl font-black">{{ report.meta.source_count }}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Data Sources</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complaints by System -->
+            <div id="systemRiskCard" class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
+                <h2 class="text-lg font-bold mb-3">Complaints by System</h2>
+                <div id="systemRiskWrap" style="position: relative"><canvas id="systemRiskChart"></canvas></div>
+            </div>
+        </div>
+
+        <script>
+        (function() {
+            function initOverviewCharts() {
+                var isDark = document.documentElement.classList.contains('dark');
+
+                var topIssues = {{ cr.top_issues | default([]) | tojson }};
+                var sorted = topIssues.filter(function(r) { return r.complaint_count > 0 && r.system !== 'Other'; })
+                                      .sort(function(a, b) { return b.complaint_count - a.complaint_count; });
+                var sysCard = document.getElementById('systemRiskCard');
+                if (!sorted.length) {
+                    if (sysCard) sysCard.style.display = 'none';
+                } else {
+                    var wrap = document.getElementById('systemRiskWrap');
+                    if (wrap) {
+                        var maxComplaints = sorted[0].complaint_count;
+                        wrap.style.height = Math.max(180, sorted.length * 32 + 40) + 'px';
+                        var barColors = sorted.map(function(r) {
+                            var ratio = r.complaint_count / Math.max(maxComplaints, 1);
+                            if (ratio > 0.7) return '#ef4444';
+                            if (ratio > 0.4) return '#f97316';
+                            if (ratio > 0.2) return '#eab308';
+                            if (ratio > 0.1) return '#3b82f6';
+                            return '#22c55e';
+                        });
+                        new Chart(document.getElementById('systemRiskChart'), {
+                            type: 'bar',
+                            data: {
+                                labels: sorted.map(function(r) { return r.system; }),
+                                datasets: [{ data: sorted.map(function(r) { return r.complaint_count; }), backgroundColor: barColors, borderRadius: 4, barThickness: 22 }]
+                            },
+                            options: {
+                                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                                scales: {
+                                    x: { beginAtZero: true, grid: { color: isDark ? '#374151' : '#f3f4f6' }, ticks: { color: isDark ? '#9ca3af' : '#6b7280' } },
+                                    y: { grid: { display: false }, ticks: { color: isDark ? '#d1d5db' : '#374151', font: { weight: 'bold' } } }
+                                },
+                                plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.raw + ' complaints'; } } } }
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() { requestAnimationFrame(initOverviewCharts); });
+            } else {
+                requestAnimationFrame(initOverviewCharts);
+            }
+        })();
+        </script>
 
         {% if vs.recalls %}
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6" x-data="{ showAllRecalls: false }">

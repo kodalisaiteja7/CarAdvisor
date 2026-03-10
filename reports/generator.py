@@ -26,6 +26,8 @@ def generate_report(
     vehicle_score: VehicleScore,
     user_mileage: int,
     options: dict | None = None,
+    vector_complaints: list[dict] | None = None,
+    bulk_stats: dict | None = None,
 ) -> dict:
     """Build the complete report dict with all 7 sections."""
     options = options or {}
@@ -73,7 +75,11 @@ def generate_report(
     if trace:
         trace.log_sections("pre_llm", report["sections"])
 
-    report = enhance_report_sections(vehicle, report)
+    report = enhance_report_sections(
+        vehicle, report,
+        vector_complaints=vector_complaints,
+        bulk_stats=bulk_stats,
+    )
 
     if trace:
         trace.log_sections("post_llm", report["sections"])
@@ -157,29 +163,66 @@ def _build_inspection_checklist(
 
 
 def _build_current_risk(ma: MileageAnalysis, score: VehicleScore) -> dict:
-    issues = []
+    merged: dict[str, dict] = {}
     for sp in score.top_issues:
         cp = sp.classified
-        issues.append({
-            "rank": sp.rank,
-            "system": cp.problem.category,
-            "description": cp.problem.description,
-            "probability": sp.probability,
-            "severity": round(cp.problem.severity, 1),
-            "phase": cp.phase.value,
-            "complaint_count": cp.problem.complaint_count,
-            "test_drive_tips": _test_drive_tips(cp),
-            "diagnostic_tests": _diagnostic_suggestions(cp),
-            "sources": cp.problem.sources,
-        })
+        sys = cp.problem.category
+        if sys == "Other":
+            continue
+        if sys not in merged:
+            merged[sys] = {
+                "system": sys,
+                "descriptions": [cp.problem.description],
+                "probability": sp.probability,
+                "severity": round(cp.problem.severity, 1),
+                "weighted_score": sp.weighted_score,
+                "phase": cp.phase.value,
+                "complaint_count": cp.problem.complaint_count,
+                "test_drive_tips": list(_test_drive_tips(cp)),
+                "diagnostic_tests": list(_diagnostic_suggestions(cp)),
+                "sources": list(cp.problem.sources),
+            }
+        else:
+            m = merged[sys]
+            m["complaint_count"] += cp.problem.complaint_count
+            if cp.problem.description not in m["descriptions"]:
+                m["descriptions"].append(cp.problem.description)
+            m["severity"] = max(m["severity"], round(cp.problem.severity, 1))
+            m["weighted_score"] = max(m["weighted_score"], sp.weighted_score)
+            if m["weighted_score"] >= 6:
+                m["probability"] = "High"
+            elif m["weighted_score"] >= 3:
+                m["probability"] = "Medium"
+            else:
+                m["probability"] = "Low"
+            phase_priority = {"current": 0, "upcoming": 1, "past": 2, "future": 3, "unknown": 4}
+            if phase_priority.get(cp.phase.value, 5) < phase_priority.get(m["phase"], 5):
+                m["phase"] = cp.phase.value
+            for tip in _test_drive_tips(cp):
+                if tip not in m["test_drive_tips"]:
+                    m["test_drive_tips"].append(tip)
+            for test in _diagnostic_suggestions(cp):
+                if test not in m["diagnostic_tests"]:
+                    m["diagnostic_tests"].append(test)
+            for src in cp.problem.sources:
+                if src not in m["sources"]:
+                    m["sources"].append(src)
+
+    issues = sorted(merged.values(), key=lambda x: x["complaint_count"], reverse=True)
+    for i, issue in enumerate(issues, start=1):
+        issue["rank"] = i
+        issue["description"] = " | ".join(issue.pop("descriptions"))
+        issue.pop("weighted_score", None)
 
     system_risks = [
         {
             "system": sr.system,
             "risk_score": sr.risk_score,
             "problem_count": sr.problem_count,
+            "total_complaints": sr.total_complaints,
         }
         for sr in ma.system_risks
+        if sr.system != "Other"
     ]
 
     return {
