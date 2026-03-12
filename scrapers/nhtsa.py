@@ -92,8 +92,9 @@ class NHTSAScraper(BaseScraper):
         recalls = self._fetch_recalls(make, model, year)
         result["recalls"] = recalls
 
-        complaints = self._fetch_complaints(make, model, year)
+        complaints, complaint_dates = self._fetch_complaints(make, model, year)
         result["problems"] = complaints
+        result["complaint_dates"] = complaint_dates
 
         ratings = self._fetch_ratings(make, model, year)
         result["ratings"] = ratings
@@ -131,7 +132,7 @@ class NHTSAScraper(BaseScraper):
     # Complaints
     # ------------------------------------------------------------------
 
-    def _fetch_complaints(self, make: str, model: str, year: int) -> list[dict]:
+    def _fetch_complaints(self, make: str, model: str, year: int) -> tuple[list[dict], list[str]]:
         url = (
             f"{self.base_url}/complaints/complaintsByVehicle"
             f"?make={make}&model={model}&modelYear={year}"
@@ -140,10 +141,15 @@ class NHTSAScraper(BaseScraper):
             data = self._get_json(url)
         except Exception:
             logger.exception("[nhtsa] Failed to fetch complaints")
-            return []
+            return [], []
 
+        complaint_dates: list[str] = []
         component_groups: dict[str, list[dict]] = {}
         for c in data.get("results", []):
+            date_filed = c.get("dateComplaintFiled", "")
+            if date_filed:
+                complaint_dates.append(date_filed)
+
             raw_component = c.get("components", "")
             category = _map_component(raw_component)
             summary = c.get("summary", "")
@@ -234,7 +240,7 @@ class NHTSAScraper(BaseScraper):
             })
 
         problems.sort(key=lambda p: p["complaint_count"], reverse=True)
-        return problems
+        return problems, complaint_dates
 
     # ------------------------------------------------------------------
     # Safety ratings

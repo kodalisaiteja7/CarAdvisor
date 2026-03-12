@@ -54,7 +54,7 @@ def generate_report(
         "sections": {
             "vehicle_summary": _build_vehicle_summary(agg, vehicle_score),
             "inspection_checklist": raw_checklist,
-            "current_risk": _build_current_risk(mileage_analysis, vehicle_score),
+            "current_risk": _build_current_risk(mileage_analysis, vehicle_score, agg),
             "owner_experience": _build_owner_experience(agg),
         },
     }
@@ -170,7 +170,7 @@ def _build_inspection_checklist(
     }
 
 
-def _build_current_risk(ma: MileageAnalysis, score: VehicleScore) -> dict:
+def _build_current_risk(ma: MileageAnalysis, score: VehicleScore, agg: AggregatedVehicleData | None = None) -> dict:
     merged: dict[str, dict] = {}
     for sp in score.top_issues:
         cp = sp.classified
@@ -233,12 +233,23 @@ def _build_current_risk(ma: MileageAnalysis, score: VehicleScore) -> dict:
         if sr.system != "Other"
     ]
 
+    complaints_by_year: dict[int, int] = {}
+    if agg:
+        for date_str in agg.complaint_dates:
+            try:
+                yr = int(date_str.split("/")[-1][:4]) if "/" in date_str else int(date_str[:4])
+                if 1990 <= yr <= 2030:
+                    complaints_by_year[yr] = complaints_by_year.get(yr, 0) + 1
+            except (ValueError, IndexError):
+                continue
+
     return {
         "mileage": ma.mileage,
         "bracket": ma.bracket,
         "top_issues": issues,
         "system_risks": system_risks,
         "phase_summary": ma.phase_counts,
+        "complaints_by_year": dict(sorted(complaints_by_year.items())),
     }
 
 

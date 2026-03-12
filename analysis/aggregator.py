@@ -26,6 +26,7 @@ class AggregatedVehicleData:
     ratings: dict = field(default_factory=dict)
     sources_used: list[str] = field(default_factory=list)
     source_count: int = 0
+    complaint_dates: list[str] = field(default_factory=list)
 
     @property
     def total_complaints(self) -> int:
@@ -85,6 +86,9 @@ def aggregate(source_results: list[dict]) -> AggregatedVehicleData:
         source = nd.sources_used[0] if nd.sources_used else "unknown"
         if nd.ratings:
             agg.ratings[source] = nd.ratings
+
+    for raw in source_results:
+        agg.complaint_dates.extend(raw.get("complaint_dates", []))
 
     return agg
 

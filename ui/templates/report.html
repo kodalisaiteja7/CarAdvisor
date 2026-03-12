@@ -1,491 +1,834 @@
 {% extends "base.html" %}
 {% block title %}Report — {{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} | Car Advisor{% endblock %}
 
-{% block content %}
-<div x-data="{ openSection: 'summary' }">
+{% block head %}
+<style>
+    .report-hero {
+        background: linear-gradient(135deg, #111111 0%, #1a1a2e 50%, #111111 100%);
+    }
+    .gauge-ring {
+        transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1);
+    }
+    .stat-card {
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,.1);
+    }
+    .sidebar-link {
+        transition: all .15s ease;
+    }
+    .sidebar-link.active {
+        color: #111111;
+        background: #FFF8D4;
+        font-weight: 600;
+        border-left: 3px solid #FFC700;
+    }
+    .dark .sidebar-link.active {
+        color: #FFC700;
+        background: rgba(255,199,0,.08);
+        border-left-color: #FFC700;
+    }
+    .section-card {
+        background: white;
+        border: 1px solid #e8eaed;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .section-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,.06);
+    }
+    .dark .section-card {
+        background: #1f2937;
+        border-color: #374151;
+    }
+    .sys-bar-fill {
+        transition: width 0.8s cubic-bezier(.4,0,.2,1);
+        border-radius: 0 6px 6px 0;
+    }
+    @media (max-width: 1023px) {
+        .report-sidebar { display: none; }
+    }
+</style>
+{% endblock %}
 
-    <!-- Header -->
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
-        <div class="min-w-0">
-            <h1 class="text-3xl font-extrabold truncate">{{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }}{% if report.vehicle.trim %} {{ report.vehicle.trim }}{% endif %}</h1>
-            <p class="text-gray-500 dark:text-gray-400 mt-1">
-                {{ "{:,}".format(report.vehicle.mileage) }} miles
-                {%- if report.vehicle.engine %} &middot; {{ report.vehicle.engine }}{% endif %}
-                {%- if report.vehicle.transmission %} &middot; {{ report.vehicle.transmission }}{% endif %}
-                {%- if report.vehicle.drivetrain %} &middot; {{ report.vehicle.drivetrain }}{% endif %}
-                &middot; {{ report.meta.source_count }} source{{ "s" if report.meta.source_count != 1 }}
-                &middot; {{ report.meta.total_problems_found }} issue{{ "s" if report.meta.total_problems_found != 1 }} found
-            </p>
-        </div>
-        <div class="flex items-center gap-3 flex-shrink-0">
-            <a href="/trace/{{ report_id }}" target="_blank"
-               class="print-hide text-xs px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-               title="View debug trace for this report">
-                Debug Trace
-            </a>
-            <button onclick="window.print()" class="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition print-hide" title="Print Report">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                Print
-            </button>
-            <a href="/" class="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition print-hide">
-                New Search
-            </a>
+{% block main_class %}{% endblock %}
+
+{% block content %}
+{% set vs = report.sections.vehicle_summary %}
+{% set cr = report.sections.current_risk %}
+{% set cl = report.sections.inspection_checklist %}
+{% set oe = report.sections.owner_experience %}
+{% set risk_score = vs.reliability_risk_score | default(0) %}
+{% set cby = cr.complaints_by_year | default({}) %}
+
+<div x-data="reportNav()" x-init="initScrollSpy()">
+
+    <!-- ===== Dark Vehicle Header ===== -->
+    <div class="report-hero text-white py-8 sm:py-10 px-4 print-section">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="min-w-0">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/10 mb-3">
+                    <span class="w-2 h-2 rounded-full
+                        {% if risk_score > 40 %}bg-red-400{% elif risk_score > 20 %}bg-[#FFC700]{% else %}bg-green-400{% endif %}"></span>
+                    <span class="text-xs font-medium text-gray-300">
+                        {% if risk_score > 40 %}High Risk Vehicle{% elif risk_score > 20 %}Fair Risk Vehicle{% else %}Low Risk Vehicle{% endif %}
+                    </span>
+                </div>
+                <h1 class="text-3xl sm:text-4xl font-black tracking-tight">
+                    {{ report.vehicle.year }} {{ report.vehicle.make }}
+                    <span class="text-[#FFC700]">{{ report.vehicle.model }}</span>
+                    {% if report.vehicle.trim %}<span class="text-gray-400 font-semibold text-2xl ml-1">{{ report.vehicle.trim }}</span>{% endif %}
+                </h1>
+                <div class="flex flex-wrap items-center gap-3 mt-3">
+                    <span class="inline-flex items-center gap-1.5 text-sm text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        {{ "{:,}".format(report.vehicle.mileage) }} miles
+                    </span>
+                    {%- if report.vehicle.engine %}
+                    <span class="text-gray-600">|</span>
+                    <span class="text-sm text-gray-400">{{ report.vehicle.engine }}</span>
+                    {% endif %}
+                    {%- if report.vehicle.transmission %}
+                    <span class="text-gray-600">|</span>
+                    <span class="text-sm text-gray-400">{{ report.vehicle.transmission }}</span>
+                    {% endif %}
+                    {%- if report.vehicle.drivetrain %}
+                    <span class="text-gray-600">|</span>
+                    <span class="text-sm text-gray-400">{{ report.vehicle.drivetrain }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0 print-hide">
+                <a href="/trace/{{ report_id }}" target="_blank"
+                   class="text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:bg-white/10 transition">
+                    Debug
+                </a>
+                <button onclick="window.print()" class="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-white/20 text-gray-400 hover:text-white hover:bg-white/10 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    Print
+                </button>
+                <a href="/" class="px-5 py-2 text-sm rounded-lg bg-[#FFC700] text-[#111111] hover:bg-[#FFD233] transition font-bold shadow-sm">
+                    New Search
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- ============================================================= -->
-    <!-- Executive Summary Card (LLM-generated) -->
-    <!-- ============================================================= -->
+    <!-- ===== Buyer's Verdict Banner ===== -->
     {% set exec_summary = report.sections.get("executive_summary", {}) %}
     {% if exec_summary.get("text") %}
-    <div class="mb-6 bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 border border-brand-200 dark:border-brand-800 rounded-2xl p-6 print-section">
-        <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center">
-                <svg class="w-5 h-5 text-brand-600 dark:text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            </div>
-            <div class="min-w-0 flex-1">
-                <h2 class="text-lg font-bold mb-2">Buyer's Verdict</h2>
-                <p class="text-gray-700 dark:text-gray-300 leading-relaxed break-words">{{ exec_summary.text }}</p>
-
-                {% set reasoning = exec_summary.get("verdict_reasoning", []) %}
-                {% if reasoning %}
-                <div class="mt-4 pt-4 border-t border-brand-200 dark:border-brand-700/50">
-                    <h3 class="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Why This Verdict
-                    </h3>
-                    <ul class="space-y-2">
-                        {% for reason in reasoning %}
-                        <li class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-brand-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            <span>{{ reason }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-5 mb-6 relative z-10">
+        <div class="section-card p-6 border-l-4 shadow-lg
+            {% if risk_score > 40 %}border-l-red-500{% elif risk_score > 20 %}border-l-[#FFC700]{% else %}border-l-green-500{% endif %}
+            fade-in print-section">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center
+                    {% if risk_score > 40 %}bg-red-50 dark:bg-red-900/20{% elif risk_score > 20 %}bg-[#FFF8D4] dark:bg-brand-900/20{% else %}bg-green-50 dark:bg-green-900/20{% endif %}">
+                    {% if risk_score > 40 %}
+                    <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                    {% elif risk_score > 20 %}
+                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {% else %}
+                    <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {% endif %}
                 </div>
-                {% endif %}
+                <div class="min-w-0 flex-1">
+                    <h2 class="text-lg font-bold mb-2">Buyer's Verdict</h2>
+                    <p class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ exec_summary.text }}</p>
+                    {% set reasoning = exec_summary.get("verdict_reasoning", []) %}
+                    {% if reasoning %}
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Why This Verdict</h3>
+                        <ul class="space-y-2">
+                            {% for reason in reasoning %}
+                            <li class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-[#FFC700]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                <span>{{ reason }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
     {% endif %}
 
-    <!-- Section tabs -->
-    {% set sections = [
-        ("summary", "Overview"),
-        ("checklist", "Inspection Guide"),
-        ("risk", "Known Issues"),
-        ("experience", "Owner Complaints")
-    ] %}
-    <div class="flex overflow-x-auto gap-1 mb-6 border-b border-gray-200 dark:border-gray-700 pb-px scrollbar-hide print-hide">
-        {% for id, label in sections %}
-        <button @click="openSection = '{{ id }}'"
-                :class="openSection === '{{ id }}' ? 'border-brand-600 text-brand-600 dark:text-brand-400 dark:border-brand-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'"
-                class="px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition">
-            {{ label }}
-        </button>
-        {% endfor %}
+    <!-- ===== Mobile Section Nav (horizontal pills) ===== -->
+    <div class="lg:hidden sticky top-16 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm px-4 py-2 border-b border-gray-200 dark:border-gray-800 mb-4 print-hide">
+        <div class="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            <template x-for="s in sections" :key="s.id">
+                <a :href="'#' + s.id" @click.prevent="scrollTo(s.id)"
+                   :class="activeSection === s.id ? 'bg-[#111111] text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'"
+                   class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition" x-text="s.label"></a>
+            </template>
+        </div>
     </div>
 
-    <!-- Reusable AI badge macro -->
-    {% macro ai_badge() %}{% endmacro %}
+    <!-- ===== Main Layout: Sidebar + Content ===== -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex gap-8">
 
-    <!-- ============================================================= -->
-    <!-- Section 1: Vehicle Summary -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'summary'" x-cloak class="fade-in space-y-6 print-section">
-        {% set vs = report.sections.vehicle_summary %}
-        {% set cr = report.sections.current_risk %}
-
-        <!-- Score Overview -->
-        {% set risk_score = vs.reliability_risk_score | default(0) %}
-        {% if risk_score > 70 %}
-            {% set risk_border = 'border-red-500' %}{% set risk_text = 'text-red-600 dark:text-red-400' %}
-        {% elif risk_score > 50 %}
-            {% set risk_border = 'border-orange-500' %}{% set risk_text = 'text-orange-600 dark:text-orange-400' %}
-        {% elif risk_score > 30 %}
-            {% set risk_border = 'border-yellow-500' %}{% set risk_text = 'text-yellow-600 dark:text-yellow-400' %}
-        {% elif risk_score > 15 %}
-            {% set risk_border = 'border-blue-500' %}{% set risk_text = 'text-blue-600 dark:text-blue-400' %}
-        {% else %}
-            {% set risk_border = 'border-green-500' %}{% set risk_text = 'text-green-600 dark:text-green-400' %}
-        {% endif %}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <!-- Score Overview -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                <h2 class="text-lg font-bold mb-4">Score Overview</h2>
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div class="border-l-4 {{ risk_border }} bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
-                        <div class="text-3xl font-black {{ risk_text }}">{{ risk_score }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Risk Score</div>
-                    </div>
-                    <div class="border-l-4 border-gray-800 dark:border-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
-                        <div class="text-3xl font-black">{{ vs.total_complaints }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Total Complaints</div>
-                    </div>
-                    <div class="border-l-4 border-red-500 bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
-                        <div class="text-3xl font-black">{{ vs.total_recalls }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Recalls</div>
-                    </div>
-                    {% set safety = vs.safety_score | default(0) %}
-                    {% if safety > 70 %}
-                        {% set safety_border = 'border-red-500' %}{% set safety_text = 'text-red-600 dark:text-red-400' %}
-                    {% elif safety > 50 %}
-                        {% set safety_border = 'border-orange-500' %}{% set safety_text = 'text-orange-600 dark:text-orange-400' %}
-                    {% elif safety > 30 %}
-                        {% set safety_border = 'border-yellow-500' %}{% set safety_text = 'text-yellow-600 dark:text-yellow-400' %}
-                    {% elif safety > 15 %}
-                        {% set safety_border = 'border-blue-500' %}{% set safety_text = 'text-blue-600 dark:text-blue-400' %}
-                    {% else %}
-                        {% set safety_border = 'border-green-500' %}{% set safety_text = 'text-green-600 dark:text-green-400' %}
-                    {% endif %}
-                    <div class="border-l-4 {{ safety_border }} bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
-                        <div class="text-3xl font-black {{ safety_text }}">{{ safety }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Safety Score</div>
-                    </div>
+            <!-- Sidebar Nav (desktop) -->
+            <aside class="report-sidebar hidden lg:block w-52 flex-shrink-0 print-hide">
+                <div class="sticky top-24 space-y-0.5">
+                    <template x-for="s in sections" :key="s.id">
+                        <a :href="'#' + s.id" @click.prevent="scrollTo(s.id)"
+                           :class="activeSection === s.id ? 'active' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+                           class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm">
+                            <span class="w-2 h-2 rounded-full flex-shrink-0"
+                                  :class="activeSection === s.id ? 'bg-[#FFC700]' : 'bg-gray-300 dark:bg-gray-600'"></span>
+                            <span x-text="s.label"></span>
+                        </a>
+                    </template>
                 </div>
-            </div>
+            </aside>
 
-            <!-- Complaints by System -->
-            <div id="systemRiskCard" class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-                <h2 class="text-lg font-bold mb-3">Complaints by System</h2>
-                <div id="systemRiskWrap" style="position: relative"><canvas id="systemRiskChart"></canvas></div>
-            </div>
-        </div>
+            <!-- Content Area -->
+            <div class="flex-1 min-w-0 space-y-8">
 
-        <script>
-        (function() {
-            function initOverviewCharts() {
-                var isDark = document.documentElement.classList.contains('dark');
-
-                var topIssues = {{ cr.top_issues | default([]) | tojson }};
-                var sorted = topIssues.filter(function(r) { return r.complaint_count > 0 && r.system !== 'Other'; })
-                                      .sort(function(a, b) { return b.complaint_count - a.complaint_count; });
-                var sysCard = document.getElementById('systemRiskCard');
-                if (!sorted.length) {
-                    if (sysCard) sysCard.style.display = 'none';
-                } else {
-                    var wrap = document.getElementById('systemRiskWrap');
-                    if (wrap) {
-                        var maxComplaints = sorted[0].complaint_count;
-                        wrap.style.height = Math.max(180, sorted.length * 32 + 40) + 'px';
-                        var barColors = sorted.map(function(r) {
-                            var ratio = r.complaint_count / Math.max(maxComplaints, 1);
-                            if (ratio > 0.7) return '#ef4444';
-                            if (ratio > 0.4) return '#f97316';
-                            if (ratio > 0.2) return '#eab308';
-                            if (ratio > 0.1) return '#3b82f6';
-                            return '#22c55e';
-                        });
-                        new Chart(document.getElementById('systemRiskChart'), {
-                            type: 'bar',
-                            data: {
-                                labels: sorted.map(function(r) { return r.system; }),
-                                datasets: [{ data: sorted.map(function(r) { return r.complaint_count; }), backgroundColor: barColors, borderRadius: 4, barThickness: 22 }]
-                            },
-                            options: {
-                                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-                                scales: {
-                                    x: { beginAtZero: true, grid: { color: isDark ? '#374151' : '#f3f4f6' }, ticks: { color: isDark ? '#9ca3af' : '#6b7280' } },
-                                    y: { grid: { display: false }, ticks: { color: isDark ? '#d1d5db' : '#374151', font: { weight: 'bold' } } }
-                                },
-                                plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.raw + ' complaints'; } } } }
-                            }
-                        });
-                    }
-                }
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() { requestAnimationFrame(initOverviewCharts); });
-            } else {
-                requestAnimationFrame(initOverviewCharts);
-            }
-        })();
-        </script>
-
-        {% if vs.recalls %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6" x-data="{ showAllRecalls: false }">
-            <h2 class="text-lg font-bold mb-4">Recalls ({{ vs.total_recalls }})</h2>
-            <div class="space-y-4">
-                {% for r in vs.recalls[:3] %}
-                <div class="border-l-4 border-red-400 pl-4">
-                    <div class="font-semibold break-words">{{ r.component }}</div>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">{{ r.summary }}</p>
-                    {% if r.consequence %}
-                    <p class="text-sm text-red-600 dark:text-red-400 mt-1 break-words"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>
-                    {% endif %}
-                    {% if r.remedy %}
-                    <p class="text-sm text-green-600 dark:text-green-400 mt-1 break-words"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>
-                    {% endif %}
-                    <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
-                </div>
-                {% endfor %}
-                {% if vs.recalls|length > 3 %}
-                <div x-show="showAllRecalls" x-cloak class="space-y-4">
-                    {% for r in vs.recalls[3:] %}
-                    <div class="border-l-4 border-red-400 pl-4">
-                        <div class="font-semibold break-words">{{ r.component }}</div>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">{{ r.summary }}</p>
-                        {% if r.consequence %}
-                        <p class="text-sm text-red-600 dark:text-red-400 mt-1 break-words"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>
-                        {% endif %}
-                        {% if r.remedy %}
-                        <p class="text-sm text-green-600 dark:text-green-400 mt-1 break-words"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>
-                        {% endif %}
-                        <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                <button @click="showAllRecalls = !showAllRecalls" class="text-sm text-brand-600 dark:text-brand-400 hover:underline" x-text="showAllRecalls ? 'Show fewer recalls' : 'Show all {{ vs.recalls|length }} recalls'"></button>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-    </section>
-
-    <!-- ============================================================= -->
-    <!-- Section 2: Inspection Checklist -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'checklist'" x-cloak class="fade-in space-y-6 print-section">
-        {% set cl = report.sections.inspection_checklist %}
-
-        {% macro render_checklist_item(item, border_color, bg_color, cost_color) %}
-        <div class="mb-5 border {{ border_color }} rounded-xl {{ bg_color }} overflow-hidden" x-data="{ open: false }">
-            <button @click="open = !open" class="w-full flex items-start justify-between p-4 text-left gap-3 hover:opacity-90 transition">
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200">{{ item.system }}</span>
-                        {% if item.estimated_cost_if_bad %}
-                        <span class="text-xs font-semibold {{ cost_color }}">{{ item.estimated_cost_if_bad }}</span>
-                        {% endif %}
-                        {% if item.llm_enhanced %}{{ ai_badge() }}{% endif %}
-                    </div>
-                    <h3 class="font-bold text-base mt-2 break-words">
-                        {% if item.title %}{{ item.title }}{% else %}{{ item.system }} Inspection{% endif %}
-                    </h3>
-                    {% if item.why_it_matters %}
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">{{ item.why_it_matters }}</p>
-                    {% endif %}
-                </div>
-                <svg :class="open ? 'rotate-180' : ''" class="w-5 h-5 mt-1 flex-shrink-0 transition-transform text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-            </button>
-
-            <div x-show="open" x-cloak class="px-4 pb-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
-
-                {% if item.how_to_check %}
-                <div class="pt-4">
-                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                        How to Check
-                    </h4>
-                    <ol class="space-y-2 ml-1">
-                        {% for step in item.how_to_check %}
-                        <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 flex items-center justify-center text-xs font-bold mt-0.5">{{ loop.index }}</span>
-                            <span class="break-words">{{ step }}</span>
-                        </li>
-                        {% endfor %}
-                    </ol>
-                </div>
-                {% endif %}
-
-                {% if item.red_flags %}
-                <div>
-                    <h4 class="text-sm font-bold text-red-700 dark:text-red-400 mb-2 flex items-center gap-1.5">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-                        Red Flags
-                    </h4>
-                    <ul class="space-y-1.5 ml-1">
-                        {% for flag in item.red_flags %}
-                        <li class="flex items-start gap-2 text-sm text-red-700 dark:text-red-400">
-                            <span class="flex-shrink-0 mt-1">&#x2716;</span>
-                            <span class="break-words">{{ flag }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if item.ask_the_seller %}
-                <div>
-                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-1.5">
-                        <svg class="w-4 h-4 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        Ask the Seller
-                    </h4>
-                    <ul class="space-y-1.5 ml-1">
-                        {% for q in item.ask_the_seller %}
-                        <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                            <span class="flex-shrink-0 text-brand-500 font-bold">Q:</span>
-                            <span class="break-words italic">"{{ q }}"</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if not item.how_to_check and not item.red_flags %}
-                <div class="pt-3">
-                    <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ item.what_to_look_for }}</p>
-                </div>
-                {% endif %}
-
-                <div class="flex flex-wrap items-center gap-2 pt-1">
-                    {% for s in item.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300">{{ s }}</span>{% endfor %}
-                </div>
-            </div>
-        </div>
-        {% endmacro %}
-
-        {% if cl.must_check %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="w-3 h-3 rounded-full bg-red-500"></span>
-                <h2 class="text-xl font-bold text-red-600 dark:text-red-400">MUST CHECK</h2>
-            </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Known failure points at this mileage &mdash; do not skip these</p>
-            {% for item in cl.must_check %}
-                {{ render_checklist_item(item, "border-red-200 dark:border-red-800", "bg-red-50/40 dark:bg-red-900/10", "text-red-600 dark:text-red-400") }}
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if cl.recommended %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
-                <h2 class="text-xl font-bold text-yellow-600 dark:text-yellow-400">RECOMMENDED</h2>
-            </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">Emerging issues for this mileage range</p>
-            {% for item in cl.recommended %}
-                {{ render_checklist_item(item, "border-yellow-200 dark:border-yellow-800", "bg-yellow-50/40 dark:bg-yellow-900/10", "text-yellow-600 dark:text-yellow-400") }}
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if cl.standard %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="w-3 h-3 rounded-full bg-gray-400"></span>
-                <h2 class="text-xl font-bold">STANDARD</h2>
-            </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-5">General used car inspection items</p>
-            {% for item in cl.standard %}
-                {{ render_checklist_item(item, "border-gray-200 dark:border-gray-700", "bg-gray-50/40 dark:bg-gray-800/40", "text-gray-600 dark:text-gray-400") }}
-            {% endfor %}
-        </div>
-        {% endif %}
-    </section>
-
-    <!-- ============================================================= -->
-    <!-- Section 3: Current Risk -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'risk'" x-cloak class="fade-in space-y-6 print-section">
-        {% set cr = report.sections.current_risk %}
-
-        {% if cr.top_issues %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-1">Known Issues at {{ "{:,}".format(cr.mileage) }} miles</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Ranked by complaint frequency and severity. Expand each item for details.</p>
-            <div class="space-y-3" x-data="{ expanded: null }">
-                {% for issue in cr.top_issues %}
-                <div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                    <button @click="expanded = expanded === {{ issue.rank }} ? null : {{ issue.rank }}"
-                            class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition gap-3">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold
-                                {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-                                {% elif issue.probability == 'Medium' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
-                                {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
-                                {{ issue.rank }}
+                <!-- ============================================================= -->
+                <!-- SECTION A: Score Overview -->
+                <!-- ============================================================= -->
+                <section id="sec-overview" class="scroll-mt-24 fade-in print-section">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+                        <!-- Risk Gauge -->
+                        <div class="lg:col-span-2 section-card p-6 flex flex-col items-center justify-center">
+                            <div class="relative w-44 h-44 mb-4">
+                                <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="#e8eaed" stroke-width="10" class="dark:stroke-gray-700"/>
+                                    {% set dash = 326.7 %}
+                                    {% set offset = dash - (dash * (risk_score | default(0)) / 100) %}
+                                    <circle cx="60" cy="60" r="52" fill="none"
+                                        stroke-width="10" stroke-linecap="round"
+                                        stroke-dasharray="{{ dash }}"
+                                        stroke-dashoffset="{{ offset }}"
+                                        class="gauge-ring
+                                            {% if risk_score > 70 %}stroke-red-500
+                                            {% elif risk_score > 40 %}stroke-orange-500
+                                            {% elif risk_score > 20 %}stroke-[#FFC700]
+                                            {% elif risk_score > 10 %}stroke-[#FFDE69]
+                                            {% else %}stroke-green-500{% endif %}"/>
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                    <span class="text-4xl font-black
+                                        {% if risk_score > 70 %}text-red-500
+                                        {% elif risk_score > 40 %}text-orange-500
+                                        {% elif risk_score > 20 %}text-[#CC9F00]
+                                        {% elif risk_score > 10 %}text-[#CC9F00]
+                                        {% else %}text-green-500{% endif %}">{{ risk_score }}</span>
+                                    <span class="text-xs text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">Risk Score</span>
+                                </div>
+                            </div>
+                            <span class="text-sm font-bold px-4 py-1.5 rounded-full
+                                {% if risk_score > 40 %}bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400
+                                {% elif risk_score > 20 %}bg-[#FFF8D4] text-[#CC9F00] dark:bg-brand-900/20 dark:text-brand-200
+                                {% else %}bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400{% endif %}">
+                                {% if risk_score > 40 %}High Risk{% elif risk_score > 20 %}Fair Risk{% else %}Low Risk{% endif %}
                             </span>
-                            <div class="min-w-0">
-                                <span class="font-semibold">{{ issue.system }}</span>
-                                <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">{{ issue.complaint_count }} complaint{{ "s" if issue.complaint_count != 1 }}</span>
+                        </div>
+
+                        <!-- Stats Grid -->
+                        <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="stat-card section-card p-5">
+                                <div class="w-9 h-9 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center mb-3">
+                                    <svg class="w-4.5 h-4.5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Complaints</div>
+                                <div class="text-3xl font-black text-gray-900 dark:text-white">{{ vs.total_complaints }}</div>
+                                <div class="text-xs text-gray-400 mt-1">NHTSA filings</div>
+                            </div>
+                            <div class="stat-card section-card p-5">
+                                <div class="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-3">
+                                    <svg class="w-4.5 h-4.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                                </div>
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Recalls</div>
+                                <div class="text-3xl font-black text-gray-900 dark:text-white">{{ vs.total_recalls }}</div>
+                                <div class="text-xs text-gray-400 mt-1">safety campaigns</div>
+                            </div>
+                            {% set safety = vs.safety_score | default(0) %}
+                            <div class="stat-card section-card p-5">
+                                <div class="w-9 h-9 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-3">
+                                    <svg class="w-4.5 h-4.5 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                </div>
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Safety Score</div>
+                                <div class="text-3xl font-black
+                                    {% if safety > 50 %}text-red-500
+                                    {% elif safety > 25 %}text-[#CC9F00]
+                                    {% else %}text-green-500{% endif %}">{{ safety }}</div>
+                                <div class="text-xs text-gray-400 mt-1">lower is better</div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 flex-shrink-0">
-                            
-                            <span class="text-xs px-2 py-1 rounded-full font-medium
-                                {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
-                                {% elif issue.probability == 'Medium' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
-                                {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
-                                {{ issue.probability }}
-                            </span>
-                            <svg :class="expanded === {{ issue.rank }} ? 'rotate-180' : ''" class="w-5 h-5 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </button>
-                    <div x-show="expanded === {{ issue.rank }}" x-cloak class="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-gray-700">
-                        <p class="text-sm text-gray-600 dark:text-gray-400 pt-3 break-words">{{ issue.description }}</p>
+                    </div>
 
-                        {% if issue.test_drive_tips %}
-                        <div>
-                            <h4 class="text-sm font-semibold mb-1">Test Drive Tips</h4>
-                            <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                                {% for tip in issue.test_drive_tips %}<li class="break-words">{{ tip }}</li>{% endfor %}
-                            </ul>
+                    <!-- Complaints by System (modernized) -->
+                    <div id="systemRiskCard" class="section-card p-6 mt-5" x-data="complaintsChart()">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
+                                    <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Complaints by System</h3>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full" x-text="totalComplaints + ' total'"></span>
                         </div>
-                        {% endif %}
-                        {% if issue.diagnostic_tests %}
-                        <div>
-                            <h4 class="text-sm font-semibold mb-1">Diagnostic Tests</h4>
-                            <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                                {% for t in issue.diagnostic_tests %}<li class="break-words">{{ t }}</li>{% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
-                        <div class="flex flex-wrap gap-1">
-                            {% for s in issue.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700">{{ s }}</span>{% endfor %}
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-1 flex items-center justify-center">
+                                <div style="position:relative; width:200px; height:200px">
+                                    <canvas id="systemDonutChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="lg:col-span-2 space-y-3" id="systemBarsList">
+                                <template x-for="(item, i) in systemData" :key="i">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-3 h-3 rounded-full flex-shrink-0" :style="'background:' + item.color"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="text-sm font-medium truncate" x-text="item.system"></span>
+                                                <span class="text-sm font-bold ml-2 tabular-nums" x-text="item.count"></span>
+                                            </div>
+                                            <div class="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                <div class="sys-bar-fill h-full" :style="'width:' + item.pct + '%; background:' + item.color"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
-                </div>
-                {% endfor %}
+
+                    <!-- Complaints Over Time (only if data exists) -->
+                    {% if cby %}
+                    <div class="section-card p-6 mt-5">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
+                                <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Complaints Over Time</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">NHTSA complaints filed per year since model year</p>
+                            </div>
+                        </div>
+                        <div style="position:relative; height:260px">
+                            <canvas id="timelineChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- ============================================================= -->
+                <!-- SECTION B: Inspection Guide -->
+                <!-- ============================================================= -->
+                <section id="sec-checklist" class="scroll-mt-24 fade-in print-section">
+                    <div class="section-card overflow-hidden">
+
+                        <!-- Header -->
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-[#111111] to-[#1a1a2e]">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-[#FFC700] flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-white">Pre-Purchase Inspection Guide</h2>
+                                    <p class="text-sm text-gray-400">Tailored for the {{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} at {{ "{:,}".format(report.vehicle.mileage) }} miles</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% macro render_checklist_item(item, border_color, bg_color, cost_color) %}
+                        <div class="mb-3 last:mb-0 border {{ border_color }} rounded-xl {{ bg_color }} overflow-hidden checklist-accordion" x-data="{ open: false }">
+                            <button @click="open = !open" class="w-full flex items-start justify-between p-4 text-left gap-3 cursor-pointer group transition-all duration-150 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#111111] text-white">{{ item.system }}</span>
+                                        {% if item.estimated_cost_if_bad %}
+                                        <span class="text-xs font-semibold {{ cost_color }}">{{ item.estimated_cost_if_bad }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3 class="font-bold text-base mt-2">
+                                        {% if item.title %}{{ item.title }}{% else %}{{ item.system }} Inspection{% endif %}
+                                    </h3>
+                                    {% if item.why_it_matters %}
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ item.why_it_matters }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-shrink-0 flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors duration-150"
+                                     :class="open ? 'bg-[#FFC700] text-[#111111]' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-[#FFF8D4] group-hover:text-[#CC9F00] dark:group-hover:bg-brand-900/40 dark:group-hover:text-[#FFC700]'">
+                                    <span x-text="open ? 'Hide' : 'Details'"></span>
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                </div>
+                            </button>
+                            <div x-show="open" x-cloak class="px-4 pb-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                                {% if item.how_to_check %}
+                                <div class="pt-4">
+                                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-[#FFC700]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                        How to Check
+                                    </h4>
+                                    <ol class="space-y-2 ml-1">
+                                        {% for step in item.how_to_check %}
+                                        <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/40 text-[#CC9F00] flex items-center justify-center text-xs font-bold mt-0.5">{{ loop.index }}</span>
+                                            <span>{{ step }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ol>
+                                </div>
+                                {% endif %}
+                                {% if item.red_flags %}
+                                <div>
+                                    <h4 class="text-sm font-bold text-red-700 dark:text-red-400 mb-2">Red Flags</h4>
+                                    <ul class="space-y-1.5 ml-1">
+                                        {% for flag in item.red_flags %}
+                                        <li class="flex items-start gap-2 text-sm text-red-700 dark:text-red-400">
+                                            <span class="flex-shrink-0 mt-1">&#x2716;</span>
+                                            <span>{{ flag }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if item.ask_the_seller %}
+                                <div>
+                                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">Ask the Seller</h4>
+                                    <ul class="space-y-1.5 ml-1">
+                                        {% for q in item.ask_the_seller %}
+                                        <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="flex-shrink-0 text-[#FFC700] font-bold">Q:</span>
+                                            <span class="italic">"{{ q }}"</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if not item.how_to_check and not item.red_flags %}
+                                <div class="pt-3">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ item.what_to_look_for }}</p>
+                                </div>
+                                {% endif %}
+                                <div class="flex flex-wrap items-center gap-2 pt-1">
+                                    {% for s in item.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-300">{{ s }}</span>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        <!-- Body -->
+                        <div class="p-6 space-y-6">
+
+                            {% if cl.must_check %}
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                                    <h3 class="text-base font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">Must Check</h3>
+                                    <span class="text-xs text-gray-400 font-normal normal-case">&mdash; do not skip these</span>
+                                </div>
+                                {% for item in cl.must_check %}
+                                    {{ render_checklist_item(item, "border-red-200 dark:border-red-800", "bg-red-50/40 dark:bg-red-900/10", "text-red-600 dark:text-red-400") }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if cl.recommended %}
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-[#FFC700]"></span>
+                                    <h3 class="text-base font-bold text-[#CC9F00] dark:text-[#FFC700] uppercase tracking-wide">Recommended</h3>
+                                    <span class="text-xs text-gray-400 font-normal normal-case">&mdash; emerging issues</span>
+                                </div>
+                                {% for item in cl.recommended %}
+                                    {{ render_checklist_item(item, "border-[#FFDE69]/60 dark:border-brand-800", "bg-[#FFF8D4]/40 dark:bg-brand-900/10", "text-[#CC9F00] dark:text-[#FFC700]") }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if cl.standard %}
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                                    <h3 class="text-base font-bold uppercase tracking-wide">Standard</h3>
+                                    <span class="text-xs text-gray-400 font-normal normal-case">&mdash; general inspection</span>
+                                </div>
+                                {% for item in cl.standard %}
+                                    {{ render_checklist_item(item, "border-gray-200 dark:border-gray-700", "bg-gray-50/40 dark:bg-gray-800/40", "text-gray-600 dark:text-gray-400") }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================= -->
+                <!-- SECTION C: Recalls -->
+                <!-- ============================================================= -->
+                <section id="sec-recalls" class="scroll-mt-24 fade-in print-section">
+                    {% if vs.recalls %}
+                    <div class="section-card p-6" x-data="{ showAllRecalls: false }">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Safety Recalls</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ vs.total_recalls }} recall{{ "s" if vs.total_recalls != 1 }} issued for this vehicle</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            {% for r in vs.recalls[:3] %}
+                            <div class="border-l-4 border-red-400 pl-4 py-1">
+                                <div class="font-semibold">{{ r.component }}</div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ r.summary }}</p>
+                                {% if r.consequence %}
+                                <p class="text-sm text-red-600 dark:text-red-400 mt-1"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>
+                                {% endif %}
+                                {% if r.remedy %}
+                                <p class="text-sm text-green-600 dark:text-green-400 mt-1"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>
+                                {% endif %}
+                                <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
+                            </div>
+                            {% endfor %}
+                            {% if vs.recalls|length > 3 %}
+                            <div x-show="showAllRecalls" x-cloak class="space-y-4">
+                                {% for r in vs.recalls[3:] %}
+                                <div class="border-l-4 border-red-400 pl-4 py-1">
+                                    <div class="font-semibold">{{ r.component }}</div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ r.summary }}</p>
+                                    {% if r.consequence %}
+                                    <p class="text-sm text-red-600 dark:text-red-400 mt-1"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>
+                                    {% endif %}
+                                    {% if r.remedy %}
+                                    <p class="text-sm text-green-600 dark:text-green-400 mt-1"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>
+                                    {% endif %}
+                                    <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button @click="showAllRecalls = !showAllRecalls" class="text-sm text-[#CC9F00] dark:text-[#FFC700] hover:underline font-semibold" x-text="showAllRecalls ? 'Show fewer recalls' : 'Show all {{ vs.recalls|length }} recalls'"></button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="section-card p-8 text-center">
+                        <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <h3 class="text-lg font-bold mb-1">No Open Recalls</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No safety recalls found for this vehicle.</p>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- ============================================================= -->
+                <!-- SECTION D: Known Issues -->
+                <!-- ============================================================= -->
+                <section id="sec-issues" class="scroll-mt-24 fade-in print-section">
+                    {% if cr.top_issues %}
+                    <div class="section-card p-6">
+                        <div class="flex items-center gap-3 mb-1">
+                            <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
+                                <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Known Issues at {{ "{:,}".format(cr.mileage) }} miles</h3>
+                                    <span class="text-sm font-semibold text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">{{ cr.top_issues | length }} found</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-5 ml-12">Ranked by complaint frequency. Click to expand.</p>
+                        <div class="space-y-3" x-data="{ expanded: null }">
+                            {% for issue in cr.top_issues %}
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden transition hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm">
+                                <button @click="expanded = expanded === {{ issue.rank }} ? null : {{ issue.rank }}"
+                                        class="w-full flex items-center justify-between p-4 text-left gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold
+                                            {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                                            {% elif issue.probability == 'Medium' %}bg-[#FFF8D4] text-[#CC9F00] dark:bg-brand-900/40 dark:text-brand-200
+                                            {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
+                                            {{ issue.rank }}
+                                        </span>
+                                        <div class="min-w-0">
+                                            <span class="font-semibold">{{ issue.system }}</span>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">{{ issue.complaint_count }} complaint{{ "s" if issue.complaint_count != 1 }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <span class="text-xs px-2.5 py-1 rounded-full font-semibold
+                                            {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                                            {% elif issue.probability == 'Medium' %}bg-[#FFF8D4] text-[#CC9F00] dark:bg-brand-900/40 dark:text-brand-200
+                                            {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
+                                            {{ issue.probability }}
+                                        </span>
+                                        <svg :class="expanded === {{ issue.rank }} ? 'rotate-180' : ''" class="w-5 h-5 transition-transform text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </button>
+                                <div x-show="expanded === {{ issue.rank }}" x-cloak class="px-4 pb-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 pt-3">{{ issue.description }}</p>
+                                    {% if issue.test_drive_tips %}
+                                    <div>
+                                        <h4 class="text-sm font-semibold mb-1">Test Drive Tips</h4>
+                                        <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                            {% for tip in issue.test_drive_tips %}<li>{{ tip }}</li>{% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    {% if issue.diagnostic_tests %}
+                                    <div>
+                                        <h4 class="text-sm font-semibold mb-1">Diagnostic Tests</h4>
+                                        <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                            {% for t in issue.diagnostic_tests %}<li>{{ t }}</li>{% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    <div class="flex flex-wrap gap-1">
+                                        {% for s in issue.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{{ s }}</span>{% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="section-card p-8 text-center">
+                        <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <h3 class="text-lg font-bold mb-1">No Major Issues Found</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No significant issues at this mileage based on available data.</p>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- ============================================================= -->
+                <!-- SECTION E: Owner Complaints -->
+                <!-- ============================================================= -->
+                <section id="sec-owners" class="scroll-mt-24 fade-in print-section">
+                    <div class="section-card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
+                                <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/></svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Owner Reports ({{ oe.report_count }})</h3>
+                        </div>
+                        <p class="text-sm text-[#CC9F00] dark:text-[#FFC700] bg-[#FFF8D4] dark:bg-brand-900/20 border border-[#FFDE69]/60 dark:border-brand-800 rounded-lg p-3 mb-4">
+                            {{ oe.note }}
+                        </p>
+                        {% if oe.sample_reports %}
+                        <div class="space-y-4" x-data="{ showAll: false }">
+                            {% for report_text in oe.sample_reports[:5] %}
+                            <blockquote class="border-l-4 border-[#FFDE69] dark:border-[#FFC700]/40 pl-4 text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                                "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
+                            </blockquote>
+                            {% endfor %}
+                            {% if oe.sample_reports|length > 5 %}
+                            <div x-show="showAll" x-cloak class="space-y-4">
+                                {% for report_text in oe.sample_reports[5:] %}
+                                <blockquote class="border-l-4 border-[#FFDE69] dark:border-[#FFC700]/40 pl-4 text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                                    "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
+                                </blockquote>
+                                {% endfor %}
+                            </div>
+                            <button @click="showAll = !showAll" class="text-sm text-[#CC9F00] dark:text-[#FFC700] hover:underline font-semibold" x-text="showAll ? 'Show less' : 'Show all {{ oe.sample_reports|length }} reports'"></button>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-gray-400 italic">No owner reports collected yet.</p>
+                        {% endif %}
+                    </div>
+                </section>
+
             </div>
         </div>
-        {% else %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
-            <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            <h3 class="text-lg font-semibold mb-1">No Major Issues Found</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">No significant issues were found at this mileage based on available complaint data.</p>
-        </div>
-        {% endif %}
-    </section>
-
-    <!-- ============================================================= -->
-    <!-- Section 5: Owner Experience -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'experience'" x-cloak class="fade-in space-y-6 print-section">
-        {% set oe = report.sections.owner_experience %}
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Owner Reports ({{ oe.report_count }})</h2>
-            <p class="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4 break-words">
-                {{ oe.note }}
-            </p>
-            {% if oe.sample_reports %}
-            <div class="space-y-4" x-data="{ showAll: false }">
-                {% for report_text in oe.sample_reports[:5] %}
-                <blockquote class="border-l-4 border-brand-300 dark:border-brand-700 pl-4 text-sm text-gray-600 dark:text-gray-400 italic break-words overflow-hidden">
-                    "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
-                </blockquote>
-                {% endfor %}
-                {% if oe.sample_reports|length > 5 %}
-                <div x-show="showAll" x-cloak class="space-y-4">
-                    {% for report_text in oe.sample_reports[5:] %}
-                    <blockquote class="border-l-4 border-brand-300 dark:border-brand-700 pl-4 text-sm text-gray-600 dark:text-gray-400 italic break-words overflow-hidden">
-                        "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
-                    </blockquote>
-                    {% endfor %}
-                </div>
-                <button @click="showAll = !showAll" class="text-sm text-brand-600 dark:text-brand-400 hover:underline" x-text="showAll ? 'Show less' : 'Show all {{ oe.sample_reports|length }} reports'"></button>
-                {% endif %}
-            </div>
-            {% else %}
-            <p class="text-gray-400 italic">No owner reports collected yet.</p>
-            {% endif %}
-        </div>
-    </section>
-
-
+    </div>
 </div>
 
+<!-- ===== Scripts ===== -->
+<script>
+function reportNav() {
+    return {
+        activeSection: 'sec-overview',
+        sections: [
+            { id: 'sec-overview', label: 'Overview' },
+            { id: 'sec-checklist', label: 'Inspection Guide' },
+            { id: 'sec-recalls', label: 'Recalls' },
+            { id: 'sec-issues', label: 'Known Issues' },
+            { id: 'sec-owners', label: 'Owner Complaints' },
+        ],
+        scrollTo(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+        initScrollSpy() {
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    for (const entry of entries) {
+                        if (entry.isIntersecting) {
+                            this.activeSection = entry.target.id;
+                        }
+                    }
+                },
+                { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+            );
+            this.$nextTick(() => {
+                this.sections.forEach(s => {
+                    const el = document.getElementById(s.id);
+                    if (el) observer.observe(el);
+                });
+            });
+        },
+    };
+}
+
+function complaintsChart() {
+    var palette = [
+        '#ef4444', '#FFC700', '#f97316', '#22c55e', '#3b82f6',
+        '#8b5cf6', '#ec4899', '#14b8a6', '#64748b', '#a855f7',
+        '#06b6d4', '#84cc16', '#e11d48', '#6366f1'
+    ];
+
+    var topIssues = {{ cr.top_issues | default([]) | tojson }};
+    var sorted = topIssues
+        .filter(function(r) { return r.complaint_count > 0 && r.system !== 'Other'; })
+        .sort(function(a, b) { return b.complaint_count - a.complaint_count; });
+
+    var maxC = sorted.length > 0 ? sorted[0].complaint_count : 1;
+    var total = sorted.reduce(function(s, r) { return s + r.complaint_count; }, 0);
+
+    return {
+        totalComplaints: total,
+        systemData: sorted.map(function(r, i) {
+            return {
+                system: r.system,
+                count: r.complaint_count,
+                pct: Math.round((r.complaint_count / Math.max(maxC, 1)) * 100),
+                color: palette[i % palette.length]
+            };
+        }),
+        init() {
+            var card = document.getElementById('systemRiskCard');
+            if (!sorted.length) { if (card) card.style.display = 'none'; return; }
+
+            var self = this;
+            this.$nextTick(function() {
+                var canvas = document.getElementById('systemDonutChart');
+                if (!canvas) return;
+                var isDark = document.documentElement.classList.contains('dark');
+                new Chart(canvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: self.systemData.map(function(d) { return d.system; }),
+                        datasets: [{
+                            data: self.systemData.map(function(d) { return d.count; }),
+                            backgroundColor: self.systemData.map(function(d) { return d.color; }),
+                            borderWidth: isDark ? 2 : 3,
+                            borderColor: isDark ? '#1f2937' : '#ffffff',
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        cutout: '65%',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#111111',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#FFC700',
+                                borderWidth: 1,
+                                padding: 10,
+                                callbacks: {
+                                    label: function(ctx) {
+                                        var pct = Math.round(ctx.raw / total * 100);
+                                        return ctx.label + ': ' + ctx.raw + ' (' + pct + '%)';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+    };
+}
+
+(function() {
+    function initCharts() {
+        var isDark = document.documentElement.classList.contains('dark');
+        var gridColor = isDark ? '#374151' : '#f3f4f6';
+        var tickColor = isDark ? '#9ca3af' : '#6b7280';
+
+        var timelineCanvas = document.getElementById('timelineChart');
+        if (timelineCanvas) {
+            var cbyRaw = {{ cr.complaints_by_year | default({}) | tojson }};
+            var years = Object.keys(cbyRaw).map(Number).sort();
+            if (years.length > 0) {
+                var minYear = Math.min({{ report.vehicle.year }}, years[0]);
+                var maxYear = Math.max(new Date().getFullYear(), years[years.length - 1]);
+                var allYears = [];
+                var counts = [];
+                for (var y = minYear; y <= maxYear; y++) {
+                    allYears.push(y);
+                    counts.push(cbyRaw[y] || 0);
+                }
+                var ctx = timelineCanvas.getContext('2d');
+                var gradient = ctx.createLinearGradient(0, 0, 0, 260);
+                gradient.addColorStop(0, isDark ? 'rgba(255,199,0,0.25)' : 'rgba(255,199,0,0.15)');
+                gradient.addColorStop(1, isDark ? 'rgba(255,199,0,0)' : 'rgba(255,199,0,0)');
+                new Chart(timelineCanvas, {
+                    type: 'line',
+                    data: {
+                        labels: allYears,
+                        datasets: [{
+                            data: counts,
+                            borderColor: '#FFC700',
+                            backgroundColor: gradient,
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#FFC700',
+                            pointBorderColor: isDark ? '#1f2937' : '#fff',
+                            pointBorderWidth: 2,
+                            pointHoverRadius: 6,
+                            tension: 0.3,
+                            fill: true,
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: tickColor } },
+                            y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor, precision: 0 } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#111111',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#FFC700',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                                callbacks: {
+                                    title: function(items) { return items[0].label; },
+                                    label: function(ctx) { return ctx.raw + ' complaint' + (ctx.raw !== 1 ? 's' : ''); }
+                                }
+                            }
+                        },
+                        interaction: { intersect: false, mode: 'index' },
+                    }
+                });
+            }
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { requestAnimationFrame(initCharts); });
+    } else {
+        requestAnimationFrame(initCharts);
+    }
+})();
+</script>
 {% endblock %}

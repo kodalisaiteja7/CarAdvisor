@@ -1,273 +1,451 @@
 {% extends "base.html" %}
 {% block title %}Car Advisor — Used Car Buying Report{% endblock %}
 
+{% block head %}
+<style>
+    .hero-gradient {
+        background: linear-gradient(135deg, #111111 0%, #1a1a2e 50%, #111111 100%);
+    }
+    .gold-glow {
+        box-shadow: 0 0 40px rgba(255, 199, 0, 0.15);
+    }
+    .form-group:focus-within label {
+        color: #CC9F00;
+    }
+    .form-group:focus-within .field-icon {
+        color: #FFC700;
+    }
+    .cta-btn {
+        background: #FFC700;
+        transition: all .2s ease;
+    }
+    .cta-btn:hover:not(:disabled) {
+        background: #FFD233;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(255, 199, 0, 0.4);
+    }
+    .cta-btn:disabled {
+        background: #d1d5db;
+    }
+    @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    .progress-bar-fill {
+        background: #FFC700;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 12px rgba(255, 199, 0, 0.5);
+    }
+    .progress-bar-fill::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmer 1.8s infinite linear;
+    }
+    .feature-card {
+        transition: transform .15s ease;
+    }
+    .feature-card:hover {
+        transform: translateY(-2px);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #FFC700;
+        border: 3px solid #111111;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    input[type="range"]::-moz-range-thumb {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #FFC700;
+        border: 3px solid #111111;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,.2);
+    }
+    input[type="range"] {
+        -webkit-appearance: none;
+        height: 6px;
+        border-radius: 999px;
+        outline: none;
+    }
+</style>
+{% endblock %}
+
+{% block main_class %}{% endblock %}
+
 {% block content %}
-<div x-data="carForm()" class="max-w-2xl mx-auto">
+<div x-data="carForm()">
 
-    <!-- Hero -->
-    <div class="text-center mb-10">
-        <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl">
-            Know Before You Buy
-        </h1>
-        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
-            Enter a vehicle's details to get a data-driven report on known issues,
-            predicted failures, and what to inspect &mdash; tailored to the exact mileage.
-        </p>
-    </div>
-
-    {% if error %}
-    <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
-        {{ error }}
-    </div>
-    {% endif %}
-
-    <!-- Search mode toggle -->
-    <div class="flex justify-center mb-6">
-        <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-700/50">
-            <button type="button" @click="searchMode = 'manual'"
-                    :class="searchMode === 'manual' ? 'bg-white dark:bg-gray-800 shadow-sm text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
-                    class="px-4 py-2 rounded-md text-sm transition">
-                Search by Vehicle
-            </button>
-            <button type="button" @click="searchMode = 'vin'"
-                    :class="searchMode === 'vin' ? 'bg-white dark:bg-gray-800 shadow-sm text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
-                    class="px-4 py-2 rounded-md text-sm transition">
-                Search by VIN
-            </button>
+    <!-- ===== Hero Section ===== -->
+    <div class="hero-gradient text-white py-16 sm:py-20 px-4">
+        <div class="max-w-3xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 mb-6">
+                <span class="w-2 h-2 rounded-full bg-[#FFC700] animate-pulse"></span>
+                <span class="text-sm font-medium text-gray-300">Powered by NHTSA data & AI analysis</span>
+            </div>
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
+                Know Before<br>
+                <span class="text-[#FFC700]">You Buy</span>
+            </h1>
+            <p class="mt-5 text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
+                Get a comprehensive risk report on any used car — known issues, recalls, failure predictions, and a tailored inspection checklist.
+            </p>
         </div>
     </div>
 
-    <!-- VIN Search Form -->
-    <div x-show="searchMode === 'vin'" x-cloak>
-        <form @submit.prevent="decodeVin" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
-            <div>
-                <label class="block text-sm font-medium mb-1" for="vin-input">Vehicle Identification Number (VIN)</label>
-                <div class="flex gap-3">
-                    <input type="text" id="vin-input" x-model="vinInput" maxlength="17" placeholder="e.g. 1HGBH41JXMN109186"
-                           class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 font-mono tracking-wider uppercase focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition placeholder:text-gray-400 placeholder:tracking-normal placeholder:font-sans placeholder:normal-case">
-                    <button type="submit" :disabled="vinInput.length < 11 || decodingVin"
-                            class="px-5 py-2.5 rounded-lg font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-                        <span x-show="!decodingVin">Decode</span>
-                        <span x-show="decodingVin" class="flex items-center gap-2">
-                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            Decoding...
+    <!-- ===== Feature Badges ===== -->
+    <div class="max-w-3xl mx-auto px-4 -mt-8 mb-8 relative z-10">
+        <div class="grid grid-cols-3 gap-3">
+            <div class="feature-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 text-center">
+                <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+                <div class="text-sm font-bold text-gray-900 dark:text-white">Risk Score</div>
+                <div class="text-xs text-gray-400 mt-0.5">Data-driven rating</div>
+            </div>
+            <div class="feature-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 text-center">
+                <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                </div>
+                <div class="text-sm font-bold text-gray-900 dark:text-white">Inspection Guide</div>
+                <div class="text-xs text-gray-400 mt-0.5">Mileage-specific</div>
+            </div>
+            <div class="feature-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 text-center">
+                <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div class="text-sm font-bold text-gray-900 dark:text-white">AI Verdict</div>
+                <div class="text-xs text-gray-400 mt-0.5">Buy or walk away</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Main Form Area ===== -->
+    <div class="max-w-2xl mx-auto px-4 pb-16">
+
+        {% if error %}
+        <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- Search mode toggle -->
+        <div class="flex justify-center mb-8">
+            <div class="inline-flex rounded-xl border border-gray-200 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-700/50">
+                <button type="button" @click="searchMode = 'manual'"
+                        :class="searchMode === 'manual' ? 'bg-[#111111] text-white shadow-md font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                        class="px-6 py-2.5 rounded-lg text-sm transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    Search by Vehicle
+                </button>
+                <button type="button" @click="searchMode = 'vin'"
+                        :class="searchMode === 'vin' ? 'bg-[#111111] text-white shadow-md font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                        class="px-6 py-2.5 rounded-lg text-sm transition flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                    Search by VIN
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== VIN Search Form ===== -->
+        <div x-show="searchMode === 'vin'" x-cloak>
+            <form @submit.prevent="decodeVin" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8 space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="vin-input">Vehicle Identification Number (VIN)</label>
+                    <div class="flex gap-3">
+                        <div class="flex-1 relative">
+                            <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                            </div>
+                            <input type="text" id="vin-input" x-model="vinInput" maxlength="17" placeholder="e.g. 1HGBH41JXMN109186"
+                                   class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-11 pr-4 py-3 font-mono tracking-wider uppercase focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition placeholder:text-gray-400 placeholder:tracking-normal placeholder:font-sans placeholder:normal-case text-sm shadow-sm">
+                        </div>
+                        <button type="submit" :disabled="vinInput.length < 11 || decodingVin"
+                                class="px-6 py-3 rounded-xl font-semibold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm">
+                            <span x-show="!decodingVin">Decode</span>
+                            <span x-show="decodingVin" class="flex items-center gap-2">
+                                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Decoding...
+                            </span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">Find the VIN on the driver's side dashboard or door jamb sticker</p>
+                </div>
+
+                <div x-show="vinError" x-cloak class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm" x-text="vinError"></div>
+
+                <div x-show="vinDecoded" x-cloak class="space-y-5">
+                    <div class="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-xl">
+                        <div class="flex items-center gap-2 mb-3">
+                            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <span class="font-semibold text-green-800 dark:text-green-300">Vehicle Found</span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div><span class="text-gray-400 text-xs uppercase tracking-wide">Year</span><div class="font-bold text-lg" x-text="year"></div></div>
+                            <div><span class="text-gray-400 text-xs uppercase tracking-wide">Make</span><div class="font-bold text-lg" x-text="make"></div></div>
+                            <div><span class="text-gray-400 text-xs uppercase tracking-wide">Model</span><div class="font-bold text-lg" x-text="model"></div></div>
+                            <div x-show="trim"><span class="text-gray-400 text-xs uppercase tracking-wide">Trim</span><div class="font-medium" x-text="trim"></div></div>
+                            <div x-show="engine"><span class="text-gray-400 text-xs uppercase tracking-wide">Engine</span><div class="font-medium" x-text="engine"></div></div>
+                            <div x-show="transmission"><span class="text-gray-400 text-xs uppercase tracking-wide">Trans</span><div class="font-medium" x-text="transmission"></div></div>
+                            <div x-show="drivetrain"><span class="text-gray-400 text-xs uppercase tracking-wide">Drive</span><div class="font-medium" x-text="drivetrain"></div></div>
+                            <div x-show="vinBodyClass"><span class="text-gray-400 text-xs uppercase tracking-wide">Body</span><div class="font-medium" x-text="vinBodyClass"></div></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="vin-mileage">
+                            Mileage: <span class="text-[#CC9F00]" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
+                        </label>
+                        <input type="range" id="vin-mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
+                               class="w-full bg-gradient-to-r from-green-300 via-[#FFDE69] to-red-400 rounded-full cursor-pointer">
+                        <div class="flex items-center justify-between mt-2">
+                            <div class="flex items-center gap-2">
+                                <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
+                                       class="w-28 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                                <span class="text-sm text-gray-400">miles</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" @click="mileage = 30000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">30k</button>
+                                <button type="button" @click="mileage = 75000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">75k</button>
+                                <button type="button" @click="mileage = 150000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">150k</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" @click="submit" :disabled="!canSubmit || analyzing"
+                            class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
+                        <span x-show="!analyzing" class="flex items-center justify-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Generate Report
+                        </span>
+                        <span x-show="analyzing" class="flex items-center justify-center gap-2">
+                            <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Analyzing...
                         </span>
                     </button>
                 </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Find the VIN on the driver's side dashboard or door jamb sticker</p>
+            </form>
+        </div>
+
+        <!-- ===== Manual Search Form ===== -->
+        <form x-show="searchMode === 'manual'" @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8 space-y-6">
+
+            <div class="form-group">
+                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="year">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        Year
+                    </span>
+                </label>
+                <select id="year" x-model="year" @change="onYearChange"
+                        class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm">
+                    <option value="">Select year</option>
+                    <template x-for="y in years" :key="y">
+                        <option :value="y" x-text="y"></option>
+                    </template>
+                </select>
             </div>
 
-            <!-- VIN decode error -->
-            <div x-show="vinError" x-cloak class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm" x-text="vinError"></div>
+            <div class="form-group">
+                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="make">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                        Make
+                    </span>
+                </label>
+                <select id="make" x-model="make" @change="onMakeChange" :disabled="!year"
+                        class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+                    <option value="">Select make</option>
+                    <template x-for="m in makes" :key="m">
+                        <option :value="m" x-text="m"></option>
+                    </template>
+                </select>
+                <p x-show="loadingMakes" class="text-xs text-[#CC9F00] mt-1.5 flex items-center gap-1">
+                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Loading makes...
+                </p>
+            </div>
 
-            <!-- VIN decode result -->
-            <div x-show="vinDecoded" x-cloak class="space-y-4">
-                <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                    <div class="flex items-center gap-2 mb-3">
-                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span class="font-semibold text-green-800 dark:text-green-300">Vehicle Found</span>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                        <div><span class="text-gray-500 dark:text-gray-400">Year:</span> <span class="font-medium" x-text="year"></span></div>
-                        <div><span class="text-gray-500 dark:text-gray-400">Make:</span> <span class="font-medium" x-text="make"></span></div>
-                        <div><span class="text-gray-500 dark:text-gray-400">Model:</span> <span class="font-medium" x-text="model"></span></div>
-                        <div x-show="trim"><span class="text-gray-500 dark:text-gray-400">Trim:</span> <span class="font-medium" x-text="trim"></span></div>
-                        <div x-show="engine"><span class="text-gray-500 dark:text-gray-400">Engine:</span> <span class="font-medium" x-text="engine"></span></div>
-                        <div x-show="transmission"><span class="text-gray-500 dark:text-gray-400">Trans:</span> <span class="font-medium" x-text="transmission"></span></div>
-                        <div x-show="drivetrain"><span class="text-gray-500 dark:text-gray-400">Drive:</span> <span class="font-medium" x-text="drivetrain"></span></div>
-                        <div x-show="vinBodyClass"><span class="text-gray-500 dark:text-gray-400">Body:</span> <span class="font-medium" x-text="vinBodyClass"></span></div>
-                    </div>
-                </div>
+            <div class="form-group">
+                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="model">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>
+                        Model
+                    </span>
+                </label>
+                <select id="model" x-model="model" @change="onModelChange" :disabled="!make"
+                        class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+                    <option value="">Select model</option>
+                    <template x-for="m in models" :key="m">
+                        <option :value="m" x-text="m"></option>
+                    </template>
+                </select>
+                <p x-show="loadingModels" class="text-xs text-[#CC9F00] mt-1.5 flex items-center gap-1">
+                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Loading models...
+                </p>
+            </div>
 
-                <!-- Mileage input after VIN decode -->
-                <div>
-                    <label class="block text-sm font-medium mb-1" for="vin-mileage">
-                        Mileage: <span class="font-bold text-brand-600 dark:text-brand-400" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
-                    </label>
-                    <input type="range" id="vin-mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
-                           class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-brand-600">
-                    <div class="flex items-center gap-3 mt-2">
+            <div class="form-group">
+                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="mileage">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                        Mileage: <span class="text-[#CC9F00] font-bold" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
+                    </span>
+                </label>
+                <input type="range" id="mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
+                       class="w-full bg-gradient-to-r from-green-300 via-[#FFDE69] to-red-400 rounded-full cursor-pointer">
+                <div class="flex items-center justify-between mt-2.5">
+                    <div class="flex items-center gap-2">
                         <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
-                               class="w-36 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                        <span class="text-sm text-gray-500">miles</span>
+                               class="w-28 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                        <span class="text-sm text-gray-400">miles</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" @click="mileage = 30000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">30k</button>
+                        <button type="button" @click="mileage = 75000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">75k</button>
+                        <button type="button" @click="mileage = 150000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">150k</button>
                     </div>
                 </div>
+            </div>
 
-                <!-- Generate Report button -->
-                <button type="button" @click="submit" :disabled="!canSubmit || analyzing"
-                        class="w-full py-3 px-6 rounded-lg font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span x-show="!analyzing">Generate Report</span>
-                    <span x-show="analyzing" class="flex items-center justify-center gap-2">
-                        <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        Analyzing...
-                    </span>
+            <!-- Advanced Options -->
+            <div>
+                <button type="button" @click="showAdvanced = !showAdvanced"
+                        class="flex items-center gap-2 text-sm font-semibold text-[#CC9F00] dark:text-brand-400 hover:text-[#997A00] transition">
+                    <svg :class="showAdvanced ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    Advanced Options
+                    <span class="text-xs text-gray-400 font-normal">(optional)</span>
+                    <span x-show="loadingTrims" class="text-xs text-gray-400 ml-1">loading...</span>
                 </button>
+
+                <div x-show="showAdvanced" x-cloak class="mt-4 space-y-4 p-5 bg-[#FAFAFA] dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <p class="text-xs text-gray-500">These details help generate more specific and accurate results.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="trim">Trim / Package</label>
+                            <select id="trim" x-model="trim" @change="onTrimChange"
+                                    :disabled="vehicleTrims.length === 0 && !loadingTrims"
+                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 shadow-sm">
+                                <option value="">Any</option>
+                                <template x-for="t in vehicleTrims" :key="t.value">
+                                    <option :value="t.value" x-text="t.label"></option>
+                                </template>
+                            </select>
+                            <p x-show="loadingTrims" class="text-xs text-gray-400 mt-1">Loading trims...</p>
+                            <p x-show="!loadingTrims && vehicleTrims.length === 0 && model" class="text-xs text-gray-400 mt-1">No specific trims found</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="engine">Engine</label>
+                            <select id="engine" x-model="engine"
+                                    :disabled="vehicleEngines.length === 0 && !loadingEngines"
+                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 shadow-sm">
+                                <option value="">Any</option>
+                                <template x-for="e in vehicleEngines" :key="e">
+                                    <option :value="e" x-text="e"></option>
+                                </template>
+                            </select>
+                            <p x-show="loadingEngines" class="text-xs text-gray-400 mt-1">Loading engines...</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="transmission">Transmission</label>
+                            <select id="transmission" x-model="transmission"
+                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                                <option value="">Any</option>
+                                <option value="Automatic">Automatic</option>
+                                <option value="Manual">Manual</option>
+                                <option value="CVT">CVT</option>
+                                <option value="DCT">Dual-Clutch (DCT)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="drivetrain">Drivetrain</label>
+                            <select id="drivetrain" x-model="drivetrain"
+                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                                <option value="">Any</option>
+                                <option value="FWD">Front-Wheel Drive (FWD)</option>
+                                <option value="RWD">Rear-Wheel Drive (RWD)</option>
+                                <option value="AWD">All-Wheel Drive (AWD)</option>
+                                <option value="4WD">Four-Wheel Drive (4WD)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </form>
-    </div>
 
-    <!-- Manual Search Form -->
-    <form x-show="searchMode === 'manual'" @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
-
-        <!-- Year -->
-        <div>
-            <label class="block text-sm font-medium mb-1" for="year">Year</label>
-            <select id="year" x-model="year" @change="onYearChange"
-                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition">
-                <option value="">Select year</option>
-                <template x-for="y in years" :key="y">
-                    <option :value="y" x-text="y"></option>
-                </template>
-            </select>
-        </div>
-
-        <!-- Make -->
-        <div>
-            <label class="block text-sm font-medium mb-1" for="make">Make</label>
-            <select id="make" x-model="make" @change="onMakeChange" :disabled="!year"
-                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
-                <option value="">Select make</option>
-                <template x-for="m in makes" :key="m">
-                    <option :value="m" x-text="m"></option>
-                </template>
-            </select>
-            <p x-show="loadingMakes" class="text-xs text-gray-500 mt-1">Loading makes...</p>
-        </div>
-
-        <!-- Model -->
-        <div>
-            <label class="block text-sm font-medium mb-1" for="model">Model</label>
-            <select id="model" x-model="model" @change="onModelChange" :disabled="!make"
-                    class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
-                <option value="">Select model</option>
-                <template x-for="m in models" :key="m">
-                    <option :value="m" x-text="m"></option>
-                </template>
-            </select>
-            <p x-show="loadingModels" class="text-xs text-gray-500 mt-1">Loading models...</p>
-        </div>
-
-        <!-- Mileage -->
-        <div>
-            <label class="block text-sm font-medium mb-1" for="mileage">
-                Mileage: <span class="font-bold text-brand-600 dark:text-brand-400" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
-            </label>
-            <input type="range" id="mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
-                   class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-brand-600">
-            <div class="flex items-center gap-3 mt-2">
-                <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
-                       class="w-36 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                <span class="text-sm text-gray-500">miles</span>
-            </div>
-        </div>
-
-        <!-- Advanced Options -->
-        <div>
-            <button type="button" @click="showAdvanced = !showAdvanced"
-                    class="flex items-center gap-2 text-sm font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition">
-                <svg :class="showAdvanced ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                Advanced Options
-                <span class="text-xs text-gray-400 font-normal">(optional)</span>
-                <span x-show="loadingTrims" class="text-xs text-gray-500 ml-1">loading...</span>
+            <button type="submit" :disabled="!canSubmit || analyzing"
+                    class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
+                <span x-show="!analyzing" class="flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Generate Report
+                </span>
+                <span x-show="analyzing" class="flex items-center justify-center gap-2">
+                    <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    Analyzing...
+                </span>
             </button>
+        </form>
 
-            <div x-show="showAdvanced" x-cloak class="mt-4 space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                <p class="text-xs text-gray-500 dark:text-gray-400">These details help generate more specific and accurate results.</p>
+        <!-- Progress Loader -->
+        <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden fade-in"
+             x-data="progressLoader()" @analysis-start.window="reset(); start()"
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- Trim -->
-                    <div>
-                        <label class="block text-sm font-medium mb-1" for="trim">Trim / Package</label>
-                        <select id="trim" x-model="trim" @change="onTrimChange"
-                                :disabled="vehicleTrims.length === 0 && !loadingTrims"
-                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
-                            <option value="">Any</option>
-                            <template x-for="t in vehicleTrims" :key="t.value">
-                                <option :value="t.value" x-text="t.label"></option>
-                            </template>
-                        </select>
-                        <p x-show="loadingTrims" class="text-xs text-gray-500 mt-1">Loading trims...</p>
-                        <p x-show="!loadingTrims && vehicleTrims.length === 0 && model" class="text-xs text-gray-400 mt-1">No specific trims found</p>
+            <!-- Dark header strip -->
+            <div class="bg-gradient-to-r from-[#111111] to-[#1a1a2e] px-6 py-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 rounded-lg bg-[#FFC700] flex items-center justify-center">
+                        <svg class="w-4 h-4 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     </div>
-
-                    <!-- Engine -->
                     <div>
-                        <label class="block text-sm font-medium mb-1" for="engine">Engine</label>
-                        <select id="engine" x-model="engine"
-                                :disabled="vehicleEngines.length === 0 && !loadingEngines"
-                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition disabled:opacity-50">
-                            <option value="">Any</option>
-                            <template x-for="e in vehicleEngines" :key="e">
-                                <option :value="e" x-text="e"></option>
-                            </template>
-                        </select>
-                        <p x-show="loadingEngines" class="text-xs text-gray-500 mt-1">Loading engines...</p>
+                        <h3 class="font-bold text-white text-base">Analyzing Your Vehicle</h3>
+                        <p class="text-xs text-gray-400" x-text="currentStep"></p>
                     </div>
+                </div>
 
-                    <!-- Transmission -->
-                    <div>
-                        <label class="block text-sm font-medium mb-1" for="transmission">Transmission</label>
-                        <select id="transmission" x-model="transmission"
-                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                            <option value="">Any</option>
-                            <option value="Automatic">Automatic</option>
-                            <option value="Manual">Manual</option>
-                            <option value="CVT">CVT</option>
-                            <option value="DCT">Dual-Clutch (DCT)</option>
-                        </select>
-                    </div>
-
-                    <!-- Drivetrain -->
-                    <div>
-                        <label class="block text-sm font-medium mb-1" for="drivetrain">Drivetrain</label>
-                        <select id="drivetrain" x-model="drivetrain"
-                                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
-                            <option value="">Any</option>
-                            <option value="FWD">Front-Wheel Drive (FWD)</option>
-                            <option value="RWD">Rear-Wheel Drive (RWD)</option>
-                            <option value="AWD">All-Wheel Drive (AWD)</option>
-                            <option value="4WD">Four-Wheel Drive (4WD)</option>
-                        </select>
-                    </div>
+                <!-- Progress bar -->
+                <div class="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-200 ease-out progress-bar-fill"
+                         :style="'width:' + progressPct + '%'"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Submit -->
-        <button type="submit" :disabled="!canSubmit || analyzing"
-                class="w-full py-3 px-6 rounded-lg font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed">
-            <span x-show="!analyzing">Generate Report</span>
-            <span x-show="analyzing" class="flex items-center justify-center gap-2">
-                <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                Analyzing...
-            </span>
-        </button>
-    </form>
-
-    <!-- Progress -->
-    <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 fade-in">
-        <h3 class="font-semibold text-lg mb-4">Analysis Progress</h3>
-        <div class="space-y-3">
-            <template x-for="(evt, i) in progressEvents" :key="i">
-                <div class="flex items-center gap-3">
-                    <span x-show="evt.status === 'scraping'" class="flex-shrink-0">
-                        <svg class="animate-spin h-5 w-5 text-brand-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    </span>
-                    <span x-show="evt.status === 'complete'" class="flex-shrink-0 text-green-500">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                    </span>
-                    <span x-show="evt.status === 'failed'" class="flex-shrink-0 text-red-500">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                    </span>
-                    <span x-show="evt.status === 'done'" class="flex-shrink-0 text-green-500">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    </span>
-                    <div>
-                        <span class="font-medium" x-text="evt.source"></span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-1" x-text="evt.message"></span>
-                    </div>
+            <!-- Steps list + fun message -->
+            <div class="px-6 py-5">
+                <div class="space-y-3 mb-4">
+                    <template x-for="(evt, i) in $parent.progressEvents" :key="i">
+                        <div class="flex items-center gap-3">
+                            <template x-if="evt.status === 'scraping'">
+                                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
+                                    <svg class="animate-spin h-3 w-3 text-[#CC9F00]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                </div>
+                            </template>
+                            <template x-if="evt.status === 'complete' || evt.status === 'done'">
+                                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                                    <svg class="h-3 w-3 text-green-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                </div>
+                            </template>
+                            <template x-if="evt.status === 'failed' || evt.status === 'error'">
+                                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                                    <svg class="h-3 w-3 text-red-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </div>
+                            </template>
+                            <div class="min-w-0">
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white" x-text="evt.source"></span>
+                                <span class="text-xs text-gray-400 ml-1.5" x-text="evt.message"></span>
+                            </div>
+                        </div>
+                    </template>
                 </div>
-            </template>
+                <p class="text-center text-sm text-gray-400 dark:text-gray-500 italic transition-opacity duration-300" x-text="funMessage"></p>
+            </div>
         </div>
     </div>
 </div>
@@ -419,6 +597,7 @@ function carForm() {
         async submit() {
             this.analyzing = true;
             this.progressEvents = [];
+            window.dispatchEvent(new Event('analysis-start'));
             try {
                 const resp = await fetch('/api/analyze', {
                     method: 'POST',
@@ -464,6 +643,97 @@ function carForm() {
                 this.analyzing = false;
                 alert('Request failed');
             }
+        }
+    };
+}
+
+function progressLoader() {
+    var funMessages = [
+        "Teaching our AI to read mechanic handwriting...",
+        "Checking under the hood... virtually, of course",
+        "Our hamsters are running extra fast today",
+        "Hunting for recalls like a detective on coffee",
+        "Crunching numbers harder than a pothole crunches rims",
+        "Cross-referencing with every complaint ever filed",
+        "Making sure no lemon slips through the cracks",
+        "Our AI is having a heated debate about your car",
+        "Scanning thousands of owner reports at light speed",
+        "Translating engineer-speak into human words...",
+        "Giving your car its annual performance review",
+        "If this were a mechanic, you'd be paying by the hour"
+    ];
+
+    var steps = [
+        { at: 0,  label: "Connecting to NHTSA database..." },
+        { at: 8,  label: "Fetching complaint records..." },
+        { at: 18, label: "Scanning owner-reported problems..." },
+        { at: 28, label: "Analyzing complaint patterns..." },
+        { at: 38, label: "Looking up recall history..." },
+        { at: 48, label: "Cross-referencing bulk statistics..." },
+        { at: 58, label: "Calculating risk scores..." },
+        { at: 68, label: "Generating AI-powered verdict..." },
+        { at: 78, label: "Building inspection checklist..." },
+        { at: 88, label: "Finalizing your report..." }
+    ];
+
+    return {
+        funMessage: '',
+        progressPct: 20,
+        currentStep: steps[0].label,
+        _msgIdx: 0,
+        _timer: null,
+        _msgTimer: null,
+        _targetPct: 20,
+
+        reset() {
+            if (this._timer) clearInterval(this._timer);
+            if (this._msgTimer) clearInterval(this._msgTimer);
+            this._timer = null;
+            this._msgTimer = null;
+            this.progressPct = 20;
+            this._targetPct = 20;
+            this.currentStep = steps[0].label;
+            this.funMessage = '';
+        },
+
+        start() {
+            var self = this;
+            self._msgIdx = Math.floor(Math.random() * funMessages.length);
+            self.funMessage = funMessages[self._msgIdx];
+
+            self._timer = setInterval(function() {
+                var evts = self.$parent ? self.$parent.progressEvents : [];
+                var completed = evts.filter(function(e) {
+                    return e.status === 'complete' || e.status === 'done';
+                }).length;
+                var totalSteps = 4;
+                var eventTarget = Math.min(95, (completed / totalSteps) * 85 + 10);
+                self._targetPct = Math.max(self._targetPct, eventTarget);
+
+                if (self.progressPct < self._targetPct) {
+                    self.progressPct = Math.min(self._targetPct, self.progressPct + 3);
+                } else if (self.progressPct < 95) {
+                    self.progressPct = Math.min(95, self.progressPct + 0.3);
+                    self._targetPct = Math.max(self._targetPct, self.progressPct);
+                }
+
+                for (var i = steps.length - 1; i >= 0; i--) {
+                    if (self.progressPct >= steps[i].at) {
+                        self.currentStep = steps[i].label;
+                        break;
+                    }
+                }
+            }, 200);
+
+            self._msgTimer = setInterval(function() {
+                self._msgIdx = (self._msgIdx + 1) % funMessages.length;
+                self.funMessage = funMessages[self._msgIdx];
+            }, 4500);
+        },
+
+        destroy() {
+            if (this._timer) clearInterval(this._timer);
+            if (this._msgTimer) clearInterval(this._msgTimer);
         }
     };
 }
