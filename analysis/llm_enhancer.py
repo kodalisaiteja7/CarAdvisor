@@ -392,7 +392,6 @@ def enhance_report_sections(
     sections = report.get("sections", {})
     vs = sections.get("vehicle_summary", {})
     cr = sections.get("current_risk", {})
-    rf = sections.get("red_flags", {})
     oe = sections.get("owner_experience", {})
 
     top_issues_detail = [
@@ -407,16 +406,10 @@ def enhance_report_sections(
         for i in cr.get("top_issues", [])[:5]
     ]
 
-    catastrophic = [
-        {
-            "system": c.get("system"),
-            "description": c.get("description", "")[:200],
-            "severity": c.get("severity"),
-            "safety_impact": c.get("safety_impact"),
-            "complaint_count": c.get("complaint_count", 0),
-        }
-        for c in rf.get("catastrophic_failures", [])[:5]
-    ]
+    severe_issues = [
+        i for i in cr.get("top_issues", [])
+        if i.get("severity", 0) >= 8
+    ][:5]
 
     owner_reports = [
         r[:200] for r in oe.get("sample_reports", [])[:8]
@@ -424,7 +417,7 @@ def enhance_report_sections(
 
     recalls_brief = [
         {"component": r.get("component"), "summary": r.get("summary", "")[:100]}
-        for r in rf.get("open_recalls", [])[:3]
+        for r in vs.get("recalls", [])[:3]
     ]
 
     mileage = vehicle.get("mileage", 0)
@@ -440,11 +433,18 @@ def enhance_report_sections(
         "phase_distribution": phase_summary,
         "total_complaints": vs.get("total_complaints"),
         "total_recalls": vs.get("total_recalls"),
-        "top_issues": top_issues_detail,
-        "catastrophic_failures": catastrophic,
-        "owner_reports": owner_reports,
         "open_recalls": recalls_brief,
     }
+
+    if risk_score > 40:
+        context["top_issues"] = top_issues_detail
+        context["severe_issues"] = severe_issues
+        context["owner_reports"] = owner_reports
+    elif risk_score >= 20:
+        context["top_issues"] = [
+            {"system": i["system"], "complaint_count": i["complaint_count"]}
+            for i in top_issues_detail[:3]
+        ]
 
     rag_section = ""
     if bulk_stats:
@@ -454,9 +454,66 @@ def enhance_report_sections(
         interp = bulk_stats.get("interpretation", "")
         rag_section = (
             f"\nComplaint context: {tc} NHTSA complaints ({pct:.0f}th percentile, "
-            f"average is {avg:.0f}). {interp}. "
-            f"Crash rate: {bulk_stats.get('crash_rate', 0):.1%}, "
-            f"fire rate: {bulk_stats.get('fire_rate', 0):.1%}.\n"
+            f"average is {avg:.0f}). {interp}.\n"
+        )
+
+    if risk_score > 40:
+        tone_rules = """TONE RULES (HIGH RISK — strictly follow):
+- This vehicle is HIGH RISK. Be direct about the problems.
+- Reference SPECIFIC failure modes from owner reports (e.g. "connecting rod bearing wear", "steering lock-up") rather than generic system names.
+- Mention complaint counts for the worst systems.
+- The buyer needs to understand exactly what they're getting into."""
+        summary_instruction = (
+            '"executive_summary" — 3-4 sentences. Start by clearly stating this is a risky buy. '
+            'Reference SPECIFIC failure modes from owner reports with complaint counts. '
+            'End with a clear recommendation (look elsewhere, or budget heavily for repairs). '
+            'Talk directly to the buyer. No numeric scores or letter grades.'
+        )
+        reasoning_instruction = (
+            '"verdict_reasoning" — Array of 3-5 short bullet strings explaining WHY. '
+            'Each bullet MUST cite specific failure types from the owner reports and complaint data '
+            '(not just "engine issues" — say what the actual failures are). '
+            'Include complaint counts, recall status, and one bullet about mileage impact.'
+        )
+    elif risk_score >= 20:
+        tone_rules = """TONE RULES (FAIR RISK — strictly follow):
+- This vehicle is a FAIR buy — not perfect, but not a dealbreaker.
+- Do NOT list out every problem. Instead, briefly mention 1-2 areas to watch (e.g., "proceed with caution on potential engine concerns").
+- Keep the tone balanced and encouraging — the buyer should feel informed, not scared.
+- Focus on what makes it a reasonable choice and what to keep an eye on."""
+        summary_instruction = (
+            '"executive_summary" — 3-4 sentences. Start by saying this is a fair/reasonable buy. '
+            'Briefly mention 1-2 areas to be cautious about (e.g., "keep an eye on engine health") '
+            'without listing specific failure modes or complaint counts. '
+            'End with a positive recommendation to proceed with a pre-purchase inspection. '
+            'Talk directly to the buyer. No numeric scores or letter grades.'
+        )
+        reasoning_instruction = (
+            '"verdict_reasoning" — Array of 3-5 short bullet strings explaining WHY. '
+            'Keep bullets balanced — mention positives (mileage, recalls addressed, etc.) alongside '
+            '1-2 areas of caution. Do NOT list out all problems or complaint counts for every system. '
+            'Include one bullet about mileage impact.'
+        )
+    else:
+        tone_rules = """TONE RULES (LOW RISK — STRICTLY follow, this is CRITICAL):
+- This vehicle is a GOOD buy. Your verdict MUST be positive and reassuring.
+- ABSOLUTELY DO NOT mention ANY specific problems, failure modes, system issues, or complaint counts. Not even as "things to watch."
+- NEVER reference brake issues, engine problems, electrical concerns, or ANY specific component failures.
+- The buyer should walk away feeling CONFIDENT about this purchase.
+- Focus ONLY on positives: low risk score, favorable mileage, well-suited for purchase, good value.
+- The ONLY caveat you may include is a standard recommendation for a pre-purchase inspection (which applies to ANY used car)."""
+        summary_instruction = (
+            '"executive_summary" — 3-4 sentences. Start by confidently stating this is a good buy. '
+            'Highlight ONLY positives: low risk profile, favorable mileage, solid choice. '
+            'NEVER mention any specific problems, complaints, systems, or failure modes. '
+            'End with an encouraging recommendation to buy with confidence. '
+            'Talk directly to the buyer. No numeric scores or letter grades.'
+        )
+        reasoning_instruction = (
+            '"verdict_reasoning" — Array of 3-4 short bullet strings explaining WHY this is a good buy. '
+            'ONLY mention positives: low risk score, mileage advantage, overall reliability. '
+            'NEVER mention specific problems, failure types, or complaint counts for any system. '
+            'Include one bullet about how the mileage works in the buyer\'s favor.'
         )
 
     prompt = f"""You are an expert automotive advisor helping a car buyer evaluate a used {_vehicle_str(vehicle)}.
@@ -469,6 +526,8 @@ MILEAGE RULES (strictly follow):
 - "Upcoming" issues on a low-mileage car are FUTURE concerns, not current problems. This is positive.
 - "Past" issues on a high-mileage car represent accumulated wear.
 
+{tone_rules}
+
 Phase distribution: {json.dumps(phase_summary)}
 (past = already through that failure zone, current = in the zone, upcoming = approaching, future = far away)
 {rag_section}
@@ -477,9 +536,9 @@ Vehicle data:
 
 Return ONLY a valid JSON object with exactly these two keys:
 
-1. "executive_summary" — 3-4 sentences. Start with the overall assessment (good/fair/risky buy). Reference SPECIFIC failure modes from owner reports (e.g. "connecting rod bearing wear", "steering lock-up") rather than generic system names. Mention complaint counts for the worst systems. End with a clear recommendation. Talk directly to the buyer. No numeric scores or letter grades.
+1. {summary_instruction}
 
-2. "verdict_reasoning" — Array of 3-5 short bullet strings explaining WHY. Each bullet MUST cite specific failure types from the owner reports and complaint data (not just "engine issues" — say what the actual failures are). Include complaint counts, recall status, and one bullet about mileage impact."""
+2. {reasoning_instruction}"""
 
     text = _llm_call(prompt, max_tokens=1024)
 

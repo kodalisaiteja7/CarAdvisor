@@ -13,7 +13,6 @@ from flask import Flask, Response, jsonify, render_template, request
 from config.settings import FLASK_SECRET_KEY
 from database.models import init_db
 from scrapers.nhtsa import NHTSAScraper
-from scrapers.carcomplaints import CarComplaintsScraper
 from analysis.aggregator import aggregate
 from analysis.mileage_model import analyze_mileage
 from analysis.scorer import score_vehicle
@@ -32,11 +31,11 @@ app.secret_key = FLASK_SECRET_KEY
 _reports: dict[str, dict] = {}
 _progress: dict[str, list[dict]] = {}
 _traces: dict[str, dict] = {}
+_vehicle_cache: dict[str, str] = {}  # cache_key → report_id
 
 
 SCRAPERS = [
     ("NHTSA", NHTSAScraper),
-    ("CarComplaints", CarComplaintsScraper),
 ]
 
 
@@ -160,8 +159,8 @@ def _ensure_safety_score(report: dict):
 
 
 def _strip_extra_llm_content(report: dict):
-    """Remove LLM-generated fields from all sections except Buyer's Verdict
-    and Inspection Checklist, ensuring only those two use AI text."""
+    """Remove LLM-generated fields from sections except Buyer's Verdict
+    and Inspection Checklist, and drop removed sections from legacy cache."""
     sections = report.get("sections", {})
 
     for issue in sections.get("current_risk", {}).get("top_issues", []):
@@ -169,31 +168,34 @@ def _strip_extra_llm_content(report: dict):
         issue.pop("what_to_listen_for", None)
         issue.pop("llm_enhanced", None)
 
-    for window in sections.get("future_forecast", {}).get("forecast_windows", []):
-        window.pop("narrative", None)
-        window.pop("llm_enhanced", None)
-
     oe = sections.get("owner_experience", {})
     oe.pop("owner_themes", None)
 
-    rf = sections.get("red_flags", {})
-    rf.pop("llm_enhanced", None)
-    rf["recommendations"] = [
-        "Run a VIN check to verify all recalls have been completed",
-        "Request a pre-purchase inspection from an independent mechanic",
-        "Check for signs of flood damage (musty smell, water lines, corroded electronics)",
-        "Verify the odometer reading matches service history",
-    ]
-
-    neg = sections.get("negotiation", {})
-    neg.pop("llm_enhanced", None)
-    for tp in neg.get("talking_points", []):
-        tp.pop("script", None)
+    sections.pop("future_forecast", None)
+    sections.pop("red_flags", None)
+    sections.pop("negotiation", None)
 
 
 # ------------------------------------------------------------------
 # API
 # ------------------------------------------------------------------
+
+
+@app.route("/api/vin-decode")
+def api_vin_decode():
+    """Decode a VIN using the NHTSA vPIC API and return vehicle details."""
+    vin = (request.args.get("vin") or "").strip()
+    if not vin or len(vin) < 11:
+        return jsonify({"error": "Please enter a valid VIN (at least 11 characters)"}), 400
+
+    try:
+        result = _decode_vin(vin)
+        if not result:
+            return jsonify({"error": "Could not decode VIN. Please check and try again."}), 404
+        return jsonify(result)
+    except Exception as exc:
+        logger.warning("VIN decode failed for %s: %s", vin, exc)
+        return jsonify({"error": "VIN decode service unavailable. Please try again or enter details manually."}), 503
 
 
 @app.route("/api/years")
@@ -280,12 +282,23 @@ def api_analyze():
         "drivetrain": (data.get("drivetrain") or "").strip() or None,
     }
 
+    cache_key = _make_cache_key(make, model, year, mileage, options)
+    cached_id = _vehicle_cache.get(cache_key)
+    if cached_id and cached_id in _reports:
+        report_id = cached_id
+        _progress[report_id] = [
+            {"source": "Cache", "status": "complete", "message": "Report loaded from cache"},
+            {"source": "system", "status": "done", "message": report_id},
+        ]
+        logger.info("Cache hit for %s — returning report %s", cache_key, report_id)
+        return jsonify({"report_id": report_id, "cached": True})
+
     report_id = str(uuid.uuid4())[:8]
     _progress[report_id] = []
 
     thread = Thread(
         target=_run_analysis,
-        args=(report_id, make, model, year, mileage, options),
+        args=(report_id, make, model, year, mileage, options, cache_key),
         daemon=True,
     )
     thread.start()
@@ -348,6 +361,20 @@ def trace_page(report_id: str):
 # ------------------------------------------------------------------
 
 
+def _make_cache_key(
+    make: str, model: str, year: int, mileage: int, options: dict,
+) -> str:
+    """Build a deterministic cache key from vehicle parameters."""
+    parts = [
+        make.upper(), model.upper(), str(year), str(mileage),
+        (options.get("trim") or "").upper(),
+        (options.get("engine") or "").upper(),
+        (options.get("transmission") or "").upper(),
+        (options.get("drivetrain") or "").upper(),
+    ]
+    return "|".join(parts)
+
+
 def _emit(report_id: str, source: str, status: str, message: str = ""):
     _progress.setdefault(report_id, []).append({
         "source": source,
@@ -358,7 +385,7 @@ def _emit(report_id: str, source: str, status: str, message: str = ""):
 
 def _run_analysis(
     report_id: str, make: str, model: str, year: int, mileage: int,
-    options: dict | None = None,
+    options: dict | None = None, cache_key: str | None = None,
 ):
     """Run scraping + analysis in a background thread."""
     options = options or {}
@@ -434,6 +461,9 @@ def _run_analysis(
         _emit(report_id, "AI Insights", "complete", "AI insights generated")
 
         _reports[report_id] = report
+        if cache_key:
+            _vehicle_cache[cache_key] = report_id
+            logger.info("Cached report %s under key %s", report_id, cache_key)
         finished_trace = end_trace()
         if finished_trace:
             _traces[report_id] = finished_trace.to_dict()
@@ -532,6 +562,101 @@ def _fetch_engines(year: int, make: str, trim_variant: str) -> list[str]:
         if engine:
             engines.add(engine)
     return sorted(engines)
+
+
+# ------------------------------------------------------------------
+# VIN decoder helper
+# ------------------------------------------------------------------
+
+_VIN_DECODE_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues"
+
+
+def _decode_vin(vin: str) -> dict | None:
+    """Call NHTSA vPIC to decode a VIN into year/make/model/trim/engine."""
+    import requests as http_client
+
+    resp = http_client.get(
+        f"{_VIN_DECODE_URL}/{vin}",
+        params={"format": "json"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    results = data.get("Results", [])
+    if not results:
+        return None
+    r = results[0]
+
+    error_code = r.get("ErrorCode", "")
+    error_codes = [c.strip() for c in str(error_code).split(",") if c.strip()]
+    if error_codes == ["6"]:
+        return None
+
+    make = (r.get("Make") or "").strip()
+    model = (r.get("Model") or "").strip()
+    year = (r.get("ModelYear") or "").strip()
+    if not make or not model or not year:
+        return None
+
+    displacement = r.get("DisplacementL") or ""
+    cylinders = r.get("EngineCylinders") or ""
+    engine_parts = []
+    if displacement:
+        try:
+            engine_parts.append(f"{float(displacement):.1f}L")
+        except (ValueError, TypeError):
+            pass
+    if cylinders:
+        engine_parts.append(f"{cylinders}-cyl")
+    turbo = (r.get("Turbo") or "").strip()
+    if turbo and turbo.lower() not in ("", "no"):
+        engine_parts.append("Turbo")
+    supercharger = (r.get("OtherEngineInfo") or "").strip()
+    if "supercharg" in supercharger.lower():
+        engine_parts.append("Supercharged")
+
+    fuel = (r.get("FuelTypePrimary") or "").strip()
+    if fuel and fuel.lower() not in ("gasoline", ""):
+        engine_parts.append(fuel)
+
+    drive_type = (r.get("DriveType") or "").strip()
+    drivetrain = ""
+    dl = drive_type.lower()
+    if "front" in dl:
+        drivetrain = "FWD"
+    elif "rear" in dl:
+        drivetrain = "RWD"
+    elif "all" in dl:
+        drivetrain = "AWD"
+    elif "4" in dl:
+        drivetrain = "4WD"
+
+    trans = (r.get("TransmissionStyle") or "").strip()
+    transmission = ""
+    tl = trans.lower()
+    if "automatic" in tl:
+        transmission = "Automatic"
+    elif "manual" in tl:
+        transmission = "Manual"
+    elif "cvt" in tl or "continuously" in tl:
+        transmission = "CVT"
+    elif "dual" in tl or "dct" in tl:
+        transmission = "DCT"
+
+    return {
+        "vin": vin,
+        "year": year,
+        "make": make.upper(),
+        "model": model.upper(),
+        "trim": (r.get("Trim") or "").strip(),
+        "engine": " ".join(engine_parts) if engine_parts else "",
+        "transmission": transmission,
+        "drivetrain": drivetrain,
+        "body_class": (r.get("BodyClass") or "").strip(),
+        "vehicle_type": (r.get("VehicleType") or "").strip(),
+        "plant_country": (r.get("PlantCountry") or "").strip(),
+    }
 
 
 # ------------------------------------------------------------------

@@ -44,6 +44,11 @@ DEFAULT_REPAIR_COSTS = {
     "Cooling": (400, 1200),
 }
 
+SYSTEM_CRITICALITY = {
+    "Engine": 1.4,
+    "Transmission": 1.2
+}
+
 
 @dataclass
 class ScoredProblem:
@@ -140,12 +145,15 @@ def _score_single(
         + w["repair_cost"] * cost_norm
     )
 
+    system_crit = SYSTEM_CRITICALITY.get(p.category, 1.0)
+    raw *= system_crit
+
     phase_multiplier = {
-        MileagePhase.CURRENT: 1.0,
-        MileagePhase.UPCOMING: 0.7,
-        MileagePhase.PAST: 0.95,
-        MileagePhase.FUTURE: 0.25,
-        MileagePhase.UNKNOWN: 0.45,
+        MileagePhase.CURRENT: 1.2,
+        MileagePhase.UPCOMING: 0.8,
+        MileagePhase.PAST: 1.0,
+        MileagePhase.FUTURE: 0.5,
+        MileagePhase.UNKNOWN: 0.6,
     }
     raw *= phase_multiplier.get(cp.phase, 1.0)
     raw *= cp.relevance_score
@@ -156,12 +164,11 @@ def _score_single(
 def _mileage_wear_factor(mileage: int) -> float:
     """Higher mileage = more accumulated wear = higher baseline risk.
 
-    A used car at 120k miles has been through more failure zones than one
-    at 30k, so the overall risk must reflect that cumulative exposure even
-    if specific problem windows are now in the past.
+    Range: ~0.5x at 0 miles to ~2.0x at 150k+ miles.
+    This makes the same vehicle score roughly 3-4x higher at 150k vs 30k.
     """
-    factor = 0.6 + 0.6 * min(1.5, mileage / 120_000)
-    return round(min(1.5, factor), 3)
+    factor = 0.5 + 1.5 * min(1.0, mileage / 150_000)
+    return round(min(2.0, factor), 3)
 
 
 def _compute_inherent_risk(scored: list[ScoredProblem], mileage: int) -> float:
@@ -181,21 +188,44 @@ def _compute_inherent_risk(scored: list[ScoredProblem], mileage: int) -> float:
         return 0.0
 
     raw_severities = []
+    total_complaints = 0
     for sp in scored:
         p = sp.classified.problem
-        sev = (p.severity * 0.4
-               + p.safety_impact * 0.3
-               + min(10.0, p.complaint_count / 30) * 0.3)
+        crit = SYSTEM_CRITICALITY.get(p.category, 1.0)
+        sev = (p.severity * 0.3
+               + p.safety_impact * 0.2
+               + min(10.0, p.complaint_count / 20) * 0.3
+               + crit * 2.0 * 0.2)
         raw_severities.append(sev)
+        total_complaints += p.complaint_count
 
     raw_severities.sort(reverse=True)
     top_n = raw_severities[:min(10, len(raw_severities))]
     avg_severity = sum(top_n) / len(top_n)
 
-    mileage_ratio = 1.0 + min(2.0, mileage / 100_000)
-    floor = avg_severity * 4.0 * (mileage_ratio ** 1.5)
+    volume_boost = min(2.0, (total_complaints / 50) ** 0.5)
 
-    return min(80.0, floor)
+    mileage_ratio = 1.0 + min(2.0, mileage / 100_000)
+    floor = avg_severity * 4.0 * volume_boost * (mileage_ratio ** 1.3)
+
+    return min(85.0, floor)
+
+
+def _mileage_baseline(mileage: int) -> float:
+    """Direct mileage-based risk floor.
+
+    Even a perfectly reliable model carries inherent wear risk at high mileage.
+    Returns 0 at 0 miles, scaling up to ~20 at 150k+.
+    """
+    if mileage <= 30_000:
+        return 0.0
+    if mileage <= 60_000:
+        return 5.0 * ((mileage - 30_000) / 30_000)
+    if mileage <= 100_000:
+        return 5.0 + 7.0 * ((mileage - 60_000) / 40_000)
+    if mileage <= 150_000:
+        return 12.0 + 8.0 * ((mileage - 100_000) / 50_000)
+    return 20.0
 
 
 def _letter_grade(score: float) -> str:
@@ -296,6 +326,9 @@ def score_vehicle(
 
     top_10 = scored[:10]
 
+    mileage = mileage_analysis.mileage
+    mileage_baseline = _mileage_baseline(mileage)
+
     if scored:
         top_n = min(15, len(scored))
         top_scores = [s.weighted_score for s in scored[:top_n]]
@@ -308,15 +341,16 @@ def score_vehicle(
         })
         source_factor = min(1.3, 0.7 + source_count * 0.15)
 
-        mileage_factor = _mileage_wear_factor(mileage_analysis.mileage)
+        mileage_factor = _mileage_wear_factor(mileage)
         risk = weighted_avg * 10 * source_factor * mileage_factor
 
-        inherent_floor = _compute_inherent_risk(scored, mileage_analysis.mileage)
+        inherent_floor = _compute_inherent_risk(scored, mileage)
         risk = max(risk, inherent_floor)
 
+        risk = max(risk, mileage_baseline)
         risk = min(100.0, risk)
     else:
-        risk = 0.0
+        risk = mileage_baseline
 
     safety = _compute_safety_score(scored, num_recalls)
 

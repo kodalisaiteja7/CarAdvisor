@@ -21,8 +21,93 @@
     </div>
     {% endif %}
 
-    <!-- Form -->
-    <form @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
+    <!-- Search mode toggle -->
+    <div class="flex justify-center mb-6">
+        <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-700/50">
+            <button type="button" @click="searchMode = 'manual'"
+                    :class="searchMode === 'manual' ? 'bg-white dark:bg-gray-800 shadow-sm text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-2 rounded-md text-sm transition">
+                Search by Vehicle
+            </button>
+            <button type="button" @click="searchMode = 'vin'"
+                    :class="searchMode === 'vin' ? 'bg-white dark:bg-gray-800 shadow-sm text-brand-600 dark:text-brand-400 font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                    class="px-4 py-2 rounded-md text-sm transition">
+                Search by VIN
+            </button>
+        </div>
+    </div>
+
+    <!-- VIN Search Form -->
+    <div x-show="searchMode === 'vin'" x-cloak>
+        <form @submit.prevent="decodeVin" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
+            <div>
+                <label class="block text-sm font-medium mb-1" for="vin-input">Vehicle Identification Number (VIN)</label>
+                <div class="flex gap-3">
+                    <input type="text" id="vin-input" x-model="vinInput" maxlength="17" placeholder="e.g. 1HGBH41JXMN109186"
+                           class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 font-mono tracking-wider uppercase focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition placeholder:text-gray-400 placeholder:tracking-normal placeholder:font-sans placeholder:normal-case">
+                    <button type="submit" :disabled="vinInput.length < 11 || decodingVin"
+                            class="px-5 py-2.5 rounded-lg font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                        <span x-show="!decodingVin">Decode</span>
+                        <span x-show="decodingVin" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                            Decoding...
+                        </span>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Find the VIN on the driver's side dashboard or door jamb sticker</p>
+            </div>
+
+            <!-- VIN decode error -->
+            <div x-show="vinError" x-cloak class="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm" x-text="vinError"></div>
+
+            <!-- VIN decode result -->
+            <div x-show="vinDecoded" x-cloak class="space-y-4">
+                <div class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <div class="flex items-center gap-2 mb-3">
+                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span class="font-semibold text-green-800 dark:text-green-300">Vehicle Found</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                        <div><span class="text-gray-500 dark:text-gray-400">Year:</span> <span class="font-medium" x-text="year"></span></div>
+                        <div><span class="text-gray-500 dark:text-gray-400">Make:</span> <span class="font-medium" x-text="make"></span></div>
+                        <div><span class="text-gray-500 dark:text-gray-400">Model:</span> <span class="font-medium" x-text="model"></span></div>
+                        <div x-show="trim"><span class="text-gray-500 dark:text-gray-400">Trim:</span> <span class="font-medium" x-text="trim"></span></div>
+                        <div x-show="engine"><span class="text-gray-500 dark:text-gray-400">Engine:</span> <span class="font-medium" x-text="engine"></span></div>
+                        <div x-show="transmission"><span class="text-gray-500 dark:text-gray-400">Trans:</span> <span class="font-medium" x-text="transmission"></span></div>
+                        <div x-show="drivetrain"><span class="text-gray-500 dark:text-gray-400">Drive:</span> <span class="font-medium" x-text="drivetrain"></span></div>
+                        <div x-show="vinBodyClass"><span class="text-gray-500 dark:text-gray-400">Body:</span> <span class="font-medium" x-text="vinBodyClass"></span></div>
+                    </div>
+                </div>
+
+                <!-- Mileage input after VIN decode -->
+                <div>
+                    <label class="block text-sm font-medium mb-1" for="vin-mileage">
+                        Mileage: <span class="font-bold text-brand-600 dark:text-brand-400" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
+                    </label>
+                    <input type="range" id="vin-mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
+                           class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-brand-600">
+                    <div class="flex items-center gap-3 mt-2">
+                        <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
+                               class="w-36 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500">
+                        <span class="text-sm text-gray-500">miles</span>
+                    </div>
+                </div>
+
+                <!-- Generate Report button -->
+                <button type="button" @click="submit" :disabled="!canSubmit || analyzing"
+                        class="w-full py-3 px-6 rounded-lg font-semibold text-white bg-brand-600 hover:bg-brand-700 focus:ring-4 focus:ring-brand-500/50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!analyzing">Generate Report</span>
+                    <span x-show="analyzing" class="flex items-center justify-center gap-2">
+                        <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        Analyzing...
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Manual Search Form -->
+    <form x-show="searchMode === 'manual'" @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 sm:p-8 space-y-6">
 
         <!-- Year -->
         <div>
@@ -190,6 +275,7 @@
 <script>
 function carForm() {
     return {
+        searchMode: 'manual',
         year: '',
         make: '',
         model: '',
@@ -211,6 +297,12 @@ function carForm() {
         analyzing: false,
         progressEvents: [],
 
+        vinInput: '',
+        decodingVin: false,
+        vinDecoded: false,
+        vinError: '',
+        vinBodyClass: '',
+
         get canSubmit() {
             return this.year && this.make && this.model && this.mileage > 0;
         },
@@ -222,6 +314,39 @@ function carForm() {
             } catch (e) {
                 this.years = Array.from({length: 27}, (_, i) => 2026 - i);
             }
+        },
+
+        async decodeVin() {
+            const vin = this.vinInput.trim();
+            if (vin.length < 11) return;
+
+            this.decodingVin = true;
+            this.vinError = '';
+            this.vinDecoded = false;
+
+            try {
+                const resp = await fetch(`/api/vin-decode?vin=${encodeURIComponent(vin)}`);
+                const data = await resp.json();
+                if (data.error) {
+                    this.vinError = data.error;
+                    this.decodingVin = false;
+                    return;
+                }
+
+                this.year = data.year || '';
+                this.make = data.make || '';
+                this.model = data.model || '';
+                this.trim = data.trim || '';
+                this.engine = data.engine || '';
+                this.transmission = data.transmission || '';
+                this.drivetrain = data.drivetrain || '';
+                this.vinBodyClass = data.body_class || '';
+                this.vinDecoded = true;
+            } catch (e) {
+                console.error(e);
+                this.vinError = 'Failed to decode VIN. Please try again or enter details manually.';
+            }
+            this.decodingVin = false;
         },
 
         _resetAdvanced() {

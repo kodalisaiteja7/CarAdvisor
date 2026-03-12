@@ -9,7 +9,6 @@ import sys
 
 from database.models import init_db
 from scrapers.nhtsa import NHTSAScraper
-from scrapers.carcomplaints import CarComplaintsScraper
 from analysis.aggregator import aggregate
 from analysis.mileage_model import analyze_mileage
 from analysis.scorer import score_vehicle
@@ -23,7 +22,6 @@ logger = logging.getLogger("car_advisor")
 
 SCRAPERS = [
     ("NHTSA", NHTSAScraper),
-    ("CarComplaints", CarComplaintsScraper),
 ]
 
 

@@ -74,10 +74,7 @@
         ("summary", "Overview"),
         ("checklist", "Inspection Guide"),
         ("risk", "Known Issues"),
-        ("forecast", "Cost Forecast"),
-        ("experience", "Owner Reviews"),
-        ("redflags", "Red Flags"),
-        ("negotiation", "Price Negotiation"),
+        ("experience", "Owner Complaints")
     ] %}
     <div class="flex overflow-x-auto gap-1 mb-6 border-b border-gray-200 dark:border-gray-700 pb-px scrollbar-hide print-hide">
         {% for id, label in sections %}
@@ -454,47 +451,6 @@
     </section>
 
     <!-- ============================================================= -->
-    <!-- Section 4: Future Forecast -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'forecast'" x-cloak class="fade-in space-y-6 print-section">
-        {% set ff = report.sections.future_forecast %}
-
-        {% for window in ff.forecast_windows %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-                <div class="flex items-center gap-2">
-                    <h2 class="text-xl font-bold">{{ window.window_label }}</h2>
-                    
-                </div>
-                {% if window.estimated_total_cost %}
-                <span class="text-lg font-bold text-red-600 dark:text-red-400">{{ window.estimated_total_cost }}</span>
-                {% endif %}
-            </div>
-
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Predicted issues by {{ "{:,}".format(window.target_mileage) }} miles</p>
-            {% if window.predicted_issues %}
-            <div class="space-y-3">
-                {% for pi in window.predicted_issues %}
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg gap-2">
-                    <div class="min-w-0">
-                        <span class="font-medium">{{ pi.system }}</span>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ pi.description }}</p>
-                        <p class="text-xs text-gray-400 mt-1">Expected at {{ pi.expected_mileage }} miles &middot; {{ pi.complaint_count }} report{{ "s" if pi.complaint_count != 1 }}</p>
-                    </div>
-                    {% if pi.estimated_cost %}
-                    <span class="text-sm font-semibold text-red-600 dark:text-red-400 whitespace-nowrap flex-shrink-0">{{ pi.estimated_cost }}</span>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="text-gray-400 italic">No specific issues predicted in this window based on current data.</p>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </section>
-
-    <!-- ============================================================= -->
     <!-- Section 5: Owner Experience -->
     <!-- ============================================================= -->
     <section x-show="openSection === 'experience'" x-cloak class="fade-in space-y-6 print-section">
@@ -529,142 +485,6 @@
         </div>
     </section>
 
-    <!-- ============================================================= -->
-    <!-- Section 6: Red Flags -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'redflags'" x-cloak class="fade-in space-y-6 print-section">
-        {% set rf = report.sections.red_flags %}
-
-        {% if not rf.catastrophic_failures and not rf.open_recalls %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-8 text-center">
-            <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-            <h3 class="text-lg font-semibold mb-1">No Red Flags Detected</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400">No catastrophic failure risks or open recalls were found for this vehicle. Standard inspection is still recommended.</p>
-        </div>
-        {% endif %}
-
-        {% if rf.catastrophic_failures %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-xl font-bold mb-4 text-red-600 dark:text-red-400 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-                Major Failure Risks
-            </h2>
-            <div class="space-y-4">
-            {% for cf in rf.catastrophic_failures %}
-            <div class="p-4 border-2 border-red-300 dark:border-red-700 rounded-lg bg-red-50/50 dark:bg-red-900/10">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                    <span class="font-bold text-lg">{{ cf.system }}</span>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        {% if cf.severity >= 8 %}
-                        <span class="text-xs px-3 py-1 rounded-full bg-red-600 text-white font-semibold">Critical</span>
-                        {% elif cf.severity >= 6 %}
-                        <span class="text-xs px-3 py-1 rounded-full bg-orange-500 text-white font-semibold">Severe</span>
-                        {% else %}
-                        <span class="text-xs px-3 py-1 rounded-full bg-yellow-500 text-white font-semibold">Warning</span>
-                        {% endif %}
-                        {% if cf.safety_impact is defined and cf.safety_impact >= 7 %}
-                        <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-medium flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                            Safety
-                        </span>
-                        {% endif %}
-                    </div>
-                </div>
-                <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ cf.description }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{ cf.complaint_count }} complaint{{ "s" if cf.complaint_count != 1 }} filed</p>
-            </div>
-            {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if rf.open_recalls %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-4">Open Recalls to Verify</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-3 break-words">
-                Verify via VIN check that these recalls have been completed on the specific vehicle:
-            </p>
-            {% for r in rf.open_recalls %}
-            <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/10 rounded-lg border border-red-200 dark:border-red-800">
-                <span class="font-medium break-words">{{ r.component }}</span>
-                <p class="text-sm text-gray-600 dark:text-gray-400 break-words mt-1">{{ r.summary }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex items-center gap-2 mb-4">
-                <h2 class="text-lg font-bold">Recommendations</h2>
-                
-            </div>
-            <ul class="space-y-3">
-                {% for rec in rf.recommendations %}
-                <li class="flex items-start gap-3">
-                    <svg class="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span class="break-words">{{ rec }}</span>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-    </section>
-
-    <!-- ============================================================= -->
-    <!-- Section 7: Negotiation Ammunition -->
-    <!-- ============================================================= -->
-    <section x-show="openSection === 'negotiation'" x-cloak class="fade-in space-y-6 print-section">
-        {% set neg = report.sections.negotiation %}
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <h2 class="text-lg font-bold mb-2">Negotiation Summary</h2>
-            <p class="text-gray-600 dark:text-gray-400 break-words">{{ neg.summary }}</p>
-            {% if neg.total_upcoming_maintenance %}
-            <div class="mt-4 p-4 bg-brand-50 dark:bg-brand-900/20 border border-brand-200 dark:border-brand-800 rounded-lg">
-                <span class="text-sm font-medium text-brand-700 dark:text-brand-300">Total estimated upcoming maintenance:</span>
-                <span class="text-2xl font-bold text-brand-700 dark:text-brand-300 ml-2">{{ neg.total_upcoming_maintenance }}</span>
-            </div>
-            {% endif %}
-        </div>
-
-        {% if neg.talking_points %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex items-center gap-2 mb-4">
-                <h2 class="text-lg font-bold">Talking Points</h2>
-                
-            </div>
-            <div class="space-y-4">
-                {% for tp in neg.talking_points %}
-                <div class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center gap-2 flex-wrap mb-1">
-                                <span class="font-semibold">{{ tp.system }}</span>
-                                {% if tp.get("risk_level") %}
-                                    {% if tp.risk_level == "High" %}
-                                    <span class="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 font-medium">High Priority</span>
-                                    {% elif tp.risk_level == "Medium" %}
-                                    <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300 font-medium">Medium Priority</span>
-                                    {% else %}
-                                    <span class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 font-medium">Low Priority</span>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 break-words">{{ tp.issue }}</p>
-                        </div>
-                        {% if tp.estimated_cost %}
-                        <span class="text-sm font-bold text-red-600 dark:text-red-400 whitespace-nowrap flex-shrink-0">{{ tp.estimated_cost }}</span>
-                        {% endif %}
-                    </div>
-
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 italic break-words">"{{ tp.leverage }}"</p>
-
-                    <p class="text-xs text-gray-400 mt-2">{{ tp.complaint_count }} complaint{{ "s" if tp.complaint_count != 1 }} filed</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-    </section>
 
 </div>
 
