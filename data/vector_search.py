@@ -27,6 +27,9 @@ def _get_embed_model():
         return _embed_model
 
     try:
+        import os
+        os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+        os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
         from sentence_transformers import SentenceTransformer
         _embed_model = SentenceTransformer(EMBEDDING_MODEL)
         return _embed_model
@@ -59,6 +62,12 @@ def _get_collection():
     except Exception:
         logger.warning("Failed to load ChromaDB collection", exc_info=True)
         return None
+
+
+def preload():
+    """Pre-load ChromaDB + embedding model so first request isn't slow."""
+    _get_collection()
+    _get_embed_model()
 
 
 def search_similar_complaints(

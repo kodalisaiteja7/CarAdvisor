@@ -129,9 +129,21 @@
                         <div class="text-3xl font-black">{{ vs.total_recalls }}</div>
                         <div class="text-sm text-gray-500 dark:text-gray-400">Recalls</div>
                     </div>
-                    <div class="border-l-4 border-blue-500 bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
-                        <div class="text-3xl font-black">{{ report.meta.source_count }}</div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Data Sources</div>
+                    {% set safety = vs.safety_score | default(0) %}
+                    {% if safety > 70 %}
+                        {% set safety_border = 'border-red-500' %}{% set safety_text = 'text-red-600 dark:text-red-400' %}
+                    {% elif safety > 50 %}
+                        {% set safety_border = 'border-orange-500' %}{% set safety_text = 'text-orange-600 dark:text-orange-400' %}
+                    {% elif safety > 30 %}
+                        {% set safety_border = 'border-yellow-500' %}{% set safety_text = 'text-yellow-600 dark:text-yellow-400' %}
+                    {% elif safety > 15 %}
+                        {% set safety_border = 'border-blue-500' %}{% set safety_text = 'text-blue-600 dark:text-blue-400' %}
+                    {% else %}
+                        {% set safety_border = 'border-green-500' %}{% set safety_text = 'text-green-600 dark:text-green-400' %}
+                    {% endif %}
+                    <div class="border-l-4 {{ safety_border }} bg-gray-50 dark:bg-gray-700/50 rounded-r-lg p-4">
+                        <div class="text-3xl font-black {{ safety_text }}">{{ safety }}</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">Safety Score</div>
                     </div>
                 </div>
             </div>
@@ -395,7 +407,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0">
-                            {% if issue.llm_enhanced %}{{ ai_badge() }}{% endif %}
+                            
                             <span class="text-xs px-2 py-1 rounded-full font-medium
                                 {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
                                 {% elif issue.probability == 'Medium' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
@@ -408,20 +420,7 @@
                     <div x-show="expanded === {{ issue.rank }}" x-cloak class="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-gray-700">
                         <p class="text-sm text-gray-600 dark:text-gray-400 pt-3 break-words">{{ issue.description }}</p>
 
-                        {% if issue.test_drive_narrative %}
-                        <div class="p-3 bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 rounded-lg">
-                            <h4 class="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1 flex items-center gap-1.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                Test Drive Guidance
-                            </h4>
-                            <p class="text-sm text-blue-700 dark:text-blue-300 break-words">{{ issue.test_drive_narrative }}</p>
-                            {% if issue.what_to_listen_for %}
-                            <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 break-words"><span class="font-medium">Listen for:</span> {{ issue.what_to_listen_for }}</p>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-
-                        {% if issue.test_drive_tips and not issue.test_drive_narrative %}
+                        {% if issue.test_drive_tips %}
                         <div>
                             <h4 class="text-sm font-semibold mb-1">Test Drive Tips</h4>
                             <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
@@ -465,18 +464,12 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                 <div class="flex items-center gap-2">
                     <h2 class="text-xl font-bold">{{ window.window_label }}</h2>
-                    {% if window.llm_enhanced %}{{ ai_badge() }}{% endif %}
+                    
                 </div>
                 {% if window.estimated_total_cost %}
                 <span class="text-lg font-bold text-red-600 dark:text-red-400">{{ window.estimated_total_cost }}</span>
                 {% endif %}
             </div>
-
-            {% if window.narrative %}
-            <div class="p-3 bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 rounded-lg mb-4">
-                <p class="text-sm text-blue-700 dark:text-blue-300 break-words">{{ window.narrative }}</p>
-            </div>
-            {% endif %}
 
             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Predicted issues by {{ "{:,}".format(window.target_mileage) }} miles</p>
             {% if window.predicted_issues %}
@@ -507,30 +500,11 @@
     <section x-show="openSection === 'experience'" x-cloak class="fade-in space-y-6 print-section">
         {% set oe = report.sections.owner_experience %}
 
-        {% if oe.get("owner_themes") %}
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-            <div class="flex items-center gap-2 mb-4">
-                <h2 class="text-lg font-bold">What Owners Are Saying</h2>
-                {{ ai_badge() }}
-            </div>
-            <div class="space-y-3">
-                {% for theme in oe.owner_themes %}
-                <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                    <svg class="w-5 h-5 text-brand-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-                    <p class="text-sm text-gray-700 dark:text-gray-300 break-words">{{ theme }}</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
-
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <h2 class="text-lg font-bold mb-4">Owner Reports ({{ oe.report_count }})</h2>
-            {% if not oe.get("owner_themes") %}
             <p class="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4 break-words">
                 {{ oe.note }}
             </p>
-            {% endif %}
             {% if oe.sample_reports %}
             <div class="space-y-4" x-data="{ showAll: false }">
                 {% for report_text in oe.sample_reports[:5] %}
@@ -622,7 +596,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div class="flex items-center gap-2 mb-4">
                 <h2 class="text-lg font-bold">Recommendations</h2>
-                {% if rf.get("llm_enhanced") %}{{ ai_badge() }}{% endif %}
+                
             </div>
             <ul class="space-y-3">
                 {% for rec in rf.recommendations %}
@@ -656,7 +630,7 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
             <div class="flex items-center gap-2 mb-4">
                 <h2 class="text-lg font-bold">Talking Points</h2>
-                {% if neg.get("llm_enhanced") %}{{ ai_badge() }}{% endif %}
+                
             </div>
             <div class="space-y-4">
                 {% for tp in neg.talking_points %}
@@ -682,14 +656,7 @@
                         {% endif %}
                     </div>
 
-                    {% if tp.get("script") %}
-                    <div class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/15 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <h4 class="text-xs font-semibold text-blue-800 dark:text-blue-300 mb-1 uppercase tracking-wider">What to Say</h4>
-                        <p class="text-sm text-blue-700 dark:text-blue-300 italic break-words">"{{ tp.script }}"</p>
-                    </div>
-                    {% else %}
                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 italic break-words">"{{ tp.leverage }}"</p>
-                    {% endif %}
 
                     <p class="text-xs text-gray-400 mt-2">{{ tp.complaint_count }} complaint{{ "s" if tp.complaint_count != 1 }} filed</p>
                 </div>

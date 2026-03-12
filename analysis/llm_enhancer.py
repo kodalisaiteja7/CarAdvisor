@@ -142,6 +142,7 @@ def _llm_call(prompt: str, max_tokens: int | None = None) -> str | None:
         response = client.messages.create(
             model=LLM_MODEL,
             max_tokens=max_tokens or LLM_MAX_TOKENS,
+            timeout=120.0,
             messages=[{"role": "user", "content": prompt}],
         )
 
@@ -184,7 +185,7 @@ def _vehicle_str(vehicle: dict) -> str:
 # ------------------------------------------------------------------
 
 
-_CHECKLIST_BATCH_SIZE = 10
+_CHECKLIST_BATCH_SIZE = 30
 
 
 def _build_checklist_prompt(vehicle: dict, items_for_prompt: list[dict]) -> str:
@@ -383,31 +384,42 @@ def enhance_report_sections(
     vector_complaints: list[dict] | None = None,
     bulk_stats: dict | None = None,
 ) -> dict:
-    """Enhance all remaining report sections with a single LLM call.
+    """Generate only the Buyer's Verdict (executive_summary + verdict_reasoning).
 
-    Adds executive_summary, enriches current_risk, owner_experience,
-    red_flags, negotiation, and future_forecast sections.
-
-    When vector_complaints and bulk_stats are provided (from NHTSA bulk data),
-    they are included in the LLM prompt as additional context for richer,
-    more data-driven responses.
+    All other sections are populated from raw data by the report generator
+    without LLM calls, keeping report generation fast.
     """
     sections = report.get("sections", {})
     vs = sections.get("vehicle_summary", {})
     cr = sections.get("current_risk", {})
-    ff = sections.get("future_forecast", {})
-    oe = sections.get("owner_experience", {})
     rf = sections.get("red_flags", {})
-    neg = sections.get("negotiation", {})
+    oe = sections.get("owner_experience", {})
 
-    top_issues_brief = [
-        {"system": i.get("system"), "description": i.get("description", "")[:120], "probability": i.get("probability")}
+    top_issues_detail = [
+        {
+            "system": i.get("system"),
+            "description": i.get("description", "")[:250],
+            "probability": i.get("probability"),
+            "complaint_count": i.get("complaint_count", 0),
+            "severity": i.get("severity", 0),
+            "phase": i.get("phase", "unknown"),
+        }
         for i in cr.get("top_issues", [])[:5]
     ]
 
-    catastrophic_brief = [
-        {"system": c.get("system"), "description": c.get("description", "")[:120], "severity": c.get("severity")}
+    catastrophic = [
+        {
+            "system": c.get("system"),
+            "description": c.get("description", "")[:200],
+            "severity": c.get("severity"),
+            "safety_impact": c.get("safety_impact"),
+            "complaint_count": c.get("complaint_count", 0),
+        }
         for c in rf.get("catastrophic_failures", [])[:5]
+    ]
+
+    owner_reports = [
+        r[:200] for r in oe.get("sample_reports", [])[:8]
     ]
 
     recalls_brief = [
@@ -415,23 +427,9 @@ def enhance_report_sections(
         for r in rf.get("open_recalls", [])[:3]
     ]
 
-    talking_points_brief = [
-        {"system": tp.get("system"), "issue": tp.get("issue", "")[:100], "estimated_cost": tp.get("estimated_cost")}
-        for tp in neg.get("talking_points", [])[:5]
-    ]
-
-    forecast_brief = [
-        {"window_label": w.get("window_label"), "estimated_total_cost": w.get("estimated_total_cost"),
-         "issue_count": len(w.get("predicted_issues", []))}
-        for w in ff.get("forecast_windows", [])
-    ]
-
-    sample_reports_brief = [r[:200] for r in oe.get("sample_reports", [])[:8]]
-
     mileage = vehicle.get("mileage", 0)
     phase_summary = cr.get("phase_summary", {})
     risk_score = vs.get("reliability_risk_score", 0)
-
     mileage_assessment = _mileage_assessment(mileage, risk_score, phase_summary)
 
     context = {
@@ -442,96 +440,55 @@ def enhance_report_sections(
         "phase_distribution": phase_summary,
         "total_complaints": vs.get("total_complaints"),
         "total_recalls": vs.get("total_recalls"),
-        "top_issues": top_issues_brief,
-        "catastrophic_failures": catastrophic_brief,
+        "top_issues": top_issues_detail,
+        "catastrophic_failures": catastrophic,
+        "owner_reports": owner_reports,
         "open_recalls": recalls_brief,
-        "talking_points": talking_points_brief,
-        "forecast_windows": forecast_brief,
-        "sample_owner_reports": sample_reports_brief,
-        "total_upcoming_maintenance": neg.get("total_upcoming_maintenance"),
     }
 
     rag_section = ""
-    if vector_complaints:
-        real_complaints = [
-            {"text": c["narrative"][:300], "mileage": c.get("mileage", 0), "system": c.get("system", "")}
-            for c in vector_complaints[:15]
-        ]
-        context["real_owner_complaints"] = real_complaints
-        rag_section += f"""
-Real owner complaints from NHTSA database (these are actual reports from owners of this vehicle):
-{json.dumps(real_complaints, indent=2)}
-"""
-
     if bulk_stats:
-        baseline_context = {
-            "this_model_complaints": bulk_stats.get("total_complaints", 0),
-            "average_model_complaints": bulk_stats.get("global_mean_complaints", 0),
-            "percentile": bulk_stats.get("complaints_percentile", 50),
-            "interpretation": bulk_stats.get("interpretation", ""),
-            "crash_rate": bulk_stats.get("crash_rate", 0),
-            "fire_rate": bulk_stats.get("fire_rate", 0),
-            "severity_index": bulk_stats.get("severity_index", 0),
-        }
-        context["complaint_baseline"] = baseline_context
         tc = bulk_stats.get("total_complaints", 0)
         pct = bulk_stats.get("complaints_percentile", 50)
         avg = bulk_stats.get("global_mean_complaints", 0)
         interp = bulk_stats.get("interpretation", "")
-        rag_section += f"""
-Complaint volume context: This model has {tc} complaints in the NHTSA database, placing it in the {pct:.0f}th percentile (higher = more complaints than peers). The average vehicle has {avg:.0f} complaints. Assessment: {interp}.
-Crash rate: {bulk_stats.get('crash_rate', 0):.1%} of complaints involved crashes. Fire rate: {bulk_stats.get('fire_rate', 0):.1%}.
-"""
+        rag_section = (
+            f"\nComplaint context: {tc} NHTSA complaints ({pct:.0f}th percentile, "
+            f"average is {avg:.0f}). {interp}. "
+            f"Crash rate: {bulk_stats.get('crash_rate', 0):.1%}, "
+            f"fire rate: {bulk_stats.get('fire_rate', 0):.1%}.\n"
+        )
 
-    prompt = f"""You are an expert automotive advisor helping a regular car buyer evaluate a used {_vehicle_str(vehicle)}.
+    prompt = f"""You are an expert automotive advisor helping a car buyer evaluate a used {_vehicle_str(vehicle)}.
 
-CRITICAL MILEAGE RULES — you MUST follow these:
-- The vehicle has {mileage:,} miles. The mileage assessment tier is: "{mileage_assessment['tier_label']}".
+MILEAGE RULES (strictly follow):
+- Mileage tier: "{mileage_assessment['tier_label']}" ({mileage:,} miles)
 - {mileage_assessment['guidance']}
-- The internal risk score is {mileage_assessment['risk_score_out_of_100']}/100 (higher = more risky). Use this to calibrate your verdict.
-- ABSOLUTE RULE: A vehicle at lower mileage MUST ALWAYS receive a more favorable verdict than the SAME vehicle at higher mileage. Never call a low-mileage vehicle "risky" while the same vehicle at higher mileage would be "fair" or "good".
-- "Upcoming" or "future" issues for a low-mileage car are things the buyer has NOT yet encountered — this is a POSITIVE, not a negative. It means the car still has its best years ahead.
-- "Past" issues for a high-mileage car mean the car has ALREADY been through those failure zones — this represents accumulated wear and risk, NOT safety.
+- Risk score: {mileage_assessment['risk_score_out_of_100']}/100 (higher = more risky)
+- Lower mileage = more favorable verdict. Never call a low-mileage car "risky" when the same car at higher mileage would be rated better.
+- "Upcoming" issues on a low-mileage car are FUTURE concerns, not current problems. This is positive.
+- "Past" issues on a high-mileage car represent accumulated wear.
 
-Phase distribution for this vehicle: {json.dumps(phase_summary)}
-(past = already went through that failure zone, current = in the zone now, upcoming = approaching, future = far away)
-
-Below is a summary of data collected from multiple sources about this vehicle. Using this data, produce a JSON object with ALL of the following keys:
-
-1. "executive_summary" — A 3-4 sentence buyer-friendly verdict. Start with the overall assessment (good/fair/risky buy), mention the top 1-2 concerns, and end with a clear recommendation. Write as if talking directly to the buyer. Do NOT mention any numeric risk scores or letter grades. Your assessment MUST align with the mileage tier and risk score above.
-
-2. "verdict_reasoning" — An array of 3-5 short bullet-point strings explaining WHY you reached that verdict. Each bullet should cite specific data (e.g., complaint counts, specific failure types, recall status, mileage context). Include at least one bullet about how the vehicle's mileage affects the assessment. Be specific and reference the actual data provided.
-
-3. "risk_narratives" — An array matching each top issue. For each, produce an object with:
-   - "system": the system name (match exactly from input)
-   - "test_drive_narrative": 1-2 sentences describing what to specifically look/listen for during a test drive, tailored to this vehicle
-   - "what_to_listen_for": 1 sentence about specific sounds, smells, or feelings that indicate a problem
-
-4. "owner_themes" — An array of 3-5 strings. Each is a bullet point summarizing a common theme from owner reports (e.g., "Owners frequently report transmission shudder at highway speeds around 60k miles"). If there are no owner reports, return general known issues for this vehicle.
-
-5. "red_flag_recommendations" — An array of 3-5 strings. Each is a specific, actionable recommendation tailored to THIS vehicle's actual issues (not generic advice). Reference specific systems and failure modes found in the data.
-
-6. "negotiation_scripts" — An array matching each talking point. For each, produce an object with:
-   - "system": the system name (match exactly from input)
-   - "script": A natural-sounding 1-2 sentence thing the buyer could say to the seller to negotiate on this issue. Be specific and reference the data.
-
-7. "forecast_narratives" — An array matching each forecast window. For each, produce an object with:
-   - "window_label": the window label (match exactly from input)
-   - "narrative": A 1-2 sentence plain-language summary of what to budget for in that window (e.g., "In the next 20k miles, budget $X-$Y for potential transmission and engine work")
-
-Keep all text concise and buyer-friendly. Return ONLY a valid JSON object, no markdown fences or other text.
+Phase distribution: {json.dumps(phase_summary)}
+(past = already through that failure zone, current = in the zone, upcoming = approaching, future = far away)
 {rag_section}
 Vehicle data:
-{json.dumps(context, indent=2)}"""
+{json.dumps(context, indent=2)}
 
-    text = _llm_call(prompt, max_tokens=LLM_MAX_TOKENS)
+Return ONLY a valid JSON object with exactly these two keys:
+
+1. "executive_summary" — 3-4 sentences. Start with the overall assessment (good/fair/risky buy). Reference SPECIFIC failure modes from owner reports (e.g. "connecting rod bearing wear", "steering lock-up") rather than generic system names. Mention complaint counts for the worst systems. End with a clear recommendation. Talk directly to the buyer. No numeric scores or letter grades.
+
+2. "verdict_reasoning" — Array of 3-5 short bullet strings explaining WHY. Each bullet MUST cite specific failure types from the owner reports and complaint data (not just "engine issues" — say what the actual failures are). Include complaint counts, recall status, and one bullet about mileage impact."""
+
+    text = _llm_call(prompt, max_tokens=1024)
 
     trace = get_trace()
 
     if text is None:
         if trace:
             trace.log_llm_call(
-                purpose="report_sections_enhancement",
+                purpose="buyers_verdict",
                 prompt=prompt,
                 response_raw=None,
                 response_parsed=None,
@@ -541,10 +498,10 @@ Vehicle data:
 
     result = _extract_json(text)
     if not isinstance(result, dict):
-        logger.warning("Could not extract JSON object from report enhancement LLM response")
+        logger.warning("Could not parse buyer's verdict LLM response")
         if trace:
             trace.log_llm_call(
-                purpose="report_sections_enhancement",
+                purpose="buyers_verdict",
                 prompt=prompt,
                 response_raw=text,
                 response_parsed=None,
@@ -552,59 +509,21 @@ Vehicle data:
             )
         return report
 
-    logger.info("LLM report enhancement successful, keys: %s", list(result.keys()))
+    logger.info("Buyer's verdict generated successfully")
     if trace:
         trace.log_llm_call(
-            purpose="report_sections_enhancement",
+            purpose="buyers_verdict",
             prompt=prompt,
             response_raw=text,
             response_parsed=result,
             status="success",
         )
 
-    # Executive summary + verdict reasoning
     if result.get("executive_summary"):
         sections["executive_summary"] = {
             "text": result["executive_summary"],
             "verdict_reasoning": result.get("verdict_reasoning", []),
             "llm_enhanced": True,
         }
-
-    # Risk narratives
-    risk_narratives = {r["system"]: r for r in result.get("risk_narratives", []) if isinstance(r, dict)}
-    for issue in cr.get("top_issues", []):
-        rn = risk_narratives.get(issue.get("system"))
-        if rn:
-            issue["test_drive_narrative"] = rn.get("test_drive_narrative", "")
-            issue["what_to_listen_for"] = rn.get("what_to_listen_for", "")
-            issue["llm_enhanced"] = True
-
-    # Owner themes
-    if result.get("owner_themes"):
-        oe["owner_themes"] = result["owner_themes"]
-        oe["llm_enhanced"] = True
-
-    # Red flag recommendations
-    if result.get("red_flag_recommendations"):
-        rf["recommendations"] = result["red_flag_recommendations"]
-        rf["llm_enhanced"] = True
-
-    # Negotiation scripts
-    neg_scripts = {s["system"]: s for s in result.get("negotiation_scripts", []) if isinstance(s, dict)}
-    for tp in neg.get("talking_points", []):
-        ns = neg_scripts.get(tp.get("system"))
-        if ns:
-            tp["script"] = ns.get("script", "")
-            tp["llm_enhanced"] = True
-    if neg_scripts:
-        neg["llm_enhanced"] = True
-
-    # Forecast narratives
-    forecast_narrs = {fn["window_label"]: fn for fn in result.get("forecast_narratives", []) if isinstance(fn, dict)}
-    for window in ff.get("forecast_windows", []):
-        fn = forecast_narrs.get(window.get("window_label"))
-        if fn:
-            window["narrative"] = fn.get("narrative", "")
-            window["llm_enhanced"] = True
 
     return report

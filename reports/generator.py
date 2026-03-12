@@ -7,13 +7,14 @@ web UI or CLI.
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
 from analysis.aggregator import AggregatedVehicleData
 from analysis.llm_enhancer import enhance_inspection_checklist, enhance_report_sections
 from analysis.mileage_model import MileageAnalysis, MileagePhase
 from analysis.scorer import VehicleScore, ScoredProblem
-from utils.trace import get_trace
+from utils.trace import get_trace, _thread_local
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +43,10 @@ def generate_report(
         "drivetrain": options.get("drivetrain"),
     }
 
-    checklist = _build_inspection_checklist(
+    # Build all raw sections (fast, no LLM)
+    raw_checklist = _build_inspection_checklist(
         mileage_analysis, vehicle_score, user_mileage
     )
-    checklist = enhance_inspection_checklist(vehicle, checklist)
-
     report = {
         "vehicle": vehicle,
         "meta": {
@@ -58,7 +58,7 @@ def generate_report(
         },
         "sections": {
             "vehicle_summary": _build_vehicle_summary(agg, vehicle_score),
-            "inspection_checklist": checklist,
+            "inspection_checklist": raw_checklist,
             "current_risk": _build_current_risk(mileage_analysis, vehicle_score),
             "future_forecast": _build_future_forecast(
                 mileage_analysis, agg, user_mileage
@@ -75,11 +75,30 @@ def generate_report(
     if trace:
         trace.log_sections("pre_llm", report["sections"])
 
-    report = enhance_report_sections(
-        vehicle, report,
-        vector_complaints=vector_complaints,
-        bulk_stats=bulk_stats,
-    )
+    def _run_with_trace(fn, *args, **kwargs):
+        if trace:
+            _thread_local.trace = trace
+        return fn(*args, **kwargs)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        checklist_future = pool.submit(
+            _run_with_trace, enhance_inspection_checklist, vehicle, raw_checklist,
+        )
+        verdict_future = pool.submit(
+            _run_with_trace, enhance_report_sections, vehicle, report,
+            vector_complaints=vector_complaints, bulk_stats=bulk_stats,
+        )
+
+        try:
+            report["sections"]["inspection_checklist"] = checklist_future.result(timeout=120)
+        except Exception:
+            logger.warning("Checklist LLM failed — using raw checklist")
+            report["sections"]["inspection_checklist"] = raw_checklist
+
+        try:
+            report = verdict_future.result(timeout=120)
+        except Exception:
+            logger.warning("Verdict LLM failed — report will lack executive summary")
 
     if trace:
         trace.log_sections("post_llm", report["sections"])
@@ -105,6 +124,7 @@ def _build_vehicle_summary(
     return {
         "title": f"{agg.year} {agg.make} {agg.model}",
         "reliability_risk_score": score.reliability_risk_score,
+        "safety_score": score.safety_score,
         "letter_grade": score.letter_grade,
         "total_complaints": agg.total_complaints,
         "total_recalls": len(agg.recalls),

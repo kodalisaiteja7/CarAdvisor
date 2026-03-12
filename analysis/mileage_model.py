@@ -32,7 +32,7 @@ class MileagePhase(str, Enum):
 
 UPCOMING_WINDOW = 40_000  # miles ahead to consider "upcoming"
 
-_failure_curve_cache: dict[str, dict | None] = {}
+_failure_curve_cache: dict[str, dict[str, dict]] = {}
 
 
 @dataclass
@@ -86,32 +86,26 @@ def _get_bracket_label(mileage: int) -> str:
     return "unknown"
 
 
-def _get_failure_curve(make: str, model: str, year: int, system: str) -> dict | None:
-    """Fetch the data-driven mileage failure distribution for a vehicle+system.
-
-    Returns percentile dict (p10, p25, median, p75, p90) or None.
-    Results are cached in-memory for the process lifetime.
-    """
-    cache_key = f"{make}|{model}|{year}|{system}"
+def _get_all_failure_curves(make: str, model: str, year: int) -> dict[str, dict]:
+    """Fetch ALL mileage failure curves in a single DB query (cached)."""
+    cache_key = f"{make}|{model}|{year}"
     if cache_key in _failure_curve_cache:
         return _failure_curve_cache[cache_key]
 
     try:
-        from data.stats_builder import get_mileage_curve
-        curve = get_mileage_curve(make, model, year, system)
+        from data.stats_builder import get_all_mileage_curves
+        curves = get_all_mileage_curves(make, model, year)
     except Exception:
-        curve = None
+        curves = {}
 
-    _failure_curve_cache[cache_key] = curve
-    return curve
+    _failure_curve_cache[cache_key] = curves
+    return curves
 
 
 def classify_problem(
     problem: NormalizedProblem,
     user_mileage: int,
-    make: str = "",
-    model: str = "",
-    year: int = 0,
+    all_curves: dict[str, dict] | None = None,
 ) -> MileageClassifiedProblem:
     """Determine how a problem relates to the user's current mileage.
 
@@ -122,9 +116,7 @@ def classify_problem(
     low = problem.mileage_low
     high = problem.mileage_high
 
-    curve = None
-    if make and model and year:
-        curve = _get_failure_curve(make, model, year, problem.category)
+    curve = all_curves.get(problem.category) if all_curves else None
 
     if curve and curve.get("count", 0) >= 10:
         return _classify_with_curve(problem, user_mileage, curve)
@@ -299,11 +291,10 @@ def analyze_mileage(
     data: AggregatedVehicleData, user_mileage: int
 ) -> MileageAnalysis:
     """Run the full mileage-aware analysis on aggregated vehicle data."""
+    all_curves = _get_all_failure_curves(data.make, data.model, data.year)
+
     classified = [
-        classify_problem(
-            p, user_mileage,
-            make=data.make, model=data.model, year=data.year,
-        )
+        classify_problem(p, user_mileage, all_curves=all_curves)
         for p in data.problems
     ]
 

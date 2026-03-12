@@ -324,15 +324,22 @@ def get_model_stats(make: str, model: str, year: int) -> dict | None:
 
 
 def get_mileage_curve(make: str, model: str, year: int, system: str) -> dict | None:
-    """Get mileage failure distribution for a specific vehicle+system.
+    """Get mileage failure distribution for a specific vehicle+system."""
+    curves = get_all_mileage_curves(make, model, year)
+    return curves.get(system)
 
-    Returns percentile-based failure windows: p10, p25, median, p75, p90.
+
+def get_all_mileage_curves(
+    make: str, model: str, year: int,
+) -> dict[str, dict]:
+    """Fetch mileage curves for ALL systems in a single query.
+
+    Returns {system: {count, p10, p25, median, p75, p90, min, max}}.
     """
-    engine = _get_bulk_engine()
     if not Path(BULK_DB_PATH).exists():
-        return None
+        return {}
 
-    from data.bulk_loader import BULK_DB_PATH as _dbp
+    engine = _get_bulk_engine()
     BulkBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -340,44 +347,30 @@ def get_mileage_curve(make: str, model: str, year: int, system: str) -> dict | N
     make_upper = make.strip().upper()
     model_upper = model.strip().upper()
 
-    mileage_values = [
-        r[0]
-        for r in session.query(NHTSAComplaint.mileage)
+    rows = (
+        session.query(NHTSAComplaint.system, NHTSAComplaint.mileage)
         .filter(
-            func.upper(NHTSAComplaint.make) == make_upper,
-            func.upper(NHTSAComplaint.model).contains(model_upper),
-            NHTSAComplaint.system == system,
+            NHTSAComplaint.make == make_upper,
+            NHTSAComplaint.model == model_upper,
+            NHTSAComplaint.year.between(year - 3, year + 3),
             NHTSAComplaint.mileage.isnot(None),
             NHTSAComplaint.mileage > 0,
             NHTSAComplaint.mileage < 500_000,
         )
         .all()
-    ]
-
-    if year:
-        year_range_values = [
-            r[0]
-            for r in session.query(NHTSAComplaint.mileage)
-            .filter(
-                func.upper(NHTSAComplaint.make) == make_upper,
-                func.upper(NHTSAComplaint.model).contains(model_upper),
-                NHTSAComplaint.system == system,
-                NHTSAComplaint.year.between(year - 3, year + 3),
-                NHTSAComplaint.mileage.isnot(None),
-                NHTSAComplaint.mileage > 0,
-                NHTSAComplaint.mileage < 500_000,
-            )
-            .all()
-        ]
-        if len(year_range_values) >= 10:
-            mileage_values = year_range_values
-
+    )
     session.close()
 
-    if len(mileage_values) < 5:
-        return None
+    by_system: dict[str, list[int]] = {}
+    for system, mileage_val in rows:
+        by_system.setdefault(system, []).append(mileage_val)
 
-    return _compute_percentiles(mileage_values)
+    curves: dict[str, dict] = {}
+    for system, values in by_system.items():
+        if len(values) >= 5:
+            curves[system] = _compute_percentiles(values)
+
+    return curves
 
 
 def get_calibrated_weights(make: str, model: str, year: int) -> dict | None:

@@ -56,6 +56,8 @@ def report_page(report_id: str):
     if not report:
         return render_template("index.html", error="Report not found"), 404
     _postprocess_current_risk(report)
+    _ensure_safety_score(report)
+    _strip_extra_llm_content(report)
     return render_template("report.html", report=report, report_id=report_id)
 
 
@@ -82,9 +84,6 @@ def _postprocess_current_risk(report: dict):
                 "test_drive_tips": list(issue.get("test_drive_tips") or []),
                 "diagnostic_tests": list(issue.get("diagnostic_tests") or []),
                 "sources": list(issue.get("sources") or []),
-                "test_drive_narrative": issue.get("test_drive_narrative"),
-                "what_to_listen_for": issue.get("what_to_listen_for"),
-                "llm_enhanced": issue.get("llm_enhanced", False),
             }
         else:
             m = merged[sys]
@@ -111,12 +110,6 @@ def _postprocess_current_risk(report: dict):
             for src in issue.get("sources") or []:
                 if src not in m["sources"]:
                     m["sources"].append(src)
-            if issue.get("test_drive_narrative") and not m["test_drive_narrative"]:
-                m["test_drive_narrative"] = issue["test_drive_narrative"]
-            if issue.get("what_to_listen_for") and not m["what_to_listen_for"]:
-                m["what_to_listen_for"] = issue["what_to_listen_for"]
-            if issue.get("llm_enhanced"):
-                m["llm_enhanced"] = True
 
     issues = sorted(merged.values(), key=lambda x: x["complaint_count"], reverse=True)
     for i, issue in enumerate(issues, start=1):
@@ -126,6 +119,76 @@ def _postprocess_current_risk(report: dict):
     cr["system_risks"] = [
         sr for sr in cr.get("system_risks", []) if sr.get("system") != "Other"
     ]
+
+
+_SAFETY_CATS = {
+    "Engine", "Transmission", "Brakes", "Steering",
+    "Suspension", "Fuel System", "Electrical", "Cooling",
+}
+_HIGH_SAFETY_CATS = {"Brakes", "Steering", "Fuel System", "Suspension"}
+
+
+def _ensure_safety_score(report: dict):
+    """Guarantee vehicle_summary has a safety_score for legacy cached reports."""
+    vs = report.get("sections", {}).get("vehicle_summary", {})
+    if vs.get("safety_score") is not None:
+        return
+
+    num_recalls = vs.get("total_recalls", 0)
+    recall_component = min(25.0, num_recalls * 6.0)
+
+    cr = report.get("sections", {}).get("current_risk", {})
+    issues = cr.get("top_issues", [])
+
+    safety_complaints = 0
+    severity_sum = 0.0
+    count = 0
+    for iss in issues:
+        cat = iss.get("system", "")
+        cc = iss.get("complaint_count", 0)
+        if cat in _SAFETY_CATS and cc > 0:
+            safety_complaints += cc
+            weight = 1.5 if cat in _HIGH_SAFETY_CATS else 1.0
+            severity_sum += iss.get("severity", 5) * weight
+            count += 1
+
+    volume_component = min(25.0, (safety_complaints / 5) ** 0.6 * 3.0)
+    severity_component = min(25.0, (severity_sum / count) * 2.5) if count else 0.0
+
+    score = round(min(100.0, recall_component + volume_component + severity_component), 1)
+    vs["safety_score"] = score
+
+
+def _strip_extra_llm_content(report: dict):
+    """Remove LLM-generated fields from all sections except Buyer's Verdict
+    and Inspection Checklist, ensuring only those two use AI text."""
+    sections = report.get("sections", {})
+
+    for issue in sections.get("current_risk", {}).get("top_issues", []):
+        issue.pop("test_drive_narrative", None)
+        issue.pop("what_to_listen_for", None)
+        issue.pop("llm_enhanced", None)
+
+    for window in sections.get("future_forecast", {}).get("forecast_windows", []):
+        window.pop("narrative", None)
+        window.pop("llm_enhanced", None)
+
+    oe = sections.get("owner_experience", {})
+    oe.pop("owner_themes", None)
+
+    rf = sections.get("red_flags", {})
+    rf.pop("llm_enhanced", None)
+    rf["recommendations"] = [
+        "Run a VIN check to verify all recalls have been completed",
+        "Request a pre-purchase inspection from an independent mechanic",
+        "Check for signs of flood damage (musty smell, water lines, corroded electronics)",
+        "Verify the odometer reading matches service history",
+    ]
+
+    neg = sections.get("negotiation", {})
+    neg.pop("llm_enhanced", None)
+    for tp in neg.get("talking_points", []):
+        tp.pop("script", None)
 
 
 # ------------------------------------------------------------------
@@ -330,7 +393,8 @@ def _run_analysis(
     try:
         agg = aggregate(results)
         ma = analyze_mileage(agg, mileage)
-        vs = score_vehicle(ma, make=make, model=model, year=year)
+        vs = score_vehicle(ma, make=make, model=model, year=year,
+                          num_recalls=len(agg.recalls))
 
         trace.log_analysis(
             total_complaints=agg.total_complaints,
@@ -347,11 +411,9 @@ def _run_analysis(
         _emit(report_id, "Analysis", "complete", "Data analysis complete")
 
         bulk_stats = None
-        vector_complaints = None
         try:
             _emit(report_id, "Bulk Data", "scraping", "Looking up NHTSA bulk statistics...")
             from data.stats_builder import get_model_stats
-            from data.vector_search import search_similar_complaints
             bulk_stats = get_model_stats(make, model, year)
             if bulk_stats:
                 logger.info(
@@ -359,11 +421,6 @@ def _run_analysis(
                     bulk_stats.get("total_complaints", 0),
                     bulk_stats.get("complaints_percentile", "?"),
                 )
-            vector_complaints = search_similar_complaints(
-                make, model, year, mileage=mileage,
-            )
-            if vector_complaints:
-                logger.info("Retrieved %d similar complaints from vector store", len(vector_complaints))
             _emit(report_id, "Bulk Data", "complete", "Bulk data retrieved")
         except Exception as exc:
             logger.info("Bulk data not available (this is OK if not set up): %s", exc)
@@ -372,7 +429,6 @@ def _run_analysis(
         _emit(report_id, "AI Insights", "scraping", "Generating AI-powered insights and guidance...")
         report = generate_report(
             agg, ma, vs, mileage, options=options,
-            vector_complaints=vector_complaints,
             bulk_stats=bulk_stats,
         )
         _emit(report_id, "AI Insights", "complete", "AI insights generated")

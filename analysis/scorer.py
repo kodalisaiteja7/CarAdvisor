@@ -63,6 +63,7 @@ class ScoredProblem:
 @dataclass
 class VehicleScore:
     reliability_risk_score: float  # 0-100
+    safety_score: float  # 0-100, higher = more dangerous
     letter_grade: str
     top_issues: list[ScoredProblem] = field(default_factory=list)
     total_problems: int = 0
@@ -204,11 +205,67 @@ def _letter_grade(score: float) -> str:
     return "F"
 
 
+_SAFETY_CATEGORIES = {
+    "Engine", "Transmission", "Brakes", "Steering",
+    "Suspension", "Fuel System", "Electrical", "Cooling",
+}
+
+_HIGH_SAFETY_CATEGORIES = {"Brakes", "Steering", "Fuel System", "Suspension"}
+
+
+def _compute_safety_score(
+    scored: list[ScoredProblem],
+    num_recalls: int,
+) -> float:
+    """Compute a safety-focused risk score (0-100, higher = more dangerous).
+
+    Components (each capped, summed to 100 max):
+      - Crash/fire impact from NHTSA data           (up to 25)
+      - Number of recalls                           (up to 25)
+      - Complaint volume on safety-critical systems  (up to 25)
+      - Severity of safety-critical system issues    (up to 25)
+    """
+    if not scored and num_recalls == 0:
+        return 0.0
+
+    impact_sum = 0.0
+    safety_complaint_count = 0
+    severity_sum = 0.0
+    safety_system_count = 0
+
+    for sp in scored:
+        p = sp.classified.problem
+        if p.safety_impact > 0:
+            impact_sum += p.safety_impact * min(3.0, p.complaint_count / 20)
+
+        if p.category in _SAFETY_CATEGORIES and p.complaint_count > 0:
+            safety_complaint_count += p.complaint_count
+            weight = 1.5 if p.category in _HIGH_SAFETY_CATEGORIES else 1.0
+            severity_sum += p.severity * weight
+            safety_system_count += 1
+
+    crash_component = min(25.0, impact_sum * 2.0)
+
+    recall_component = min(25.0, num_recalls * 6.0)
+
+    volume_component = min(25.0, (safety_complaint_count / 5) ** 0.6 * 3.0)
+
+    if safety_system_count > 0:
+        avg_severity = severity_sum / safety_system_count
+        severity_component = min(25.0, avg_severity * 2.5)
+    else:
+        severity_component = 0.0
+
+    raw = crash_component + recall_component + volume_component + severity_component
+    return round(min(100.0, raw), 1)
+
+
 def score_vehicle(
     mileage_analysis: MileageAnalysis,
     make: str = "",
     model: str = "",
     year: int = 0,
+    num_recalls: int = 0,
 ) -> VehicleScore:
     """Score a vehicle's reliability at its analysed mileage point.
 
@@ -261,8 +318,11 @@ def score_vehicle(
     else:
         risk = 0.0
 
+    safety = _compute_safety_score(scored, num_recalls)
+
     return VehicleScore(
         reliability_risk_score=round(risk, 1),
+        safety_score=safety,
         letter_grade=_letter_grade(risk),
         top_issues=top_10,
         total_problems=len(scored),

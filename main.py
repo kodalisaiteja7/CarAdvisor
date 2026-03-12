@@ -51,25 +51,20 @@ def run_report(make: str, model: str, year: int, mileage: int) -> dict:
 
     agg = aggregate(results)
     ma = analyze_mileage(agg, mileage)
-    vs = score_vehicle(ma, make=make, model=model, year=year)
+    vs = score_vehicle(ma, make=make, model=model, year=year,
+                       num_recalls=len(agg.recalls))
 
     bulk_stats = None
-    vector_complaints = None
     try:
         from data.stats_builder import get_model_stats
-        from data.vector_search import search_similar_complaints
         bulk_stats = get_model_stats(make, model, year)
-        vector_complaints = search_similar_complaints(make, model, year, mileage=mileage)
         if bulk_stats:
             logger.info("Bulk stats loaded: %d complaints", bulk_stats.get("total_complaints", 0))
-        if vector_complaints:
-            logger.info("Retrieved %d similar complaints from vector store", len(vector_complaints))
     except Exception:
-        logger.info("Bulk data not available — using scraper data only")
+        logger.info("Bulk data not available - using scraper data only")
 
     report = generate_report(
         agg, ma, vs, mileage,
-        vector_complaints=vector_complaints,
         bulk_stats=bulk_stats,
     )
     return report
