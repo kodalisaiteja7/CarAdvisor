@@ -60,7 +60,7 @@ REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT", "CarAdvisor/1.0")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 LLM_ENABLED = bool(ANTHROPIC_API_KEY)
-LLM_MODEL = os.getenv("LLM_MODEL", "claude-3-5-haiku-20241022")
+LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 8192))
 
 BULK_DB_PATH = BASE_DIR / "nhtsa_bulk.db"
