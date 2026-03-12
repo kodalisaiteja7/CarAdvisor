@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 import uuid
 from pathlib import Path
 from threading import Thread
@@ -12,6 +14,11 @@ from flask import Flask, Response, jsonify, render_template, request
 
 from config.settings import FLASK_SECRET_KEY
 from database.models import init_db
+from cache.store import (
+    init_store, get_report, set_report, get_progress, push_progress,
+    init_progress, get_trace, set_trace, get_cached_report_id,
+    set_cached_report_id,
+)
 from scrapers.nhtsa import NHTSAScraper
 from analysis.aggregator import aggregate
 from analysis.mileage_model import analyze_mileage
@@ -21,6 +28,12 @@ from utils.trace import start_trace, end_trace
 
 logger = logging.getLogger(__name__)
 
+_REPORT_ID_RE = re.compile(r"^[a-f0-9\-]{1,36}$")
+
+
+def _valid_report_id(report_id: str) -> bool:
+    return bool(_REPORT_ID_RE.match(report_id))
+
 app = Flask(
     __name__,
     template_folder="templates",
@@ -28,15 +41,36 @@ app = Flask(
 )
 app.secret_key = FLASK_SECRET_KEY
 
-_reports: dict[str, dict] = {}
-_progress: dict[str, list[dict]] = {}
-_traces: dict[str, dict] = {}
-_vehicle_cache: dict[str, str] = {}  # cache_key → report_id
 
 
 SCRAPERS = [
     ("NHTSA", NHTSAScraper),
 ]
+
+
+# ------------------------------------------------------------------
+# Health check
+# ------------------------------------------------------------------
+
+
+@app.route("/health")
+def health():
+    from cache.store import health_check as store_health
+    from database.models import engine as db_engine
+    from sqlalchemy import text
+
+    checks = {}
+    checks["store"] = store_health()
+
+    try:
+        with db_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["database"] = True
+    except Exception:
+        checks["database"] = False
+
+    healthy = all(checks.values())
+    return jsonify({"status": "ok" if healthy else "degraded", "checks": checks}), 200 if healthy else 503
 
 
 # ------------------------------------------------------------------
@@ -51,7 +85,9 @@ def index():
 
 @app.route("/report/<report_id>")
 def report_page(report_id: str):
-    report = _reports.get(report_id)
+    if not _valid_report_id(report_id):
+        return render_template("index.html", error="Invalid report ID"), 400
+    report = get_report(report_id)
     if not report:
         return render_template("index.html", error="Report not found"), 404
     _postprocess_current_risk(report)
@@ -184,9 +220,9 @@ def _strip_extra_llm_content(report: dict):
 @app.route("/api/vin-decode")
 def api_vin_decode():
     """Decode a VIN using the NHTSA vPIC API and return vehicle details."""
-    vin = (request.args.get("vin") or "").strip()
-    if not vin or len(vin) < 11:
-        return jsonify({"error": "Please enter a valid VIN (at least 11 characters)"}), 400
+    vin = (request.args.get("vin") or "").strip().upper()
+    if not vin or not re.match(r"^[A-HJ-NPR-Z0-9]{17}$", vin):
+        return jsonify({"error": "Please enter a valid 17-character VIN"}), 400
 
     try:
         result = _decode_vin(vin)
@@ -269,11 +305,19 @@ def api_analyze():
     if not all([make, model, year, mileage]):
         return jsonify({"error": "make, model, year, and mileage are required"}), 400
 
+    if len(make) > 50 or len(model) > 50:
+        return jsonify({"error": "make and model must be under 50 characters"}), 400
+
     try:
         year = int(year)
         mileage = int(mileage)
     except (ValueError, TypeError):
         return jsonify({"error": "year and mileage must be integers"}), 400
+
+    if not (1960 <= year <= 2027):
+        return jsonify({"error": "year must be between 1960 and 2027"}), 400
+    if not (0 <= mileage <= 500_000):
+        return jsonify({"error": "mileage must be between 0 and 500,000"}), 400
 
     options = {
         "trim": (data.get("trim") or "").strip() or None,
@@ -283,18 +327,17 @@ def api_analyze():
     }
 
     cache_key = _make_cache_key(make, model, year, mileage, options)
-    cached_id = _vehicle_cache.get(cache_key)
-    if cached_id and cached_id in _reports:
+    cached_id = get_cached_report_id(cache_key)
+    if cached_id and get_report(cached_id):
         report_id = cached_id
-        _progress[report_id] = [
-            {"source": "Cache", "status": "complete", "message": "Report loaded from cache"},
-            {"source": "system", "status": "done", "message": report_id},
-        ]
+        init_progress(report_id)
+        push_progress(report_id, {"source": "Cache", "status": "complete", "message": "Report loaded from cache"})
+        push_progress(report_id, {"source": "system", "status": "done", "message": report_id})
         logger.info("Cache hit for %s — returning report %s", cache_key, report_id)
         return jsonify({"report_id": report_id, "cached": True})
 
     report_id = str(uuid.uuid4())[:8]
-    _progress[report_id] = []
+    init_progress(report_id)
 
     thread = Thread(
         target=_run_analysis,
@@ -309,17 +352,19 @@ def api_analyze():
 @app.route("/api/progress/<report_id>")
 def api_progress(report_id: str):
     """Server-Sent Events stream for analysis progress."""
+    if not _valid_report_id(report_id):
+        return jsonify({"error": "Invalid report ID"}), 400
 
     def stream():
+        import time
         last_idx = 0
         while True:
-            events = _progress.get(report_id, [])
+            events = get_progress(report_id)
             for evt in events[last_idx:]:
                 yield f"data: {json.dumps(evt)}\n\n"
                 last_idx = len(events)
                 if evt.get("status") in ("done", "error"):
                     return
-            import time
             time.sleep(0.3)
 
     return Response(stream(), mimetype="text/event-stream")
@@ -327,7 +372,9 @@ def api_progress(report_id: str):
 
 @app.route("/api/report/<report_id>")
 def api_report(report_id: str):
-    report = _reports.get(report_id)
+    if not _valid_report_id(report_id):
+        return jsonify({"error": "Invalid report ID"}), 400
+    report = get_report(report_id)
     if not report:
         return jsonify({"error": "Report not found or still processing"}), 404
     return jsonify(report)
@@ -336,11 +383,17 @@ def api_report(report_id: str):
 @app.route("/api/trace/<report_id>")
 def api_trace(report_id: str):
     """Return the debug trace for a report (JSON)."""
-    trace_data = _traces.get(report_id)
+    if not _valid_report_id(report_id):
+        return jsonify({"error": "Invalid report ID"}), 400
+
+    trace_data = get_trace(report_id)
     if trace_data:
         return jsonify(trace_data)
 
-    trace_file = Path(__file__).resolve().parent.parent / "logs" / f"{report_id}.json"
+    logs_dir = Path(__file__).resolve().parent.parent / "logs"
+    trace_file = (logs_dir / f"{report_id}.json").resolve()
+    if not str(trace_file).startswith(str(logs_dir.resolve())):
+        return jsonify({"error": "Invalid report ID"}), 400
     if trace_file.exists():
         return Response(
             trace_file.read_text(encoding="utf-8"),
@@ -353,6 +406,8 @@ def api_trace(report_id: str):
 @app.route("/trace/<report_id>")
 def trace_page(report_id: str):
     """Render the debug trace viewer."""
+    if not _valid_report_id(report_id):
+        return "Invalid report ID", 400
     return render_template("trace.html", report_id=report_id)
 
 
@@ -376,7 +431,7 @@ def _make_cache_key(
 
 
 def _emit(report_id: str, source: str, status: str, message: str = ""):
-    _progress.setdefault(report_id, []).append({
+    push_progress(report_id, {
         "source": source,
         "status": status,
         "message": message,
@@ -460,13 +515,13 @@ def _run_analysis(
         )
         _emit(report_id, "AI Insights", "complete", "AI insights generated")
 
-        _reports[report_id] = report
+        set_report(report_id, report)
         if cache_key:
-            _vehicle_cache[cache_key] = report_id
+            set_cached_report_id(cache_key, report_id)
             logger.info("Cached report %s under key %s", report_id, cache_key)
         finished_trace = end_trace()
         if finished_trace:
-            _traces[report_id] = finished_trace.to_dict()
+            set_trace(report_id, finished_trace.to_dict())
         _emit(report_id, "system", "done", report_id)
     except Exception as exc:
         logger.exception("Analysis failed")
@@ -665,5 +720,16 @@ def _decode_vin(vin: str) -> dict | None:
 
 
 def create_app() -> Flask:
+    sentry_dsn = os.environ.get("SENTRY_DSN", "")
+    if sentry_dsn:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            traces_sample_rate=0.1,
+            send_default_pii=False,
+        )
+        logger.info("Sentry error tracking enabled")
+
     init_db()
+    init_store()
     return app
