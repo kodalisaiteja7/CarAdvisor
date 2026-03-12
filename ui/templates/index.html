@@ -629,28 +629,47 @@ function carForm() {
                 }
 
                 const reportId = data.report_id;
+                const self = this;
                 const evtSource = new EventSource(`/api/progress/${reportId}`);
                 evtSource.onmessage = (e) => {
                     const evt = JSON.parse(e.data);
-                    this.progressEvents.push(evt);
+                    self.progressEvents.push(evt);
                     if (evt.status === 'done') {
                         evtSource.close();
-                        setTimeout(() => { window.location.href = `/report/${evt.message}`; }, 600);
+                        self._waitForReport(evt.message);
                     } else if (evt.status === 'error') {
                         evtSource.close();
-                        this.analyzing = false;
+                        self.analyzing = false;
                         alert('Analysis failed: ' + evt.message);
                     }
                 };
                 evtSource.onerror = () => {
                     evtSource.close();
-                    this.analyzing = false;
+                    if (reportId) {
+                        self._waitForReport(reportId);
+                    } else {
+                        self.analyzing = false;
+                    }
                 };
             } catch (e) {
                 console.error(e);
                 this.analyzing = false;
                 alert('Request failed');
             }
+        },
+        async _waitForReport(reportId) {
+            for (var attempt = 0; attempt < 8; attempt++) {
+                try {
+                    var r = await fetch('/api/report/' + reportId);
+                    if (r.ok) {
+                        window.location.href = '/report/' + reportId;
+                        return;
+                    }
+                } catch (e) { /* retry */ }
+                await new Promise(function(res) { setTimeout(res, 1000); });
+            }
+            this.analyzing = false;
+            alert('Report could not be loaded. Please try again.');
         },
         _progressReset() {
             if (this._timer) clearInterval(this._timer);

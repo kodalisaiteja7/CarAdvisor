@@ -87,7 +87,14 @@ def index():
 def report_page(report_id: str):
     if not _valid_report_id(report_id):
         return render_template("index.html", error="Invalid report ID"), 400
+    import time
     report = get_report(report_id)
+    if not report:
+        for _ in range(10):
+            time.sleep(0.5)
+            report = get_report(report_id)
+            if report:
+                break
     if not report:
         return render_template("index.html", error="Report not found"), 404
     _postprocess_current_risk(report)
@@ -358,7 +365,8 @@ def api_progress(report_id: str):
     def stream():
         import time
         last_idx = 0
-        while True:
+        deadline = time.time() + 170
+        while time.time() < deadline:
             events = get_progress(report_id)
             for evt in events[last_idx:]:
                 yield f"data: {json.dumps(evt)}\n\n"
@@ -366,6 +374,7 @@ def api_progress(report_id: str):
                 if evt.get("status") in ("done", "error"):
                     return
             time.sleep(0.3)
+        yield f'data: {json.dumps({"source": "system", "status": "error", "message": "Analysis timed out"})}\n\n'
 
     return Response(stream(), mimetype="text/event-stream")
 
