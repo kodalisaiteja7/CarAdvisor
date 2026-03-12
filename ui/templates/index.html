@@ -395,8 +395,7 @@
         </form>
 
         <!-- Progress Loader -->
-        <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden fade-in"
-             x-data="progressLoader()" @analysis-start.window="reset(); start()"
+        <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden fade-in">
 
             <!-- Dark header strip -->
             <div class="bg-gradient-to-r from-[#111111] to-[#1a1a2e] px-6 py-4">
@@ -420,7 +419,7 @@
             <!-- Steps list + fun message -->
             <div class="px-6 py-5">
                 <div class="space-y-3 mb-4">
-                    <template x-for="(evt, i) in $parent.progressEvents" :key="i">
+                    <template x-for="(evt, i) in progressEvents" :key="i">
                         <div class="flex items-center gap-3">
                             <template x-if="evt.status === 'scraping'">
                                 <div class="flex-shrink-0 w-5 h-5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
@@ -474,6 +473,14 @@ function carForm() {
         loadingEngines: false,
         analyzing: false,
         progressEvents: [],
+
+        funMessage: '',
+        progressPct: 20,
+        currentStep: 'Connecting to NHTSA database...',
+        _msgIdx: 0,
+        _timer: null,
+        _msgTimer: null,
+        _targetPct: 20,
 
         vinInput: '',
         decodingVin: false,
@@ -597,7 +604,8 @@ function carForm() {
         async submit() {
             this.analyzing = true;
             this.progressEvents = [];
-            window.dispatchEvent(new Event('analysis-start'));
+            this._progressReset();
+            this._progressStart();
             try {
                 const resp = await fetch('/api/analyze', {
                     method: 'POST',
@@ -644,66 +652,24 @@ function carForm() {
                 alert('Request failed');
             }
         }
-    };
-}
-
-function progressLoader() {
-    var funMessages = [
-        "Teaching our AI to read mechanic handwriting...",
-        "Checking under the hood... virtually, of course",
-        "Our hamsters are running extra fast today",
-        "Hunting for recalls like a detective on coffee",
-        "Crunching numbers harder than a pothole crunches rims",
-        "Cross-referencing with every complaint ever filed",
-        "Making sure no lemon slips through the cracks",
-        "Our AI is having a heated debate about your car",
-        "Scanning thousands of owner reports at light speed",
-        "Translating engineer-speak into human words...",
-        "Giving your car its annual performance review",
-        "If this were a mechanic, you'd be paying by the hour"
-    ];
-
-    var steps = [
-        { at: 0,  label: "Connecting to NHTSA database..." },
-        { at: 8,  label: "Fetching complaint records..." },
-        { at: 18, label: "Scanning owner-reported problems..." },
-        { at: 28, label: "Analyzing complaint patterns..." },
-        { at: 38, label: "Looking up recall history..." },
-        { at: 48, label: "Cross-referencing bulk statistics..." },
-        { at: 58, label: "Calculating risk scores..." },
-        { at: 68, label: "Generating AI-powered verdict..." },
-        { at: 78, label: "Building inspection checklist..." },
-        { at: 88, label: "Finalizing your report..." }
-    ];
-
-    return {
-        funMessage: '',
-        progressPct: 20,
-        currentStep: steps[0].label,
-        _msgIdx: 0,
-        _timer: null,
-        _msgTimer: null,
-        _targetPct: 20,
-
-        reset() {
+        _progressReset() {
             if (this._timer) clearInterval(this._timer);
             if (this._msgTimer) clearInterval(this._msgTimer);
             this._timer = null;
             this._msgTimer = null;
             this.progressPct = 20;
             this._targetPct = 20;
-            this.currentStep = steps[0].label;
+            this.currentStep = carFormSteps[0].label;
             this.funMessage = '';
         },
 
-        start() {
+        _progressStart() {
             var self = this;
-            self._msgIdx = Math.floor(Math.random() * funMessages.length);
-            self.funMessage = funMessages[self._msgIdx];
+            self._msgIdx = Math.floor(Math.random() * carFormFunMessages.length);
+            self.funMessage = carFormFunMessages[self._msgIdx];
 
             self._timer = setInterval(function() {
-                var evts = self.$parent ? self.$parent.progressEvents : [];
-                var completed = evts.filter(function(e) {
+                var completed = self.progressEvents.filter(function(e) {
                     return e.status === 'complete' || e.status === 'done';
                 }).length;
                 var totalSteps = 4;
@@ -717,25 +683,48 @@ function progressLoader() {
                     self._targetPct = Math.max(self._targetPct, self.progressPct);
                 }
 
-                for (var i = steps.length - 1; i >= 0; i--) {
-                    if (self.progressPct >= steps[i].at) {
-                        self.currentStep = steps[i].label;
+                for (var i = carFormSteps.length - 1; i >= 0; i--) {
+                    if (self.progressPct >= carFormSteps[i].at) {
+                        self.currentStep = carFormSteps[i].label;
                         break;
                     }
                 }
             }, 200);
 
             self._msgTimer = setInterval(function() {
-                self._msgIdx = (self._msgIdx + 1) % funMessages.length;
-                self.funMessage = funMessages[self._msgIdx];
+                self._msgIdx = (self._msgIdx + 1) % carFormFunMessages.length;
+                self.funMessage = carFormFunMessages[self._msgIdx];
             }, 4500);
-        },
-
-        destroy() {
-            if (this._timer) clearInterval(this._timer);
-            if (this._msgTimer) clearInterval(this._msgTimer);
         }
     };
 }
+
+var carFormFunMessages = [
+    "Teaching our AI to read mechanic handwriting...",
+    "Checking under the hood... virtually, of course",
+    "Our hamsters are running extra fast today",
+    "Hunting for recalls like a detective on coffee",
+    "Crunching numbers harder than a pothole crunches rims",
+    "Cross-referencing with every complaint ever filed",
+    "Making sure no lemon slips through the cracks",
+    "Our AI is having a heated debate about your car",
+    "Scanning thousands of owner reports at light speed",
+    "Translating engineer-speak into human words...",
+    "Giving your car its annual performance review",
+    "If this were a mechanic, you'd be paying by the hour"
+];
+
+var carFormSteps = [
+    { at: 0,  label: "Connecting to NHTSA database..." },
+    { at: 8,  label: "Fetching complaint records..." },
+    { at: 18, label: "Scanning owner-reported problems..." },
+    { at: 28, label: "Analyzing complaint patterns..." },
+    { at: 38, label: "Looking up recall history..." },
+    { at: 48, label: "Cross-referencing bulk statistics..." },
+    { at: 58, label: "Calculating risk scores..." },
+    { at: 68, label: "Generating AI-powered verdict..." },
+    { at: 78, label: "Building inspection checklist..." },
+    { at: 88, label: "Finalizing your report..." }
+];
 </script>
 {% endblock %}
