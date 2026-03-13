@@ -1,14 +1,20 @@
-"""Unified state store with Redis (production) and in-memory (dev) backends.
+"""Unified state store with file-based (production), Redis, and in-memory backends.
 
-All report state (_reports, _progress, _traces, _vehicle_cache) goes through
-this module so the Flask app works identically in both environments.
+All report state (reports, progress, traces, vehicle_cache) goes through
+this module so the Flask app works identically in all environments.
+
+The file-based backend is multi-worker safe and used automatically when
+RAILWAY_VOLUME_MOUNT_PATH is set, eliminating the need for Redis.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
-from typing import Any
+import os
+import time
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +53,80 @@ class _StoreBackend:
 
     def health_check(self) -> bool:
         raise NotImplementedError
+
+
+class _FileBackend(_StoreBackend):
+    """File-based storage for multi-worker production (no Redis needed).
+
+    Uses the Railway volume or any shared filesystem. All workers can
+    read/write to the same directory, solving the state-sharing problem.
+    """
+
+    def __init__(self, base_dir: str) -> None:
+        self._base = Path(base_dir) / "cache_store"
+        (self._base / "reports").mkdir(parents=True, exist_ok=True)
+        (self._base / "progress").mkdir(parents=True, exist_ok=True)
+        (self._base / "traces").mkdir(parents=True, exist_ok=True)
+        (self._base / "vcache").mkdir(parents=True, exist_ok=True)
+        logger.info("File-based store at %s", self._base)
+
+    def _read_json(self, path: Path) -> dict | list | None:
+        try:
+            if path.exists():
+                return json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            pass
+        return None
+
+    def _write_json(self, path: Path, data) -> None:
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, default=str), encoding="utf-8")
+        tmp.replace(path)
+
+    @staticmethod
+    def _safe_name(key: str) -> str:
+        return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+    def get_report(self, report_id: str) -> dict | None:
+        return self._read_json(self._base / "reports" / f"{report_id}.json")
+
+    def set_report(self, report_id: str, report: dict) -> None:
+        self._write_json(self._base / "reports" / f"{report_id}.json", report)
+
+    def get_progress(self, report_id: str) -> list[dict]:
+        data = self._read_json(self._base / "progress" / f"{report_id}.json")
+        return data if isinstance(data, list) else []
+
+    def push_progress(self, report_id: str, event: dict) -> None:
+        path = self._base / "progress" / f"{report_id}.json"
+        events = self.get_progress(report_id)
+        events.append(event)
+        self._write_json(path, events)
+
+    def init_progress(self, report_id: str) -> None:
+        self._write_json(self._base / "progress" / f"{report_id}.json", [])
+
+    def get_trace(self, report_id: str) -> dict | None:
+        return self._read_json(self._base / "traces" / f"{report_id}.json")
+
+    def set_trace(self, report_id: str, trace: dict) -> None:
+        self._write_json(self._base / "traces" / f"{report_id}.json", trace)
+
+    def get_cached_report_id(self, cache_key: str) -> str | None:
+        path = self._base / "vcache" / f"{self._safe_name(cache_key)}.txt"
+        try:
+            if path.exists():
+                return path.read_text(encoding="utf-8").strip()
+        except OSError:
+            pass
+        return None
+
+    def set_cached_report_id(self, cache_key: str, report_id: str) -> None:
+        path = self._base / "vcache" / f"{self._safe_name(cache_key)}.txt"
+        path.write_text(report_id, encoding="utf-8")
+
+    def health_check(self) -> bool:
+        return self._base.exists()
 
 
 class _MemoryBackend(_StoreBackend):
@@ -145,7 +225,10 @@ class _RedisBackend(_StoreBackend):
 
 
 def init_store() -> None:
-    """Initialize the store backend. Call once at app startup."""
+    """Initialize the store backend. Call once at app startup.
+
+    Priority: Redis > File-based (Railway volume) > In-memory.
+    """
     global _backend
     if _backend is not None:
         return
@@ -156,10 +239,15 @@ def init_store() -> None:
             _backend = _RedisBackend(REDIS_URL)
             return
         except Exception:
-            logger.warning("Redis unavailable, falling back to in-memory store", exc_info=True)
+            logger.warning("Redis unavailable, trying file backend", exc_info=True)
+
+    vol_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
+    if vol_path and Path(vol_path).is_dir():
+        _backend = _FileBackend(vol_path)
+        return
 
     _backend = _MemoryBackend()
-    logger.info("Using in-memory store (set REDIS_URL for production)")
+    logger.info("Using in-memory store (single-worker only)")
 
 
 def _store() -> _StoreBackend:
