@@ -13,6 +13,10 @@ from tenacity import (
     wait_exponential,
 )
 
+
+class _ServerError(requests.RequestException):
+    """Raised for 5xx errors so tenacity retries them but not 4xx."""
+
 from config.settings import SCRAPER_DEFAULT_DELAY, SCRAPER_MAX_RETRIES
 from database.cache import get_cached, set_cached
 
@@ -78,13 +82,17 @@ class BaseScraper(ABC):
     # ------------------------------------------------------------------
 
     @retry(
-        retry=retry_if_exception_type(requests.RequestException),
+        retry=retry_if_exception_type((_ServerError, requests.ConnectionError, requests.Timeout)),
         stop=stop_after_attempt(SCRAPER_MAX_RETRIES),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         reraise=True,
     )
     def _get(self, url: str, **kwargs) -> requests.Response:
-        """GET with rate-limiting, UA rotation, retries, and robots check."""
+        """GET with rate-limiting, UA rotation, retries, and robots check.
+
+        Only retries on 5xx server errors and connection/timeout errors.
+        4xx client errors (400, 404) fail immediately — retrying won't help.
+        """
         self._respect_rate_limit()
         self._rotate_ua()
 
@@ -94,11 +102,13 @@ class BaseScraper(ABC):
 
         logger.debug("[%s] GET %s", self.source_name, url)
         response = self.session.get(url, timeout=30, **kwargs)
+        if response.status_code >= 500:
+            raise _ServerError(f"{response.status_code} Server Error for url: {url}", response=response)
         response.raise_for_status()
         return response
 
     @retry(
-        retry=retry_if_exception_type(requests.RequestException),
+        retry=retry_if_exception_type((_ServerError, requests.ConnectionError, requests.Timeout)),
         stop=stop_after_attempt(SCRAPER_MAX_RETRIES),
         wait=wait_exponential(multiplier=1, min=2, max=30),
         reraise=True,
