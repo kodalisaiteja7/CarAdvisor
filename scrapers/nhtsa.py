@@ -106,27 +106,45 @@ class NHTSAScraper(BaseScraper):
     # ------------------------------------------------------------------
 
     def _fetch_recalls(self, make: str, model: str, year: int) -> list[dict]:
-        url = (
-            f"{self.base_url}/recalls/recallsByVehicle"
-            f"?make={make}&model={model}&modelYear={year}"
-        )
-        try:
-            data = self._get_json(url)
-        except Exception:
-            logger.exception("[nhtsa] Failed to fetch recalls")
-            return []
+        seen: set[str] = set()
+        attempts: list[str] = []
+        for variant in [
+            model,
+            model.replace("- ", "-"),
+            model.replace("-", " "),
+            model.replace(" ", "").replace("-", ""),
+        ]:
+            v = variant.strip()
+            if v and v not in seen:
+                seen.add(v)
+                attempts.append(v)
 
-        recalls = []
-        for r in data.get("results", []):
-            recalls.append({
-                "campaign_number": r.get("NHTSACampaignNumber", ""),
-                "component": r.get("Component", ""),
-                "summary": r.get("Summary", ""),
-                "consequence": r.get("Consequence", ""),
-                "remedy": r.get("Remedy", ""),
-                "report_date": r.get("ReportReceivedDate", ""),
-            })
-        return recalls
+        for attempt_model in attempts:
+            url = (
+                f"{self.base_url}/recalls/recallsByVehicle"
+                f"?make={make}&model={attempt_model}&modelYear={year}"
+            )
+            try:
+                data = self._get_json(url)
+                results = data.get("results", [])
+                if results:
+                    recalls = []
+                    for r in results:
+                        recalls.append({
+                            "campaign_number": r.get("NHTSACampaignNumber", ""),
+                            "component": r.get("Component", ""),
+                            "summary": r.get("Summary", ""),
+                            "consequence": r.get("Consequence", ""),
+                            "remedy": r.get("Remedy", ""),
+                            "report_date": r.get("ReportReceivedDate", ""),
+                        })
+                    return recalls
+            except Exception:
+                continue
+
+        logger.warning("[nhtsa] No recalls found for %s %s %d (tried: %s)",
+                       make, model, year, ", ".join(attempts))
+        return []
 
     # ------------------------------------------------------------------
     # Complaints
