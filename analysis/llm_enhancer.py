@@ -383,6 +383,7 @@ def enhance_report_sections(
     report: dict,
     vector_complaints: list[dict] | None = None,
     bulk_stats: dict | None = None,
+    price_data: dict | None = None,
 ) -> dict:
     """Generate only the Buyer's Verdict (executive_summary + verdict_reasoning).
 
@@ -457,6 +458,26 @@ def enhance_report_sections(
             f"average is {avg:.0f}). {interp}.\n"
         )
 
+    pricing_section = ""
+    pricing = report.get("sections", {}).get("pricing", {})
+    if pricing.get("available"):
+        avg_market = pricing.get("avg_market_price", 0)
+        asking = pricing.get("asking_price")
+        source = pricing.get("source", "")
+        count = pricing.get("listings_count", 0)
+        match_lvl = pricing.get("match_level", "estimate")
+
+        pricing_section = f"\nMarket price data: Average market price is ${avg_market:,} (source: {source}, {count} listings, match: {match_lvl})."
+        if asking:
+            diff = asking - avg_market
+            if diff > 0:
+                pricing_section += f" Asking price ${asking:,} is ${diff:,} ABOVE market average."
+            elif diff < 0:
+                pricing_section += f" Asking price ${asking:,} is ${abs(diff):,} BELOW market average."
+            else:
+                pricing_section += f" Asking price ${asking:,} matches market average."
+        pricing_section += "\n"
+
     if risk_score > 40:
         tone_rules = """TONE RULES (HIGH RISK — strictly follow):
 - This vehicle is HIGH RISK. Be direct about the problems.
@@ -516,6 +537,20 @@ def enhance_report_sections(
             'Include one bullet about how the mileage works in the buyer\'s favor.'
         )
 
+    price_instruction = ""
+    if pricing.get("available") and pricing.get("avg_market_price"):
+        if pricing.get("asking_price"):
+            price_instruction = (
+                '\nPRICING: Market price data is available. Include a brief comment on '
+                'the asking price vs market average in your executive_summary (e.g. "priced '
+                '$X below/above market average"). Add one bullet in verdict_reasoning about the price value.'
+            )
+        else:
+            price_instruction = (
+                '\nPRICING: Market price data is available but no asking price was provided. '
+                'You may briefly mention the average market price as context if relevant.'
+            )
+
     prompt = f"""You are an expert automotive advisor helping a car buyer evaluate a used {_vehicle_str(vehicle)}.
 
 MILEAGE RULES (strictly follow):
@@ -530,7 +565,7 @@ MILEAGE RULES (strictly follow):
 
 Phase distribution: {json.dumps(phase_summary)}
 (past = already through that failure zone, current = in the zone, upcoming = approaching, future = far away)
-{rag_section}
+{rag_section}{pricing_section}{price_instruction}
 Vehicle data:
 {json.dumps(context, indent=2)}
 

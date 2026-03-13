@@ -220,6 +220,19 @@
                         </div>
                     </div>
 
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                            Asking Price <span class="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#CC9F00] font-bold text-lg">$</span>
+                            <input type="text" x-model="askingPrice" placeholder="e.g. 18,500"
+                                   @input="askingPrice = askingPrice.replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
+                                   class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-9 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm font-mono">
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1.5">Enter the seller's asking price to compare with market value</p>
+                    </div>
+
                     <button type="button" @click="submit" :disabled="!canSubmit || analyzing"
                             class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
                         <span x-show="!analyzing" class="flex items-center justify-center gap-2">
@@ -381,6 +394,22 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    <span class="flex items-center gap-2">
+                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Asking Price <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span>
+                    </span>
+                </label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#CC9F00] font-bold text-lg">$</span>
+                    <input type="text" x-model="askingPrice" placeholder="e.g. 18,500"
+                           @input="askingPrice = askingPrice.replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
+                           class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-9 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm font-mono">
+                </div>
+                <p class="text-xs text-gray-400 mt-1.5">Enter the seller's asking price to compare with market value</p>
+            </div>
+
             <button type="submit" :disabled="!canSubmit || analyzing"
                     class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
                 <span x-show="!analyzing" class="flex items-center justify-center gap-2">
@@ -457,6 +486,7 @@ function carForm() {
         make: '',
         model: '',
         mileage: 75000,
+        askingPrice: '',
         trim: '',
         engine: '',
         transmission: '',
@@ -615,10 +645,12 @@ function carForm() {
                         model: this.model,
                         year: parseInt(this.year),
                         mileage: parseInt(this.mileage),
+                        asking_price: this.askingPrice ? parseInt(this.askingPrice.replace(/,/g, '')) : null,
                         trim: this.trim ? (this.vehicleTrims.find(t => t.value === this.trim)?.label || this.trim) : null,
                         engine: this.engine || null,
                         transmission: this.transmission || null,
                         drivetrain: this.drivetrain || null,
+                        vin: this.vinInput ? this.vinInput.trim().toUpperCase() : null,
                     }),
                 });
                 const data = await resp.json();

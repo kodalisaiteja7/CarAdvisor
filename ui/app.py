@@ -326,11 +326,26 @@ def api_analyze():
     if not (0 <= mileage <= 500_000):
         return jsonify({"error": "mileage must be between 0 and 500,000"}), 400
 
+    asking_price = data.get("asking_price")
+    if asking_price is not None:
+        try:
+            asking_price = int(asking_price)
+            if asking_price <= 0 or asking_price > 10_000_000:
+                asking_price = None
+        except (ValueError, TypeError):
+            asking_price = None
+
+    vin = (data.get("vin") or "").strip().upper() or None
+    if vin and (len(vin) != 17 or not re.match(r"^[A-HJ-NPR-Z0-9]{17}$", vin)):
+        vin = None
+
     options = {
         "trim": (data.get("trim") or "").strip() or None,
         "engine": (data.get("engine") or "").strip() or None,
         "transmission": (data.get("transmission") or "").strip() or None,
         "drivetrain": (data.get("drivetrain") or "").strip() or None,
+        "asking_price": asking_price,
+        "vin": vin,
     }
 
     cache_key = _make_cache_key(make, model, year, mileage, options)
@@ -435,6 +450,7 @@ def _make_cache_key(
         (options.get("engine") or "").upper(),
         (options.get("transmission") or "").upper(),
         (options.get("drivetrain") or "").upper(),
+        str(options.get("asking_price") or ""),
     ]
     return "|".join(parts)
 
@@ -517,10 +533,30 @@ def _run_analysis(
             logger.info("Bulk data not available (this is OK if not set up): %s", exc)
             _emit(report_id, "Bulk Data", "complete", "Bulk data not available (using scraper data only)")
 
+        price_data = None
+        try:
+            _emit(report_id, "Pricing", "scraping", "Fetching market prices from MarketCheck...")
+            from scrapers.price_scraper import fetch_avg_price
+            price_data = fetch_avg_price(
+                make, model, year, mileage,
+                trim=options.get("trim"),
+                engine=options.get("engine"),
+                vin=options.get("vin"),
+            )
+            source = price_data.get("source", "estimate")
+            count = price_data.get("listings_count", 0)
+            match = price_data.get("match_level", "estimate")
+            _emit(report_id, "Pricing", "complete",
+                  f"Market price: ${price_data.get('avg_price', 0):,} ({source}, {match})")
+        except Exception as exc:
+            logger.warning("Price fetch failed: %s", exc)
+            _emit(report_id, "Pricing", "complete", "Price data not available")
+
         _emit(report_id, "AI Insights", "scraping", "Generating AI-powered insights and guidance...")
         report = generate_report(
             agg, ma, vs, mileage, options=options,
             bulk_stats=bulk_stats,
+            price_data=price_data,
         )
         _emit(report_id, "AI Insights", "complete", "AI insights generated")
 

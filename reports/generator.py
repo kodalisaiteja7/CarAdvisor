@@ -24,6 +24,7 @@ def generate_report(
     options: dict | None = None,
     vector_complaints: list[dict] | None = None,
     bulk_stats: dict | None = None,
+    price_data: dict | None = None,
 ) -> dict:
     """Build the complete report dict."""
     options = options or {}
@@ -38,7 +39,6 @@ def generate_report(
         "drivetrain": options.get("drivetrain"),
     }
 
-    # Build all raw sections (fast, no LLM)
     raw_checklist = _build_inspection_checklist(
         mileage_analysis, vehicle_score, user_mileage
     )
@@ -56,6 +56,7 @@ def generate_report(
             "inspection_checklist": raw_checklist,
             "current_risk": _build_current_risk(mileage_analysis, vehicle_score, agg),
             "owner_experience": _build_owner_experience(agg),
+            "pricing": _build_pricing_section(options.get("asking_price"), price_data),
         },
     }
 
@@ -75,6 +76,7 @@ def generate_report(
         verdict_future = pool.submit(
             _run_with_trace, enhance_report_sections, vehicle, report,
             vector_complaints=vector_complaints, bulk_stats=bulk_stats,
+            price_data=price_data,
         )
 
         try:
@@ -250,6 +252,38 @@ def _build_current_risk(ma: MileageAnalysis, score: VehicleScore, agg: Aggregate
         "system_risks": system_risks,
         "phase_summary": ma.phase_counts,
         "complaints_by_year": dict(sorted(complaints_by_year.items())),
+    }
+
+
+def _build_pricing_section(asking_price: int | None, price_data: dict | None) -> dict:
+    """Build the pricing comparison section."""
+    if not price_data:
+        return {"available": False}
+
+    avg_price = price_data.get("avg_price", 0)
+    price_diff = None
+    price_verdict = None
+
+    if asking_price and avg_price:
+        price_diff = asking_price - avg_price
+        pct = abs(price_diff) / avg_price if avg_price else 0
+        if pct <= 0.05:
+            price_verdict = "at_market"
+        elif price_diff < 0:
+            price_verdict = "below_market"
+        else:
+            price_verdict = "above_market"
+
+    return {
+        "available": True,
+        "asking_price": asking_price,
+        "avg_market_price": avg_price,
+        "source": price_data.get("source", ""),
+        "listings_count": price_data.get("listings_count", 0),
+        "price_range": price_data.get("price_range"),
+        "match_level": price_data.get("match_level", "estimate"),
+        "price_difference": price_diff,
+        "price_verdict": price_verdict,
     }
 
 

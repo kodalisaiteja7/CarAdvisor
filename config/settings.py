@@ -63,5 +63,7 @@ LLM_ENABLED = bool(ANTHROPIC_API_KEY)
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-haiku-4-5-20251001")
 LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 8192))
 
+MARKETCHECK_API_KEY = os.getenv("MARKETCHECK_API_KEY", "")
+
 BULK_DB_PATH = BASE_DIR / "nhtsa_bulk.db"
 CHROMA_STORE_PATH = BASE_DIR / "data" / "chroma_store"
