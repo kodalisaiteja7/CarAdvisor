@@ -15,6 +15,8 @@ from pathlib import Path
 from sqlalchemy import Column, Float, Integer, String, Text, func, case
 from sqlalchemy.orm import sessionmaker
 
+from sqlalchemy import create_engine as _sa_create_engine
+
 from data.bulk_loader import (
     BULK_DB_PATH,
     BULK_DB_URL,
@@ -24,6 +26,22 @@ from data.bulk_loader import (
 )
 
 logger = logging.getLogger(__name__)
+
+STATS_CACHE_PATH = Path(__file__).resolve().parent.parent / "dataset" / "bulk_stats_cache.db"
+
+
+def _get_stats_engine():
+    """Return an engine that has model_stats/global_baselines tables.
+
+    Prefers the full nhtsa_bulk.db; falls back to the lightweight
+    bulk_stats_cache.db that ships with the repo for production deploys.
+    """
+    if Path(BULK_DB_PATH).exists():
+        return _get_bulk_engine(), True
+    if STATS_CACHE_PATH.exists():
+        engine = _sa_create_engine(f"sqlite:///{STATS_CACHE_PATH}", echo=False)
+        return engine, False
+    return None, False
 
 
 class ModelStats(BulkBase):
@@ -246,8 +264,8 @@ def _build_global_baselines(session, all_counts: list[int]):
 
 def get_model_stats(make: str, model: str, year: int) -> dict | None:
     """Look up pre-computed stats for a specific vehicle. Returns None if not found."""
-    engine = _get_bulk_engine()
-    if not Path(BULK_DB_PATH).exists():
+    engine, _ = _get_stats_engine()
+    if engine is None:
         return None
 
     BulkBase.metadata.create_all(engine)
