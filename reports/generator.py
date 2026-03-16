@@ -25,6 +25,7 @@ def generate_report(
     vector_complaints: list[dict] | None = None,
     bulk_stats: dict | None = None,
     price_data: dict | None = None,
+    v2_signals: dict | None = None,
 ) -> dict:
     """Build the complete report dict."""
     options = options or {}
@@ -60,6 +61,12 @@ def generate_report(
         },
     }
 
+    if v2_signals:
+        report["sections"]["v2_signals"] = v2_signals
+
+    if bulk_stats and bulk_stats.get("total_complaints"):
+        report["sections"]["vehicle_summary"]["total_complaints"] = bulk_stats["total_complaints"]
+
     trace = get_trace()
     if trace:
         trace.log_sections("pre_llm", report["sections"])
@@ -76,7 +83,7 @@ def generate_report(
         verdict_future = pool.submit(
             _run_with_trace, enhance_report_sections, vehicle, report,
             vector_complaints=vector_complaints, bulk_stats=bulk_stats,
-            price_data=price_data,
+            price_data=price_data, v2_signals=v2_signals,
         )
 
         try:
@@ -138,37 +145,64 @@ def _build_vehicle_summary(
 def _build_inspection_checklist(
     ma: MileageAnalysis, score: VehicleScore, user_mileage: int
 ) -> dict:
-    must_check = []
-    recommended = []
-    standard = []
+    scored_items = []
 
+    seen_systems = set()
     for cp in ma.classified_problems:
+        system = cp.problem.category
+        if system in seen_systems or system == "Other":
+            continue
+        seen_systems.add(system)
+
+        is_current = cp.phase == MileagePhase.CURRENT
+        is_upcoming = cp.phase == MileagePhase.UPCOMING
+        relevance = (
+            3.0 if is_current and cp.problem.severity >= 6 else
+            2.0 if is_current or is_upcoming else
+            1.5 if cp.phase == MileagePhase.PAST and cp.problem.severity >= 7 else
+            1.0
+        )
+        rank_score = cp.problem.complaint_count * relevance * (cp.problem.severity / 5.0)
+
+        priority = (
+            "must_check" if is_current and cp.problem.severity >= 6 else
+            "recommended"
+        )
+
         item = {
-            "system": cp.problem.category,
+            "system": system,
             "description": cp.problem.description,
             "what_to_look_for": _inspection_guidance(cp),
             "estimated_cost_if_bad": _format_cost_range(
                 cp.problem.repair_cost_low, cp.problem.repair_cost_high
             ),
             "sources": cp.problem.sources,
+            "_rank_score": rank_score,
+            "_priority": priority,
         }
+        scored_items.append(item)
 
-        if cp.phase == MileagePhase.CURRENT and cp.problem.severity >= 6:
+    scored_items.sort(key=lambda x: x["_rank_score"], reverse=True)
+    top_items = scored_items[:5]
+
+    must_check = []
+    recommended = []
+    for item in top_items:
+        priority = item.pop("_priority")
+        item.pop("_rank_score")
+        if priority == "must_check":
             must_check.append(item)
-        elif cp.phase in (MileagePhase.CURRENT, MileagePhase.UPCOMING):
-            recommended.append(item)
-        elif cp.phase == MileagePhase.PAST and cp.problem.severity >= 7:
-            recommended.append(item)
         else:
-            standard.append(item)
+            recommended.append(item)
 
-    standard.extend(_standard_checks())
+    if not must_check and recommended:
+        must_check.append(recommended.pop(0))
 
     return {
-        "must_check": must_check[:10],
-        "recommended": recommended[:10],
-        "standard": standard[:10],
-        "total_items": len(must_check) + len(recommended) + len(standard),
+        "must_check": must_check,
+        "recommended": recommended,
+        "standard": [],
+        "total_items": len(must_check) + len(recommended),
     }
 
 
@@ -274,6 +308,32 @@ def _build_pricing_section(asking_price: int | None, price_data: dict | None) ->
         else:
             price_verdict = "above_market"
 
+    percentiles = price_data.get("percentiles")
+    price_position = None
+    if asking_price and percentiles and avg_price:
+        p5 = percentiles.get("p5", 0)
+        p25 = percentiles.get("p25", 0)
+        p50 = percentiles.get("p50", 0)
+        p75 = percentiles.get("p75", 0)
+        p95 = percentiles.get("p95", 0)
+        if p5 and p95 and p95 > p5:
+            position_pct = max(0, min(100, ((asking_price - p5) / (p95 - p5)) * 100))
+            if position_pct <= 20:
+                position_label = "Great Deal"
+            elif position_pct <= 40:
+                position_label = "Good Price"
+            elif position_pct <= 60:
+                position_label = "Fair Price"
+            elif position_pct <= 80:
+                position_label = "Above Average"
+            else:
+                position_label = "Overpriced"
+            price_position = {
+                "percentile": round(position_pct, 1),
+                "label": position_label,
+                "p5": p5, "p25": p25, "p50": p50, "p75": p75, "p95": p95,
+            }
+
     return {
         "available": True,
         "asking_price": asking_price,
@@ -284,6 +344,9 @@ def _build_pricing_section(asking_price: int | None, price_data: dict | None) ->
         "match_level": price_data.get("match_level", "estimate"),
         "price_difference": price_diff,
         "price_verdict": price_verdict,
+        "percentiles": percentiles,
+        "days_on_market": price_data.get("days_on_market"),
+        "price_position": price_position,
     }
 
 

@@ -55,17 +55,24 @@
     {% block head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans antialiased transition-colors">
-    <nav class="sticky top-0 z-50 bg-[#111111] text-white">
+    <nav class="sticky top-0 z-50 bg-gradient-to-r from-[#0a0a14] via-[#111111] to-[#0a0a14] text-white shadow-lg shadow-black/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-            <a href="/" class="flex items-center gap-2.5 font-bold tracking-tight">
-                <div class="w-8 h-8 rounded-lg bg-brand-400 flex items-center justify-center">
+            <a href="/" class="flex items-center gap-2.5 font-bold tracking-tight group">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-400/20 group-hover:shadow-brand-400/40 transition-shadow">
                     <svg class="w-5 h-5 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>
                 </div>
-                <span class="text-xl">Car Advisor</span>
+                <div class="flex flex-col">
+                    <span class="text-xl font-extrabold">Car Advisor</span>
+                    <span class="text-[10px] text-brand-400 font-semibold tracking-widest uppercase -mt-0.5">Risk Intelligence</span>
+                </div>
             </a>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
+                <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    Powered by NHTSA
+                </span>
                 <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)"
-                        class="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition" aria-label="Toggle dark mode">
+                        class="p-2 rounded-lg text-gray-400 hover:text-brand-400 hover:bg-white/10 transition" aria-label="Toggle dark mode">
                     <svg x-show="!darkMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                     <svg x-show="darkMode" x-cloak class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                 </button>
@@ -77,9 +84,21 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="border-t border-surface-200 dark:border-gray-800 mt-16">
-        <div class="max-w-7xl mx-auto px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
-            Car Advisor &mdash; Data sourced from NHTSA.
+    <footer class="bg-gradient-to-r from-[#0a0a14] via-[#111111] to-[#0a0a14] text-white mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>
+                    </div>
+                    <span class="font-bold text-sm">Car Advisor</span>
+                </div>
+                <div class="flex items-center gap-4 text-xs text-gray-500">
+                    <span>Data sourced from NHTSA, TSBs &amp; Manufacturer Communications</span>
+                    <span class="hidden sm:inline text-gray-700">&bull;</span>
+                    <span class="hidden sm:inline">Risk Intelligence Platform</span>
+                </div>
+            </div>
         </div>
     </footer>
 </body>

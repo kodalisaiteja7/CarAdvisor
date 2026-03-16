@@ -11,6 +11,7 @@ fixed thresholds.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, field
 
 from analysis.mileage_model import MileageAnalysis, MileageClassifiedProblem, MileagePhase
@@ -48,6 +49,19 @@ SYSTEM_CRITICALITY = {
     "Engine": 1.4,
     "Transmission": 1.2
 }
+
+_BRAND_RELIABILITY_TIERS: dict[str, float] = {}
+_TIER_1_BRANDS = {"TOYOTA", "LEXUS", "HONDA", "ACURA", "MAZDA"}
+_TIER_3_BRANDS = {
+    "BMW", "AUDI", "MERCEDES-BENZ", "JEEP", "CHRYSLER", "DODGE",
+    "LAND ROVER", "ALFA ROMEO", "FIAT", "JAGUAR", "MASERATI",
+    "MINI", "VOLVO",
+}
+
+for _b in _TIER_1_BRANDS:
+    _BRAND_RELIABILITY_TIERS[_b] = 1.5
+for _b in _TIER_3_BRANDS:
+    _BRAND_RELIABILITY_TIERS[_b] = 2.5
 
 
 @dataclass
@@ -119,9 +133,9 @@ def _score_single(
 ) -> float:
     """Compute a weighted score for one classified problem (0-10 scale).
 
-    When bulk data is available:
-    - Uses calibrated severity weights instead of hand-tuned defaults
-    - Normalizes complaint counts against the per-model baseline
+    Uses raw complaint counts for scoring to preserve full spread.
+    Sales volume normalization is applied as a post-hoc adjustment
+    in _apply_sales_normalization instead.
     """
     p = cp.problem
 
@@ -149,11 +163,11 @@ def _score_single(
     raw *= system_crit
 
     phase_multiplier = {
-        MileagePhase.CURRENT: 1.2,
-        MileagePhase.UPCOMING: 0.8,
-        MileagePhase.PAST: 1.0,
-        MileagePhase.FUTURE: 0.5,
-        MileagePhase.UNKNOWN: 0.6,
+        MileagePhase.CURRENT: 1.1,
+        MileagePhase.UPCOMING: 0.95,
+        MileagePhase.PAST: 1.05,
+        MileagePhase.FUTURE: 0.85,
+        MileagePhase.UNKNOWN: 0.9,
     }
     raw *= phase_multiplier.get(cp.phase, 1.0)
     raw *= cp.relevance_score
@@ -161,28 +175,26 @@ def _score_single(
     return min(10.0, raw)
 
 
-def _mileage_wear_factor(mileage: int) -> float:
+def _mileage_wear_factor(mileage: int, make: str = "") -> float:
     """Higher mileage = more accumulated wear = higher baseline risk.
 
-    Range: ~0.5x at 0 miles to ~2.0x at 150k+ miles.
-    This makes the same vehicle score roughly 3-4x higher at 150k vs 30k.
+    Brand-tiered: reliable brands (Toyota, Lexus, Honda, Mazda) age more
+    gently (max 1.5x at 150k) while historically unreliable brands (Jeep,
+    BMW, Chrysler, etc.) age more steeply (max 2.5x at 150k).
+    Beyond 150k, all brands continue growing up to +0.5 extra by 250k.
     """
-    factor = 0.5 + 1.5 * min(1.0, mileage / 150_000)
-    return round(min(2.0, factor), 3)
+    max_f = _BRAND_RELIABILITY_TIERS.get(make.upper(), 2.0)
+    base = 0.5 + (max_f - 0.5) * min(1.0, mileage / 150_000)
+    if mileage > 150_000:
+        base += min(0.5, (mileage - 150_000) / 200_000)
+    return round(base, 3)
 
 
 def _compute_inherent_risk(scored: list[ScoredProblem], mileage: int) -> float:
     """Compute a mileage-scaled floor based on inherent vehicle risk.
 
-    When all problems are PAST (high mileage), per-problem scores drop
-    because relevance is low. But a car that has been through ALL failure
-    zones carries accumulated mechanical wear. This function computes a
-    baseline from raw severity data (ignoring mileage phase entirely)
-    and scales it with mileage to guarantee monotonically increasing risk.
-
-    The formula: floor = avg_severity * (base + growth * mileage_ratio)
-    This ensures a car at 150k with 10 known issues is never rated safer
-    than the same car at 25k.
+    Uses raw complaint counts so that vehicles with genuinely many
+    complaints always get a meaningful risk floor.
     """
     if not scored:
         return 0.0
@@ -203,10 +215,10 @@ def _compute_inherent_risk(scored: list[ScoredProblem], mileage: int) -> float:
     top_n = raw_severities[:min(10, len(raw_severities))]
     avg_severity = sum(top_n) / len(top_n)
 
-    volume_boost = min(2.0, (total_complaints / 50) ** 0.5)
+    volume_boost = min(1.8, (total_complaints / 100) ** 0.4)
 
     mileage_ratio = 1.0 + min(2.0, mileage / 100_000)
-    floor = avg_severity * 4.0 * volume_boost * (mileage_ratio ** 1.3)
+    floor = avg_severity * 4.0 * volume_boost * (mileage_ratio ** 1.1)
 
     return min(85.0, floor)
 
@@ -215,7 +227,7 @@ def _mileage_baseline(mileage: int) -> float:
     """Direct mileage-based risk floor.
 
     Even a perfectly reliable model carries inherent wear risk at high mileage.
-    Returns 0 at 0 miles, scaling up to ~20 at 150k+.
+    Scales continuously: 0 at 0 mi, ~12 at 100k, ~20 at 150k, ~30 at 200k.
     """
     if mileage <= 30_000:
         return 0.0
@@ -225,7 +237,9 @@ def _mileage_baseline(mileage: int) -> float:
         return 5.0 + 7.0 * ((mileage - 60_000) / 40_000)
     if mileage <= 150_000:
         return 12.0 + 8.0 * ((mileage - 100_000) / 50_000)
-    return 20.0
+    if mileage <= 200_000:
+        return 20.0 + 10.0 * ((mileage - 150_000) / 50_000)
+    return 30.0
 
 
 def _letter_grade(score: float) -> str:
@@ -290,12 +304,106 @@ def _compute_safety_score(
     return round(min(100.0, raw), 1)
 
 
+def _apply_recency_adjustment(
+    risk: float,
+    complaint_dates: list[str],
+    model_year: int,
+) -> float:
+    """Adjust risk based on when complaints were filed relative to model year.
+
+    Late complaints (filed 5+ years after model year) signal persistent
+    long-term issues — slight risk increase.  Early-only complaints
+    (mostly in years 1-2) suggest manufacturing defects that may have
+    been fixed — slight risk decrease for used buyers.
+    """
+    if not complaint_dates or not model_year:
+        return risk
+
+    from datetime import datetime
+
+    years_after = []
+    for ds in complaint_dates:
+        try:
+            dt = datetime.strptime(ds[:10], "%m/%d/%Y")
+            years_after.append(dt.year - model_year)
+        except (ValueError, TypeError, IndexError):
+            try:
+                dt = datetime.strptime(ds[:10], "%Y-%m-%d")
+                years_after.append(dt.year - model_year)
+            except (ValueError, TypeError, IndexError):
+                continue
+
+    if len(years_after) < 5:
+        return risk
+
+    years_after.sort()
+    median_lag = years_after[len(years_after) // 2]
+
+    if median_lag >= 5:
+        multiplier = min(1.10, 1.0 + (median_lag - 4) * 0.02)
+    elif median_lag <= 1:
+        multiplier = max(0.92, 1.0 - (2 - median_lag) * 0.04)
+    else:
+        multiplier = 1.0
+
+    if multiplier != 1.0:
+        adjusted = risk * multiplier
+        logger.info(
+            "Recency adjustment: median lag %d years -> multiplier %.3f -> risk %.1f -> %.1f",
+            median_lag, multiplier, risk, adjusted,
+        )
+        return max(0.0, min(100.0, adjusted))
+    return risk
+
+
+def _apply_sales_normalization(
+    risk: float,
+    scored: list[ScoredProblem],
+    sales_volume: int,
+) -> float:
+    """Additive risk adjustment based on per-1k complaint rate deviation.
+
+    Computes a volume-dependent expected complaint rate and applies an
+    additive correction: vehicles with rates ABOVE expected get risk
+    points added, those BELOW get risk points subtracted.  This avoids
+    the over-amplification issues of multiplicative stretch.
+    """
+    if sales_volume < 500:
+        return risk
+
+    total_complaints = sum(sp.classified.problem.complaint_count for sp in scored)
+    if total_complaints == 0:
+        return risk
+
+    rate = (total_complaints / sales_volume) * 1000
+    ref_rate = 3.0 + math.log10(max(10_000, sales_volume) / 10_000) * 3.0
+    deviation = rate - ref_rate
+
+    if deviation > 0:
+        risk_adj = min(30.0, deviation * 4.0)
+        adjusted = risk + risk_adj
+    else:
+        multiplier = max(0.6, 1.0 + deviation * 0.05)
+        adjusted = risk * multiplier
+
+    logger.info(
+        "Sales normalization: %d complaints / %d sold = %.2f per 1k "
+        "(ref %.1f, dev %+.1f) -> risk %.1f -> %.1f",
+        total_complaints, sales_volume, rate, ref_rate, deviation,
+        risk, adjusted,
+    )
+    return max(0.0, min(100.0, adjusted))
+
+
 def score_vehicle(
     mileage_analysis: MileageAnalysis,
     make: str = "",
     model: str = "",
     year: int = 0,
     num_recalls: int = 0,
+    sales_volume: int | None = None,
+    complaint_dates: list[str] | None = None,
+    min_score: float = 0.0,
 ) -> VehicleScore:
     """Score a vehicle's reliability at its analysed mileage point.
 
@@ -341,16 +449,25 @@ def score_vehicle(
         })
         source_factor = min(1.3, 0.7 + source_count * 0.15)
 
-        mileage_factor = _mileage_wear_factor(mileage)
+        mileage_factor = _mileage_wear_factor(mileage, make=make)
         risk = weighted_avg * 10 * source_factor * mileage_factor
 
         inherent_floor = _compute_inherent_risk(scored, mileage)
         risk = max(risk, inherent_floor)
 
-        risk = max(risk, mileage_baseline)
         risk = min(100.0, risk)
+
+        if sales_volume is not None and sales_volume > 0:
+            risk = _apply_sales_normalization(risk, scored, sales_volume)
+
+        if complaint_dates:
+            risk = _apply_recency_adjustment(risk, complaint_dates, year)
+
+        risk = max(risk, mileage_baseline, min_score)
+        risk = min(100.0, risk)
+
     else:
-        risk = mileage_baseline
+        risk = max(mileage_baseline, min_score)
 
     safety = _compute_safety_score(scored, num_recalls)
 

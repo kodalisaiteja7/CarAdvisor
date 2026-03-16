@@ -12,6 +12,7 @@ from scrapers.nhtsa import NHTSAScraper
 from analysis.aggregator import aggregate
 from analysis.mileage_model import analyze_mileage
 from analysis.scorer import score_vehicle
+from analysis.scorer_v2 import score_vehicle_v2, get_v2_signal_details
 from reports.generator import generate_report
 
 logging.basicConfig(
@@ -52,6 +53,25 @@ def run_report(make: str, model: str, year: int, mileage: int) -> dict:
     vs = score_vehicle(ma, make=make, model=model, year=year,
                        num_recalls=len(agg.recalls))
 
+    v2 = score_vehicle_v2(
+        nhtsa_risk_score=vs.reliability_risk_score,
+        make=make, model=model, year=year, mileage=mileage,
+    )
+    vs.reliability_risk_score = v2.risk_score_v2
+    vs.letter_grade = v2.letter_grade
+
+    v2_signals = get_v2_signal_details(make, model, year)
+    v2_signals["score_components"] = {
+        "nhtsa": {"score": v2.nhtsa_component, "weight": 35, "label": "NHTSA Complaints"},
+        "tsb": {"score": v2.tsb_component, "weight": 25, "label": "Technical Service Bulletins"},
+        "investigation": {"score": v2.investigation_component, "weight": 15, "label": "NHTSA Investigations"},
+        "mfr_comm": {"score": v2.mfr_comm_component, "weight": 10, "label": "Manufacturer Communications"},
+        "dashboard_light": {"score": v2.dl_qir_component, "weight": 15, "label": "Dashboard Light QIR"},
+    }
+    v2_signals["wear_factor"] = v2.wear_factor
+    v2_signals["mileage_floor"] = v2.mileage_floor
+    v2_signals["weighted_contributions"] = v2.weighted_contributions
+
     bulk_stats = None
     try:
         from data.stats_builder import get_model_stats
@@ -64,6 +84,7 @@ def run_report(make: str, model: str, year: int, mileage: int) -> dict:
     report = generate_report(
         agg, ma, vs, mileage,
         bulk_stats=bulk_stats,
+        v2_signals=v2_signals,
     )
     return report
 

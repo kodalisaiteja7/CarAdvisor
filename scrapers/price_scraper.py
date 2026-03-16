@@ -41,6 +41,7 @@ def fetch_avg_price(
     trim: str | None = None,
     engine: str | None = None,
     vin: str | None = None,
+    zip_code: str | None = None,
 ) -> dict:
     """Return an estimated average market price -- always returns a result.
 
@@ -52,6 +53,8 @@ def fetch_avg_price(
         cache_key_parts.append(trim)
     if vin:
         cache_key_parts.append(vin)
+    if zip_code:
+        cache_key_parts.append(zip_code)
     cache_suffix = "|".join(cache_key_parts)
 
     cached = get_cached(_SOURCE, make, model, year)
@@ -59,13 +62,24 @@ def fetch_avg_price(
         return cached
 
     result = None
+    search_stats = None
     api_key = _get_mc_key()
+    zc = zip_code or "10001"
 
     if vin and api_key:
-        result = _try_mc_price(vin, mileage, api_key)
+        result = _try_mc_price(vin, mileage, api_key, zc)
 
-    if result is None and api_key:
-        result = _try_mc_search(make, model, year, mileage, trim, api_key)
+    if api_key:
+        search_stats = _try_mc_search(make, model, year, mileage, trim, api_key, zc)
+
+    if result is None and search_stats is not None:
+        result = search_stats
+        search_stats = None
+    elif result is not None and search_stats is not None:
+        result["percentiles"] = search_stats.get("percentiles")
+        result["days_on_market"] = search_stats.get("days_on_market")
+        result["listings_count"] = search_stats.get("listings_count", 0)
+        result["price_range"] = search_stats.get("price_range")
 
     if result is None:
         result = _estimate_from_msrp(make, model, year, mileage, trim, engine)
@@ -75,12 +89,54 @@ def fetch_avg_price(
     return result
 
 
+_volume_cache: dict[str, int | None] = {}
+
+
+def fetch_market_volume(make: str, model: str, year: int) -> int | None:
+    """Return the total active listing count for a make/model/year.
+
+    Used as a proxy for sales volume to normalize complaint counts in scoring.
+    Higher listings = more popular vehicle = complaints should be weighed
+    relative to volume. Returns None if MarketCheck is unavailable.
+    """
+    cache_key = f"{make}|{model}|{year}"
+    if cache_key in _volume_cache:
+        return _volume_cache[cache_key]
+
+    api_key = _get_mc_key()
+    if not api_key:
+        _volume_cache[cache_key] = None
+        return None
+
+    try:
+        params = {
+            "api_key": api_key,
+            "car_type": "used",
+            "year": str(year),
+            "make": make,
+            "model": model,
+            "rows": "0",
+        }
+        resp = requests.get(
+            f"{_MC_BASE}/search/car/active", params=params, timeout=10,
+        )
+        resp.raise_for_status()
+        count = resp.json().get("num_found", 0)
+        _volume_cache[cache_key] = int(count) if count else None
+        logger.info("[volume] %d %s %s → %s active listings", year, make, model, count)
+        return _volume_cache[cache_key]
+    except Exception:
+        logger.warning("[volume] Failed to fetch for %d %s %s", year, make, model, exc_info=True)
+        _volume_cache[cache_key] = None
+        return None
+
+
 # ------------------------------------------------------------------
 # Strategy 1 — MarketCheck Price (ML prediction, requires VIN)
 # ------------------------------------------------------------------
 
 
-def _try_mc_price(vin: str, mileage: int, api_key: str) -> dict | None:
+def _try_mc_price(vin: str, mileage: int, api_key: str, zip_code: str = "10001") -> dict | None:
     """Use MarketCheck Price endpoint for ML-predicted valuation."""
     try:
         url = f"{_MC_BASE}/predict/car/us/marketcheck_price"
@@ -89,7 +145,7 @@ def _try_mc_price(vin: str, mileage: int, api_key: str) -> dict | None:
             "vin": vin,
             "miles": mileage,
             "dealer_type": "independent",
-            "zip": "10001",
+            "zip": zip_code,
         }
 
         logger.info("[price] MarketCheck Price API: VIN=%s miles=%d", vin, mileage)
@@ -138,7 +194,7 @@ def _try_mc_price(vin: str, mileage: int, api_key: str) -> dict | None:
 
 def _try_mc_search(
     make: str, model: str, year: int, mileage: int,
-    trim: str | None, api_key: str,
+    trim: str | None, api_key: str, zip_code: str = "10001",
 ) -> dict | None:
     """Use MarketCheck Inventory Search to get market stats."""
     try:
@@ -153,15 +209,17 @@ def _try_mc_search(
             "model": model,
             "miles_range": f"{mileage_min}-{mileage_max}",
             "rows": "0",
-            "stats": "price,miles",
+            "stats": "price,miles,dom_active",
         }
+        if zip_code and zip_code != "10001":
+            params["zip"] = zip_code
         if trim:
             params["trim"] = trim
 
         url = f"{_MC_BASE}/search/car/active"
         logger.info(
-            "[price] MarketCheck Search: %d %s %s (trim=%s, miles=%d±15k)",
-            year, make, model, trim, mileage,
+            "[price] MarketCheck Search: %d %s %s (trim=%s, miles=%d±15k, zip=%s)",
+            year, make, model, trim, mileage, zip_code,
         )
         resp = requests.get(url, params=params, timeout=15)
         resp.raise_for_status()
@@ -173,11 +231,16 @@ def _try_mc_search(
 
         if num_found < _MIN_LISTINGS or not price_stats:
             logger.info(
-                "[price] MarketCheck Search: only %d listings (min %d), trying without trim",
+                "[price] MarketCheck Search: only %d listings (min %d)",
                 num_found, _MIN_LISTINGS,
             )
             if trim:
-                return _try_mc_search(make, model, year, mileage, trim=None, api_key=api_key)
+                return _try_mc_search(make, model, year, mileage, trim=None,
+                                      api_key=api_key, zip_code=zip_code)
+            if zip_code != "10001":
+                logger.info("[price] Retrying without location filter")
+                return _try_mc_search(make, model, year, mileage, trim=None,
+                                      api_key=api_key, zip_code="10001")
             return None
 
         median_price = price_stats.get("median", 0)
@@ -191,6 +254,10 @@ def _try_mc_search(
         price_max = int(price_stats.get("max", 0))
         percentiles = price_stats.get("percentiles", {})
 
+        dom_stats = stats.get("dom_active", {})
+        dom_median = dom_stats.get("median")
+        dom_mean = dom_stats.get("mean")
+
         result = {
             "avg_price": avg_price,
             "source": "MarketCheck",
@@ -198,15 +265,20 @@ def _try_mc_search(
             "price_range": {"low": price_min, "high": price_max} if price_min and price_max else None,
             "match_level": "exact" if trim else "broad",
             "percentiles": {
+                "p5": int(percentiles.get("5.0", 0)),
                 "p25": int(percentiles.get("25.0", 0)),
                 "p50": int(percentiles.get("50.0", 0)),
                 "p75": int(percentiles.get("75.0", 0)),
+                "p90": int(percentiles.get("90.0", 0)),
+                "p95": int(percentiles.get("95.0", 0)),
             } if percentiles else None,
+            "days_on_market": int(dom_median or dom_mean or 0) if (dom_median or dom_mean) else None,
         }
 
         logger.info(
-            "[price] MarketCheck Search: %d %s %s → $%s median (%d listings)",
+            "[price] MarketCheck Search: %d %s %s → $%s median (%d listings, DOM=%s)",
             year, make, model, f"{avg_price:,}", num_found,
+            result["days_on_market"],
         )
         return result
 

@@ -2,7 +2,10 @@ import os
 import secrets
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 _raw_db_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'car_advisor.db'}")
 if _raw_db_url.startswith("postgres://"):

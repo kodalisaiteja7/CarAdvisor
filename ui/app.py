@@ -23,6 +23,7 @@ from scrapers.nhtsa import NHTSAScraper
 from analysis.aggregator import aggregate
 from analysis.mileage_model import analyze_mileage
 from analysis.scorer import score_vehicle
+from analysis.scorer_v2 import score_vehicle_v2, get_v2_signal_details
 from reports.generator import generate_report
 from utils.trace import start_trace, end_trace
 
@@ -339,6 +340,10 @@ def api_analyze():
     if vin and (len(vin) != 17 or not re.match(r"^[A-HJ-NPR-Z0-9]{17}$", vin)):
         vin = None
 
+    zip_code = (data.get("zip_code") or "").strip() or None
+    if zip_code and not re.match(r"^\d{5}$", zip_code):
+        zip_code = None
+
     options = {
         "trim": (data.get("trim") or "").strip() or None,
         "engine": (data.get("engine") or "").strip() or None,
@@ -346,6 +351,7 @@ def api_analyze():
         "drivetrain": (data.get("drivetrain") or "").strip() or None,
         "asking_price": asking_price,
         "vin": vin,
+        "zip_code": zip_code,
     }
 
     cache_key = _make_cache_key(make, model, year, mileage, options)
@@ -451,6 +457,7 @@ def _make_cache_key(
         (options.get("transmission") or "").upper(),
         (options.get("drivetrain") or "").upper(),
         str(options.get("asking_price") or ""),
+        str(options.get("zip_code") or ""),
     ]
     return "|".join(parts)
 
@@ -497,11 +504,41 @@ def _run_analysis(
 
     _emit(report_id, "Analysis", "scraping", "Aggregating and analyzing data...")
 
+    sales_vol = None
+    try:
+        from data.sales_data import get_sales_volume
+        sales_vol = get_sales_volume(make, model, year)
+        if sales_vol:
+            logger.info("Sales volume for %s %s %d: %d units", make, model, year, sales_vol)
+    except Exception as exc:
+        logger.warning("Sales volume lookup failed: %s", exc)
+
     try:
         agg = aggregate(results)
         ma = analyze_mileage(agg, mileage)
         vs = score_vehicle(ma, make=make, model=model, year=year,
-                          num_recalls=len(agg.recalls))
+                          num_recalls=len(agg.recalls),
+                          sales_volume=sales_vol,
+                          complaint_dates=agg.complaint_dates)
+
+        v2 = score_vehicle_v2(
+            nhtsa_risk_score=vs.reliability_risk_score,
+            make=make, model=model, year=year, mileage=mileage,
+        )
+        vs.reliability_risk_score = v2.risk_score_v2
+        vs.letter_grade = v2.letter_grade
+
+        v2_signals = get_v2_signal_details(make, model, year)
+        v2_signals["score_components"] = {
+            "nhtsa": {"score": v2.nhtsa_component, "weight": 35, "label": "NHTSA Complaints"},
+            "tsb": {"score": v2.tsb_component, "weight": 25, "label": "Technical Service Bulletins"},
+            "investigation": {"score": v2.investigation_component, "weight": 15, "label": "NHTSA Investigations"},
+            "mfr_comm": {"score": v2.mfr_comm_component, "weight": 10, "label": "Manufacturer Communications"},
+            "dashboard_light": {"score": v2.dl_qir_component, "weight": 15, "label": "Dashboard Light QIR"},
+        }
+        v2_signals["wear_factor"] = v2.wear_factor
+        v2_signals["mileage_floor"] = v2.mileage_floor
+        v2_signals["weighted_contributions"] = v2.weighted_contributions
 
         trace.log_analysis(
             total_complaints=agg.total_complaints,
@@ -542,6 +579,7 @@ def _run_analysis(
                 trim=options.get("trim"),
                 engine=options.get("engine"),
                 vin=options.get("vin"),
+                zip_code=options.get("zip_code"),
             )
             source = price_data.get("source", "estimate")
             count = price_data.get("listings_count", 0)
@@ -557,6 +595,7 @@ def _run_analysis(
             agg, ma, vs, mileage, options=options,
             bulk_stats=bulk_stats,
             price_data=price_data,
+            v2_signals=v2_signals,
         )
         _emit(report_id, "AI Insights", "complete", "AI insights generated")
 

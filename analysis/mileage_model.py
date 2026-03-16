@@ -132,8 +132,7 @@ def classify_problem(
     midpoint = (low + high) / 2
 
     if user_mileage > high:
-        distance = user_mileage - high
-        relevance = max(0.1, 1.0 - distance / 50_000)
+        relevance = 0.8
         return MileageClassifiedProblem(
             problem=problem,
             phase=MileagePhase.PAST,
@@ -191,8 +190,7 @@ def _classify_with_curve(
     p90 = curve.get("p90", 0)
 
     if user_mileage > p90:
-        distance = user_mileage - p90
-        relevance = max(0.1, 1.0 - distance / 80_000)
+        relevance = 0.8
         return MileageClassifiedProblem(
             problem=problem,
             phase=MileagePhase.PAST,
