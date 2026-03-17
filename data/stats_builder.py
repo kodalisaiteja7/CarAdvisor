@@ -70,6 +70,24 @@ class GlobalBaseline(BulkBase):
     stat_json = Column(Text)
 
 
+class SystemMileageCurve(BulkBase):
+    __tablename__ = "system_mileage_curves"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    make = Column(String(100), nullable=False, index=True)
+    model = Column(String(100), nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    system = Column(String(50), nullable=False)
+    count = Column(Integer, default=0)
+    p10 = Column(Integer)
+    p25 = Column(Integer)
+    median = Column(Integer)
+    p75 = Column(Integer)
+    p90 = Column(Integer)
+    min_val = Column(Integer)
+    max_val = Column(Integer)
+
+
 def build_stats():
     """Pre-compute all model statistics from nhtsa_complaints table."""
     engine = _get_bulk_engine()
@@ -262,6 +280,74 @@ def _build_global_baselines(session, all_counts: list[int]):
     )
 
 
+def build_mileage_curves():
+    """Pre-compute per-system mileage curves for all model-years.
+
+    For each (make, model, year) in model_stats, queries complaints from
+    year-3 to year+3, groups by system, and stores percentile distributions.
+    """
+    engine = _get_bulk_engine()
+    BulkBase.metadata.create_all(engine)
+
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    SystemMileageCurve.__table__.drop(engine, checkfirst=True)
+    BulkBase.metadata.create_all(engine)
+
+    model_years = (
+        session.query(ModelStats.make, ModelStats.model, ModelStats.year)
+        .all()
+    )
+    logger.info("Building mileage curves for %d model-years...", len(model_years))
+
+    batch: list[SystemMileageCurve] = []
+    for idx, (make, model_name, year) in enumerate(model_years):
+        rows = (
+            session.query(NHTSAComplaint.system, NHTSAComplaint.mileage)
+            .filter(
+                NHTSAComplaint.make == make,
+                NHTSAComplaint.model == model_name,
+                NHTSAComplaint.year.between(year - 3, year + 3),
+                NHTSAComplaint.mileage.isnot(None),
+                NHTSAComplaint.mileage > 0,
+                NHTSAComplaint.mileage < 500_000,
+            )
+            .all()
+        )
+
+        by_system: dict[str, list[int]] = {}
+        for system, mileage_val in rows:
+            by_system.setdefault(system, []).append(mileage_val)
+
+        for system, values in by_system.items():
+            if len(values) < 5:
+                continue
+            pcts = _compute_percentiles(values)
+            batch.append(SystemMileageCurve(
+                make=make, model=model_name, year=year, system=system,
+                count=pcts["count"], p10=pcts["p10"], p25=pcts["p25"],
+                median=pcts["median"], p75=pcts["p75"], p90=pcts["p90"],
+                min_val=pcts["min"], max_val=pcts["max"],
+            ))
+
+        if len(batch) >= 1000:
+            session.bulk_save_objects(batch)
+            session.commit()
+            batch.clear()
+
+        if (idx + 1) % 2000 == 0:
+            logger.info("  ... curves: %d/%d model-years", idx + 1, len(model_years))
+
+    if batch:
+        session.bulk_save_objects(batch)
+        session.commit()
+
+    total = session.query(func.count(SystemMileageCurve.id)).scalar()
+    session.close()
+    logger.info("Mileage curves complete: %d system-level curves", total)
+
+
 def get_model_stats(make: str, model: str, year: int) -> dict | None:
     """Look up pre-computed stats for a specific vehicle. Returns None if not found."""
     engine, _ = _get_stats_engine()
@@ -350,13 +436,22 @@ def get_mileage_curve(make: str, model: str, year: int, system: str) -> dict | N
 def get_all_mileage_curves(
     make: str, model: str, year: int,
 ) -> dict[str, dict]:
-    """Fetch mileage curves for ALL systems in a single query.
+    """Fetch mileage curves for ALL systems.
+
+    Uses live nhtsa_complaints when available; falls back to precomputed
+    system_mileage_curves in the stats cache for production deploys.
 
     Returns {system: {count, p10, p25, median, p75, p90, min, max}}.
     """
-    if not Path(BULK_DB_PATH).exists():
-        return {}
+    if Path(BULK_DB_PATH).exists():
+        return _mileage_curves_from_complaints(make, model, year)
+    return _mileage_curves_from_cache(make, model, year)
 
+
+def _mileage_curves_from_complaints(
+    make: str, model: str, year: int,
+) -> dict[str, dict]:
+    """Compute curves live from the raw nhtsa_complaints table."""
     engine = _get_bulk_engine()
     BulkBase.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -389,6 +484,42 @@ def get_all_mileage_curves(
             curves[system] = _compute_percentiles(values)
 
     return curves
+
+
+def _mileage_curves_from_cache(
+    make: str, model: str, year: int,
+) -> dict[str, dict]:
+    """Look up precomputed curves from system_mileage_curves table."""
+    engine, _ = _get_stats_engine()
+    if engine is None:
+        return {}
+
+    try:
+        BulkBase.metadata.create_all(engine)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        make_upper = make.strip().upper()
+        model_upper = model.strip().upper()
+
+        rows = (
+            session.query(SystemMileageCurve)
+            .filter_by(make=make_upper, model=model_upper, year=year)
+            .all()
+        )
+        session.close()
+
+        curves: dict[str, dict] = {}
+        for r in rows:
+            curves[r.system] = {
+                "count": r.count, "p10": r.p10, "p25": r.p25,
+                "median": r.median, "p75": r.p75, "p90": r.p90,
+                "min": r.min_val, "max": r.max_val,
+            }
+        return curves
+    except Exception:
+        logger.debug("Mileage curves cache lookup failed", exc_info=True)
+        return {}
 
 
 def get_calibrated_weights(make: str, model: str, year: int) -> dict | None:
