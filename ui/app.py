@@ -111,15 +111,42 @@ def admin_download_bulk_db():
         _bulk_download_status["progress"] = "Starting download..."
         _bulk_download_status["error"] = ""
         try:
-            import gdown
-            url = f"https://drive.google.com/uc?id={GDRIVE_BULK_DB_ID}"
-            _bulk_download_status["progress"] = "Downloading from Google Drive..."
+            import requests as req
+            session = req.Session()
+            file_id = GDRIVE_BULK_DB_ID
+
+            _bulk_download_status["progress"] = "Requesting file from Google Drive..."
             logger.info("Downloading nhtsa_bulk.db to %s", dest)
-            output = gdown.download(url, str(dest), quiet=False, fuzzy=True)
-            if output is None:
-                _bulk_download_status["progress"] = "gdown failed, trying direct download..."
-                logger.warning("gdown returned None, trying requests fallback")
-                _download_gdrive_direct(str(dest))
+
+            url = f"https://drive.google.com/uc?export=download&id={file_id}"
+            r = session.get(url, stream=True, timeout=30)
+
+            # Large files require confirmation to bypass virus scan warning
+            confirm_token = None
+            for key, value in r.cookies.items():
+                if "download_warning" in key:
+                    confirm_token = value
+                    break
+
+            if confirm_token:
+                url = f"https://drive.google.com/uc?export=download&confirm={confirm_token}&id={file_id}"
+                r = session.get(url, stream=True, timeout=30)
+            elif b"confirm=t" in r.content[:5000]:
+                url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+                r = session.get(url, stream=True, timeout=30)
+
+            r.raise_for_status()
+            _bulk_download_status["progress"] = "Downloading..."
+
+            downloaded = 0
+            with open(str(dest), "wb") as f:
+                for chunk in r.iter_content(chunk_size=8 * 1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        mb = downloaded / 1024 / 1024
+                        _bulk_download_status["progress"] = f"Downloading... {mb:.0f} MB"
+
             size_mb = dest.stat().st_size / 1024 / 1024
             _bulk_download_status["progress"] = f"Done! {size_mb:.0f} MB downloaded"
             logger.info("Download complete: %.0f MB at %s", size_mb, dest)
@@ -134,26 +161,6 @@ def admin_download_bulk_db():
             logger.exception("Bulk DB download failed")
         finally:
             _bulk_download_status["running"] = False
-
-    def _download_gdrive_direct(dest_path: str):
-        """Fallback: download large Google Drive file with confirmation bypass."""
-        import requests as req
-        session = req.Session()
-        url = f"https://drive.google.com/uc?export=download&id={GDRIVE_BULK_DB_ID}"
-        r = session.get(url, stream=True)
-        for key, value in r.cookies.items():
-            if key.startswith("download_warning"):
-                url = f"https://drive.google.com/uc?export=download&confirm={value}&id={GDRIVE_BULK_DB_ID}"
-                r = session.get(url, stream=True)
-                break
-        downloaded = 0
-        with open(dest_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=32 * 1024 * 1024):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    mb = downloaded / 1024 / 1024
-                    _bulk_download_status["progress"] = f"Downloading... {mb:.0f} MB"
 
     thread = Thread(target=_download, daemon=True)
     thread.start()
