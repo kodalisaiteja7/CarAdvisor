@@ -144,6 +144,10 @@ def admin_volume_clean():
             except OSError:
                 pass
 
+    # Recreate cache_store directories so the app keeps working
+    for sub in ("reports", "progress", "traces", "vcache"):
+        (Path(vol_path) / "cache_store" / sub).mkdir(parents=True, exist_ok=True)
+
     freed = sum(f["size_mb"] for f in deleted)
     return jsonify({"deleted": len(deleted), "freed_mb": round(freed, 2), "files": deleted, "errors": errors})
 
