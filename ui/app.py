@@ -85,6 +85,69 @@ def admin_clear_cache():
     return jsonify({"cleared": count})
 
 
+@app.route("/api/admin/volume", methods=["GET"])
+def admin_volume_list():
+    """List all files on the Railway volume with sizes."""
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+
+    vol_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "")
+    if not vol_path or not Path(vol_path).is_dir():
+        return jsonify({"error": "No volume mounted", "volume_env": vol_path}), 400
+
+    files = []
+    total = 0
+    for root, dirs, filenames in os.walk(vol_path):
+        for fname in filenames:
+            fp = Path(root) / fname
+            try:
+                size = fp.stat().st_size
+                total += size
+                files.append({
+                    "path": str(fp.relative_to(vol_path)),
+                    "size_mb": round(size / 1024 / 1024, 2),
+                })
+            except OSError:
+                pass
+    files.sort(key=lambda f: f["size_mb"], reverse=True)
+    return jsonify({"volume": vol_path, "total_mb": round(total / 1024 / 1024, 2), "files": files})
+
+
+@app.route("/api/admin/volume/clean", methods=["POST"])
+def admin_volume_clean():
+    """Delete all files on the Railway volume to free space."""
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+
+    vol_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "")
+    if not vol_path or not Path(vol_path).is_dir():
+        return jsonify({"error": "No volume mounted"}), 400
+
+    import shutil
+    deleted = []
+    errors = []
+    for root, dirs, filenames in os.walk(vol_path, topdown=False):
+        for fname in filenames:
+            fp = Path(root) / fname
+            try:
+                size = fp.stat().st_size
+                fp.unlink()
+                deleted.append({"path": str(fp.relative_to(vol_path)), "size_mb": round(size / 1024 / 1024, 2)})
+            except Exception as e:
+                errors.append({"path": str(fp.relative_to(vol_path)), "error": str(e)})
+        for d in dirs:
+            dp = Path(root) / d
+            try:
+                dp.rmdir()
+            except OSError:
+                pass
+
+    freed = sum(f["size_mb"] for f in deleted)
+    return jsonify({"deleted": len(deleted), "freed_mb": round(freed, 2), "files": deleted, "errors": errors})
+
+
 _bulk_download_status = {"running": False, "progress": "", "error": ""}
 
 GDRIVE_BULK_DB_ID = "1CR4-W4ZRfhrTRfruzZWo4gPsPGEAL4L5"
