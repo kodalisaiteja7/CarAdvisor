@@ -51,6 +51,9 @@ class _StoreBackend:
     def set_cached_report_id(self, cache_key: str, report_id: str) -> None:
         raise NotImplementedError
 
+    def clear_vehicle_cache(self) -> int:
+        raise NotImplementedError
+
     def health_check(self) -> bool:
         raise NotImplementedError
 
@@ -125,6 +128,18 @@ class _FileBackend(_StoreBackend):
         path = self._base / "vcache" / f"{self._safe_name(cache_key)}.txt"
         path.write_text(report_id, encoding="utf-8")
 
+    def clear_vehicle_cache(self) -> int:
+        vcache_dir = self._base / "vcache"
+        count = 0
+        for f in vcache_dir.glob("*.txt"):
+            f.unlink()
+            count += 1
+        reports_dir = self._base / "reports"
+        for f in reports_dir.glob("*.json"):
+            f.unlink()
+            count += 1
+        return count
+
     def health_check(self) -> bool:
         return self._base.exists()
 
@@ -164,6 +179,12 @@ class _MemoryBackend(_StoreBackend):
 
     def set_cached_report_id(self, cache_key: str, report_id: str) -> None:
         self._vehicle_cache[cache_key] = report_id
+
+    def clear_vehicle_cache(self) -> int:
+        count = len(self._vehicle_cache) + len(self._reports)
+        self._vehicle_cache.clear()
+        self._reports.clear()
+        return count
 
     def health_check(self) -> bool:
         return True
@@ -216,6 +237,16 @@ class _RedisBackend(_StoreBackend):
 
     def set_cached_report_id(self, cache_key: str, report_id: str) -> None:
         self._r.setex(f"vcache:{cache_key}", self._VEHICLE_CACHE_TTL, report_id)
+
+    def clear_vehicle_cache(self) -> int:
+        count = 0
+        for key in self._r.scan_iter("vcache:*"):
+            self._r.delete(key)
+            count += 1
+        for key in self._r.scan_iter("report:*"):
+            self._r.delete(key)
+            count += 1
+        return count
 
     def health_check(self) -> bool:
         try:
@@ -282,6 +313,9 @@ def get_cached_report_id(cache_key: str) -> str | None:
 
 def set_cached_report_id(cache_key: str, report_id: str) -> None:
     _store().set_cached_report_id(cache_key, report_id)
+
+def clear_vehicle_cache() -> int:
+    return _store().clear_vehicle_cache()
 
 def health_check() -> bool:
     return _store().health_check()

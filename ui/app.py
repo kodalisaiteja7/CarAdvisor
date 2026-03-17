@@ -74,6 +74,17 @@ def health():
     return jsonify({"status": "ok" if healthy else "degraded", "checks": checks}), 200 if healthy else 503
 
 
+@app.route("/api/admin/clear-cache", methods=["POST"])
+def admin_clear_cache():
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+    from cache.store import clear_vehicle_cache
+    count = clear_vehicle_cache()
+    logger.info("Admin cache clear: removed %d entries", count)
+    return jsonify({"cleared": count})
+
+
 # ------------------------------------------------------------------
 # Pages
 # ------------------------------------------------------------------
