@@ -85,6 +85,66 @@ def admin_clear_cache():
     return jsonify({"cleared": count})
 
 
+_bulk_download_status = {"running": False, "progress": "", "error": ""}
+
+GDRIVE_BULK_DB_ID = "1CR4-W4ZRfhrTRfruzZWo4gPsPGEAL4L5"
+
+
+@app.route("/api/admin/download-bulk-db", methods=["POST"])
+def admin_download_bulk_db():
+    """Download nhtsa_bulk.db from Google Drive to the Railway volume."""
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+
+    if _bulk_download_status["running"]:
+        return jsonify({"status": "already_running", "progress": _bulk_download_status["progress"]})
+
+    vol_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "")
+    if not vol_path or not Path(vol_path).is_dir():
+        return jsonify({"error": "No Railway volume mounted"}), 400
+
+    dest = Path(vol_path) / "nhtsa_bulk.db"
+
+    def _download():
+        _bulk_download_status["running"] = True
+        _bulk_download_status["progress"] = "Starting download..."
+        _bulk_download_status["error"] = ""
+        try:
+            import gdown
+            url = f"https://drive.google.com/uc?id={GDRIVE_BULK_DB_ID}"
+            _bulk_download_status["progress"] = "Downloading from Google Drive..."
+            logger.info("Downloading nhtsa_bulk.db to %s", dest)
+            gdown.download(url, str(dest), quiet=False)
+            size_mb = dest.stat().st_size / 1024 / 1024
+            _bulk_download_status["progress"] = f"Done! {size_mb:.0f} MB downloaded"
+            logger.info("Download complete: %.0f MB at %s", size_mb, dest)
+
+            import importlib
+            import config.settings
+            config.settings.BULK_DB_PATH = dest
+            import data.bulk_loader
+            data.bulk_loader.BULK_DB_PATH = dest
+            data.bulk_loader.BULK_DB_URL = f"sqlite:///{dest}"
+        except Exception as e:
+            _bulk_download_status["error"] = str(e)
+            logger.exception("Bulk DB download failed")
+        finally:
+            _bulk_download_status["running"] = False
+
+    thread = Thread(target=_download, daemon=True)
+    thread.start()
+    return jsonify({"status": "started", "destination": str(dest)})
+
+
+@app.route("/api/admin/download-bulk-db/status")
+def admin_download_status():
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+    return jsonify(_bulk_download_status)
+
+
 # ------------------------------------------------------------------
 # Pages
 # ------------------------------------------------------------------
