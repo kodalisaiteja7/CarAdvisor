@@ -175,6 +175,51 @@ def admin_download_status():
     return jsonify(_bulk_download_status)
 
 
+@app.route("/api/admin/download-bulk-db/test")
+def admin_download_test():
+    """Synchronous diagnostic: test volume write + Google Drive access."""
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+
+    import requests as req
+    diag = {}
+
+    vol_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "")
+    diag["volume_env"] = vol_path
+    diag["volume_exists"] = bool(vol_path and Path(vol_path).is_dir())
+
+    if diag["volume_exists"]:
+        test_file = Path(vol_path) / "_write_test.tmp"
+        try:
+            test_file.write_text("ok")
+            test_file.unlink()
+            diag["volume_writable"] = True
+        except Exception as e:
+            diag["volume_writable"] = False
+            diag["volume_write_error"] = str(e)
+
+        existing = Path(vol_path) / "nhtsa_bulk.db"
+        diag["bulk_db_exists"] = existing.exists()
+        if existing.exists():
+            diag["bulk_db_size_mb"] = round(existing.stat().st_size / 1024 / 1024, 1)
+
+    try:
+        url = f"https://drive.google.com/uc?export=download&id={GDRIVE_BULK_DB_ID}"
+        r = req.get(url, stream=True, timeout=10)
+        diag["gdrive_status"] = r.status_code
+        diag["gdrive_content_type"] = r.headers.get("Content-Type", "")
+        diag["gdrive_has_confirm"] = any("download_warning" in k for k in r.cookies.keys())
+        cl = r.headers.get("Content-Length")
+        if cl:
+            diag["gdrive_content_length_mb"] = round(int(cl) / 1024 / 1024, 1)
+        r.close()
+    except Exception as e:
+        diag["gdrive_error"] = str(e)
+
+    return jsonify(diag)
+
+
 # ------------------------------------------------------------------
 # Pages
 # ------------------------------------------------------------------
