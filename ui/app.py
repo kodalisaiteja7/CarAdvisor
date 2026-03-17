@@ -174,7 +174,7 @@ def admin_download_status():
 
 @app.route("/api/admin/download-bulk-db/test")
 def admin_download_test():
-    """Synchronous diagnostic: test volume write + Google Drive access."""
+    """Synchronous: test Google Drive URL and write 1MB sample to volume."""
     secret = request.headers.get("X-Admin-Key") or request.args.get("key")
     if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
         return jsonify({"error": "unauthorized"}), 403
@@ -186,35 +186,83 @@ def admin_download_test():
     diag["volume_env"] = vol_path
     diag["volume_exists"] = bool(vol_path and Path(vol_path).is_dir())
 
-    if diag["volume_exists"]:
-        test_file = Path(vol_path) / "_write_test.tmp"
-        try:
-            test_file.write_text("ok")
-            test_file.unlink()
-            diag["volume_writable"] = True
-        except Exception as e:
-            diag["volume_writable"] = False
-            diag["volume_write_error"] = str(e)
+    if not diag["volume_exists"]:
+        return jsonify(diag)
 
-        existing = Path(vol_path) / "nhtsa_bulk.db"
-        diag["bulk_db_exists"] = existing.exists()
-        if existing.exists():
-            diag["bulk_db_size_mb"] = round(existing.stat().st_size / 1024 / 1024, 1)
+    existing = Path(vol_path) / "nhtsa_bulk.db"
+    diag["bulk_db_exists"] = existing.exists()
+    if existing.exists():
+        diag["bulk_db_size_mb"] = round(existing.stat().st_size / 1024 / 1024, 1)
 
+    url = f"https://drive.usercontent.google.com/download?id={GDRIVE_BULK_DB_ID}&export=download&confirm=t"
     try:
-        url = f"https://drive.google.com/uc?export=download&id={GDRIVE_BULK_DB_ID}"
-        r = req.get(url, stream=True, timeout=10)
+        r = req.get(url, stream=True, timeout=30)
         diag["gdrive_status"] = r.status_code
         diag["gdrive_content_type"] = r.headers.get("Content-Type", "")
-        diag["gdrive_has_confirm"] = any("download_warning" in k for k in r.cookies.keys())
-        cl = r.headers.get("Content-Length")
-        if cl:
-            diag["gdrive_content_length_mb"] = round(int(cl) / 1024 / 1024, 1)
+        cl = r.headers.get("Content-Length", "0")
+        diag["gdrive_size_mb"] = round(int(cl) / 1024 / 1024, 1) if cl.isdigit() else "unknown"
+
+        # Write a 1MB sample to verify streaming + volume write works
+        if "octet-stream" in diag["gdrive_content_type"]:
+            sample_path = Path(vol_path) / "_test_1mb.tmp"
+            written = 0
+            with open(str(sample_path), "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+                        written += len(chunk)
+                        if written >= 1024 * 1024:
+                            break
+            diag["sample_written_bytes"] = written
+            sample_path.unlink(missing_ok=True)
+            diag["streaming_works"] = True
         r.close()
     except Exception as e:
         diag["gdrive_error"] = str(e)
 
     return jsonify(diag)
+
+
+@app.route("/api/admin/download-bulk-db/run", methods=["POST"])
+def admin_download_sync():
+    """Synchronous full download — blocks until complete (may take minutes)."""
+    secret = request.headers.get("X-Admin-Key") or request.args.get("key")
+    if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
+        return jsonify({"error": "unauthorized"}), 403
+
+    import requests as req
+
+    vol_path = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", "")
+    if not vol_path or not Path(vol_path).is_dir():
+        return jsonify({"error": "No volume"}), 400
+
+    dest = Path(vol_path) / "nhtsa_bulk.db"
+    if dest.exists():
+        dest.unlink()
+
+    try:
+        url = f"https://drive.usercontent.google.com/download?id={GDRIVE_BULK_DB_ID}&export=download&confirm=t"
+        r = req.get(url, stream=True, timeout=60)
+        r.raise_for_status()
+
+        downloaded = 0
+        with open(str(dest), "wb") as f:
+            for chunk in r.iter_content(chunk_size=8 * 1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+        r.close()
+
+        size_mb = dest.stat().st_size / 1024 / 1024
+        import config.settings
+        config.settings.BULK_DB_PATH = dest
+        import data.bulk_loader
+        data.bulk_loader.BULK_DB_PATH = dest
+        data.bulk_loader.BULK_DB_URL = f"sqlite:///{dest}"
+
+        return jsonify({"status": "done", "size_mb": round(size_mb, 1)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ------------------------------------------------------------------
