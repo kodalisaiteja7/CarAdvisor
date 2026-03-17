@@ -115,27 +115,24 @@ def admin_download_bulk_db():
             session = req.Session()
             file_id = GDRIVE_BULK_DB_ID
 
+            if dest.exists():
+                dest.unlink()
+
             _bulk_download_status["progress"] = "Requesting file from Google Drive..."
             logger.info("Downloading nhtsa_bulk.db to %s", dest)
 
-            url = f"https://drive.google.com/uc?export=download&id={file_id}"
-            r = session.get(url, stream=True, timeout=30)
-
-            # Large files require confirmation to bypass virus scan warning
-            confirm_token = None
-            for key, value in r.cookies.items():
-                if "download_warning" in key:
-                    confirm_token = value
-                    break
-
-            if confirm_token:
-                url = f"https://drive.google.com/uc?export=download&confirm={confirm_token}&id={file_id}"
-                r = session.get(url, stream=True, timeout=30)
-            elif b"confirm=t" in r.content[:5000]:
-                url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
-                r = session.get(url, stream=True, timeout=30)
-
+            url = f"https://drive.google.com/uc?export=download&confirm=t&id={file_id}"
+            r = session.get(url, stream=True, timeout=60)
             r.raise_for_status()
+
+            content_type = r.headers.get("Content-Type", "")
+            if "text/html" in content_type:
+                logger.warning("Got HTML instead of file, trying alt URL...")
+                _bulk_download_status["progress"] = "Bypassing confirmation page..."
+                r.close()
+                url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
+                r = session.get(url, stream=True, timeout=60)
+                r.raise_for_status()
             _bulk_download_status["progress"] = "Downloading..."
 
             downloaded = 0
