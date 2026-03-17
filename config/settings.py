@@ -68,5 +68,9 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 8192))
 
 MARKETCHECK_API_KEY = os.getenv("MARKETCHECK_API_KEY", "")
 
-BULK_DB_PATH = BASE_DIR / "nhtsa_bulk.db"
+_vol_path = os.getenv("RAILWAY_VOLUME_MOUNT_PATH", "")
+if _vol_path and Path(_vol_path).is_dir() and (Path(_vol_path) / "nhtsa_bulk.db").exists():
+    BULK_DB_PATH = Path(_vol_path) / "nhtsa_bulk.db"
+else:
+    BULK_DB_PATH = BASE_DIR / "nhtsa_bulk.db"
 CHROMA_STORE_PATH = BASE_DIR / "data" / "chroma_store"
