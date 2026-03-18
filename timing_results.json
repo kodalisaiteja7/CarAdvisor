@@ -1,0 +1,62 @@
+[
+  {
+    "vehicle": "2020 TOYOTA CAMRY",
+    "mileage": 45000,
+    "scraping": 0.2,
+    "analysis": 0.3,
+    "problems": 13,
+    "bulk_stats": 0.0,
+    "report_llm": 62.8,
+    "total": 63.3,
+    "verdict": "YES",
+    "checklist": "18/18"
+  },
+  {
+    "vehicle": "2018 HONDA CIVIC",
+    "mileage": 80000,
+    "scraping": 18.2,
+    "analysis": 0.4,
+    "problems": 13,
+    "bulk_stats": 0.0,
+    "report_llm": 76.3,
+    "total": 94.9,
+    "verdict": "YES",
+    "checklist": "18/18"
+  },
+  {
+    "vehicle": "2017 HYUNDAI SONATA",
+    "mileage": 75000,
+    "scraping": 0.1,
+    "analysis": 0.0,
+    "problems": 13,
+    "bulk_stats": 0.0,
+    "report_llm": 70.4,
+    "total": 70.5,
+    "verdict": "YES",
+    "checklist": "18/18"
+  },
+  {
+    "vehicle": "2019 FORD F-150",
+    "mileage": 60000,
+    "scraping": 38.2,
+    "analysis": 0.9,
+    "problems": 3,
+    "bulk_stats": 0.0,
+    "report_llm": 42.7,
+    "total": 81.8,
+    "verdict": "YES",
+    "checklist": "8/8"
+  },
+  {
+    "vehicle": "2016 BMW 3 SERIES",
+    "mileage": 95000,
+    "scraping": 25.4,
+    "analysis": 0.1,
+    "problems": 10,
+    "bulk_stats": 0.0,
+    "report_llm": 74.9,
+    "total": 100.3,
+    "verdict": "YES",
+    "checklist": "13/13"
+  }
+]

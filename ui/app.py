@@ -1,4 +1,4 @@
-"""Flask application — web UI and API routes for Car Advisor."""
+"""Flask application — web UI and API routes for CarAdvisr."""
 
 from __future__ import annotations
 
@@ -398,7 +398,7 @@ _BLOG_ARTICLES = {
 </ol>
 
 <h2>Recall History</h2>
-<p>Toyota has issued recalls for airbag inflators (Takata), floor mat entrapment, and fuel pump issues. Most are well-addressed by now, but always verify with a <a href="/">free Car Advisor report</a> to check for open recalls on a specific vehicle.</p>
+<p>Toyota has issued recalls for airbag inflators (Takata), floor mat entrapment, and fuel pump issues. Most are well-addressed by now, but always verify with a <a href="/">free CarAdvisr report</a> to check for open recalls on a specific vehicle.</p>
 
 <h2>Bottom Line</h2>
 <p>The Toyota Camry remains one of the <strong>most reliable sedans you can buy</strong>. Stick with the recommended model years, avoid first-year redesigns, and always run a <a href="/">risk report</a> before purchasing.</p>
@@ -504,8 +504,8 @@ _BLOG_ARTICLES = {
 
 <h2>Free Alternatives</h2>
 
-<h3>1. Car Advisor (This Site)</h3>
-<p><a href="/">Car Advisor</a> analyzes <strong>2.18 million NHTSA complaints</strong> to give you a comprehensive risk report including:</p>
+<h3>1. CarAdvisr (This Site)</h3>
+<p><a href="/">CarAdvisr</a> analyzes <strong>2.18 million NHTSA complaints</strong> to give you a comprehensive risk report including:</p>
 <ul>
 <li>Risk score (0-100) based on real complaint data</li>
 <li>Every recall on record</li>
@@ -526,7 +526,7 @@ _BLOG_ARTICLES = {
 
 <h2>The Best Free Strategy</h2>
 <ol>
-<li><strong>Run a <a href="/">Car Advisor report</a></strong> for complaints, recalls, and risk assessment</li>
+<li><strong>Run a <a href="/">CarAdvisr report</a></strong> for complaints, recalls, and risk assessment</li>
 <li><strong>Check NHTSA.gov</strong> for open recalls by VIN</li>
 <li><strong>Check NICB VINCheck</strong> for theft/total loss</li>
 <li><strong>Google "[car year model] problems"</strong> for forum discussions</li>
@@ -547,7 +547,7 @@ _BLOG_ARTICLES = {
 
 <h2>Before You Visit: Research Phase</h2>
 <ol>
-<li><strong>Run a <a href="/">Car Advisor risk report</a></strong> — see all NHTSA complaints, recalls, and known issues for the specific year/make/model</li>
+<li><strong>Run a <a href="/">CarAdvisr risk report</a></strong> — see all NHTSA complaints, recalls, and known issues for the specific year/make/model</li>
 <li><strong>Check the VIN</strong> for recalls at NHTSA.gov</li>
 <li><strong>Research fair market price</strong> — know what the car should cost before negotiating</li>
 </ol>
@@ -588,7 +588,7 @@ _BLOG_ARTICLES = {
 <h2>Final Steps</h2>
 <ul>
 <li><strong>Get a pre-purchase inspection</strong> from an independent mechanic ($100-200). This is the best money you'll spend.</li>
-<li><strong>Review the risk report</strong> from <a href="/">Car Advisor</a> to understand what issues are most likely at the current mileage</li>
+<li><strong>Review the risk report</strong> from <a href="/">CarAdvisr</a> to understand what issues are most likely at the current mileage</li>
 <li><strong>Negotiate based on findings</strong> — use any issues found as leverage for a lower price</li>
 </ul>
 """,

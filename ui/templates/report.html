@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} Risk Report — {{ report.sections.vehicle_summary.total_complaints }} Complaints | Car Advisor{% endblock %}
+{% block title %}{{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} Risk Report — {{ report.sections.vehicle_summary.total_complaints }} Complaints | CarAdvisr{% endblock %}
 {% block meta_description %}Risk report for {{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} at {{ report.vehicle.mileage|int|default(0) }} miles. {{ report.sections.vehicle_summary.total_complaints }} NHTSA complaints, {{ report.sections.vehicle_summary.total_recalls }} recalls. Risk Score: {{ report.sections.vehicle_summary.reliability_risk_score }}/100.{% endblock %}
 {% block og_type %}article{% endblock %}
 {% block og_title %}{{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} — Risk Score {{ report.sections.vehicle_summary.reliability_risk_score }}/100{% endblock %}
@@ -14,8 +14,8 @@
     "@type": "Article",
     "headline": "{{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} Risk Report",
     "description": "Detailed reliability and risk analysis for the {{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }}",
-    "author": {"@type": "Organization", "name": "Car Advisor"},
-    "publisher": {"@type": "Organization", "name": "Car Advisor"},
+    "author": {"@type": "Organization", "name": "CarAdvisr"},
+    "publisher": {"@type": "Organization", "name": "CarAdvisr"},
     "mainEntityOfPage": "{{ request.url }}"
 }
 </script>

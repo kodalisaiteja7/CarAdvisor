@@ -1,4 +1,4 @@
-"""Car Advisor — entry point for CLI reports and the web server."""
+"""CarAdvisr — entry point for CLI reports and the web server."""
 
 from __future__ import annotations
 
@@ -173,7 +173,7 @@ def serve():
     from ui.app import create_app
 
     app = create_app()
-    logger.info("Starting Car Advisor on http://%s:%d", FLASK_HOST, FLASK_PORT)
+    logger.info("Starting CarAdvisr on http://%s:%d", FLASK_HOST, FLASK_PORT)
     app.run(
         host=FLASK_HOST,
         port=FLASK_PORT,
@@ -227,7 +227,7 @@ def cmd_setup_bulk(filepath: str | None = None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Car Advisor — used car buying report generator"
+        description="CarAdvisr — used car buying report generator"
     )
     parser.add_argument("command", nargs="?", default=None,
                         help="'serve' | 'load-bulk-data' | 'build-stats' | 'build-vectors' | 'setup-bulk'")
