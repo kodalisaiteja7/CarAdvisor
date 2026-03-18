@@ -405,7 +405,7 @@ def _analyze_dominant_factors(v2_signals: dict | None, risk_score: float, mileag
         "tsb": "Technical Service Bulletins",
         "investigation": "NHTSA investigations",
         "mfr_comm": "manufacturer communications",
-        "dashboard_light": "brand reliability (Dashboard Light QIR)",
+        "brand_reliability": "brand reliability index",
         "mileage_floor": "mileage-based wear floor",
     }
 
@@ -646,7 +646,7 @@ def enhance_report_sections(
 ) -> dict:
     """Generate the Buyer's Verdict (executive_summary + verdict_reasoning).
 
-    Uses V2 signal data (TSBs, investigations, MFR comms, DL QIR) alongside
+    Uses V2 signal data (TSBs, investigations, MFR comms, brand reliability) alongside
     NHTSA complaint data to give the LLM full context for its assessment.
     """
     sections = report.get("sections", {})

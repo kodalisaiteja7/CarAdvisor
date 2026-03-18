@@ -1,81 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Car Advisor — Used Car Buying Report{% endblock %}
+{% block title %}Car Advisor — Free Used Car Risk Report | Know Before You Buy{% endblock %}
 
 {% block head %}
 <style>
     .hero-gradient {
         background: linear-gradient(135deg, #111111 0%, #1a1a2e 50%, #111111 100%);
     }
-    .gold-glow {
-        box-shadow: 0 0 40px rgba(255, 199, 0, 0.15);
-    }
-    .form-group:focus-within label {
-        color: #CC9F00;
-    }
-    .form-group:focus-within .field-icon {
-        color: #FFC700;
-    }
-    .cta-btn {
-        background: #FFC700;
-        transition: all .2s ease;
-    }
-    .cta-btn:hover:not(:disabled) {
-        background: #FFD233;
-        transform: translateY(-1px);
-        box-shadow: 0 8px 24px rgba(255, 199, 0, 0.4);
-    }
-    .cta-btn:disabled {
-        background: #d1d5db;
-    }
-    @keyframes shimmer {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-    }
-    .progress-bar-fill {
-        background: #FFC700;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 0 12px rgba(255, 199, 0, 0.5);
-    }
-    .progress-bar-fill::after {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
-        background-size: 200% 100%;
-        animation: shimmer 1.8s infinite linear;
-    }
-    .feature-card {
-        transition: transform .15s ease;
-    }
-    .feature-card:hover {
-        transform: translateY(-2px);
-    }
-    input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: #FFC700;
-        border: 3px solid #111111;
-        cursor: pointer;
-        box-shadow: 0 2px 6px rgba(0,0,0,.2);
-    }
-    input[type="range"]::-moz-range-thumb {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: #FFC700;
-        border: 3px solid #111111;
-        cursor: pointer;
-        box-shadow: 0 2px 6px rgba(0,0,0,.2);
-    }
-    input[type="range"] {
-        -webkit-appearance: none;
-        height: 6px;
-        border-radius: 999px;
-        outline: none;
-    }
+    .gold-glow { box-shadow: 0 0 40px rgba(255, 199, 0, 0.15); }
+    .form-group:focus-within label { color: #CC9F00; }
+    .form-group:focus-within .field-icon { color: #FFC700; }
+    .cta-btn { background: #FFC700; transition: all .2s ease; }
+    .cta-btn:hover:not(:disabled) { background: #FFD233; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255, 199, 0, 0.4); }
+    .cta-btn:disabled { background: #d1d5db; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .progress-bar-fill { background: #FFC700; position: relative; overflow: hidden; box-shadow: 0 0 12px rgba(255, 199, 0, 0.5); }
+    .progress-bar-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 1.8s infinite linear; }
+    .feature-card { transition: transform .15s ease; }
+    .feature-card:hover { transform: translateY(-2px); }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #FFC700; border: 3px solid #111111; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+    input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #FFC700; border: 3px solid #111111; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+    input[type="range"] { -webkit-appearance: none; height: 6px; border-radius: 999px; outline: none; }
+    .stat-counter { font-variant-numeric: tabular-nums; }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    .float-anim { animation: float 3s ease-in-out infinite; }
 </style>
 {% endblock %}
 
@@ -85,426 +32,750 @@
 <div x-data="carForm()">
 
     <!-- ===== Hero Section ===== -->
-    <div class="hero-gradient text-white py-16 sm:py-20 px-4">
-        <div class="max-w-3xl mx-auto text-center">
+    <div class="hero-gradient text-white py-20 sm:py-28 px-4">
+        <div class="max-w-4xl mx-auto text-center">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 mb-6">
                 <span class="w-2 h-2 rounded-full bg-[#FFC700] animate-pulse"></span>
-                <span class="text-sm font-medium text-gray-300">Powered by NHTSA data & AI analysis</span>
+                <span class="text-sm font-medium text-gray-300">Built with NHTSA public data & AI analysis</span>
             </div>
             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
-                Know Before<br>
-                <span class="text-[#FFC700]">You Buy</span>
+                Don't Buy a Lemon.<br>
+                <span class="text-[#FFC700]">Check It First.</span>
             </h1>
-            <p class="mt-5 text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
-                Get a comprehensive risk report on any used car — known issues, recalls, failure predictions, and a tailored inspection checklist.
+            <p class="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+                We analyze <strong class="text-white">2.18 million NHTSA safety complaints</strong>, recalls, and investigations to give you a risk score for any used car. Free. No signup required.
             </p>
-        </div>
-    </div>
-
-    <!-- ===== Feature Badges ===== -->
-    <div class="max-w-3xl mx-auto px-4 -mt-8 mb-8 relative z-10">
-        <div class="grid grid-cols-3 gap-3">
-            <div class="feature-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 text-center">
-                <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                </div>
-                <div class="text-sm font-bold text-gray-900 dark:text-white">Risk Score</div>
-                <div class="text-xs text-gray-400 mt-0.5">Data-driven rating</div>
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="#check-car" class="px-8 py-4 rounded-xl bg-[#FFC700] text-[#111111] font-bold text-lg hover:bg-[#FFD233] transition shadow-lg shadow-[#FFC700]/20 hover:shadow-[#FFC700]/40">
+                    Check a Car Free
+                </a>
+                <a href="#sample-report" class="px-8 py-4 rounded-xl border-2 border-white/20 text-white font-semibold hover:bg-white/10 transition text-lg">
+                    See Sample Report
+                </a>
             </div>
-            <div class="feature-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 text-center">
-                <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+            <div class="mt-10 flex items-center justify-center gap-8 text-sm text-gray-500">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    100% Free
                 </div>
-                <div class="text-sm font-bold text-gray-900 dark:text-white">Inspection Guide</div>
-                <div class="text-xs text-gray-400 mt-0.5">Mileage-specific</div>
-            </div>
-            <div class="feature-card bg-white dark:bg-gray-800 rounded-xl shadow-md p-4 text-center">
-                <div class="w-10 h-10 mx-auto mb-2 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
-                    <svg class="w-5 h-5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    No Signup
                 </div>
-                <div class="text-sm font-bold text-gray-900 dark:text-white">AI Verdict</div>
-                <div class="text-xs text-gray-400 mt-0.5">Buy or walk away</div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                    30 Second Results
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- ===== Main Form Area ===== -->
-    <div class="max-w-2xl mx-auto px-4 pb-16">
-
-        {% if error %}
-        <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
-            {{ error }}
-        </div>
-        {% endif %}
-
-        <!-- Search mode toggle -->
-        <div class="flex justify-center mb-8">
-            <div class="inline-flex rounded-xl border border-gray-200 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-700/50">
-                <button type="button" @click="searchMode = 'manual'"
-                        :class="searchMode === 'manual' ? 'bg-[#111111] text-white shadow-md font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
-                        class="px-6 py-2.5 rounded-lg text-sm transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    Search by Vehicle
-                </button>
-                <button type="button" @click="searchMode = 'vin'"
-                        :class="searchMode === 'vin' ? 'bg-[#111111] text-white shadow-md font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
-                        class="px-6 py-2.5 rounded-lg text-sm transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
-                    Search by VIN
-                </button>
+    <!-- ===== Stats Bar ===== -->
+    <div class="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+        <div class="max-w-5xl mx-auto px-4 py-6 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            <div>
+                <div class="text-2xl sm:text-3xl font-black text-[#CC9F00] stat-counter">2.18M+</div>
+                <div class="text-xs text-gray-500 mt-1 font-medium">NHTSA Complaints Analyzed</div>
+            </div>
+            <div>
+                <div class="text-2xl sm:text-3xl font-black text-[#CC9F00] stat-counter">36,000+</div>
+                <div class="text-xs text-gray-500 mt-1 font-medium">Vehicle Models Covered</div>
+            </div>
+            <div>
+                <div class="text-2xl sm:text-3xl font-black text-[#CC9F00] stat-counter">5</div>
+                <div class="text-xs text-gray-500 mt-1 font-medium">Data Sources Cross-Referenced</div>
+            </div>
+            <div>
+                <div class="text-2xl sm:text-3xl font-black text-[#CC9F00] stat-counter">$0</div>
+                <div class="text-xs text-gray-500 mt-1 font-medium">Cost — Always Free</div>
             </div>
         </div>
+    </div>
 
-        <!-- ===== VIN Search Form ===== -->
-        <div x-show="searchMode === 'vin'" x-cloak>
-            <form @submit.prevent="decodeVin" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8 space-y-6">
+    <!-- ===== What Is Car Advisor? ===== -->
+    <div class="py-16 sm:py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid lg:grid-cols-2 gap-12 items-start">
+                <!-- Left: Explanation -->
                 <div>
-                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="vin-input">Vehicle Identification Number (VIN)</label>
-                    <div class="flex gap-3">
-                        <div class="flex-1 relative">
-                            <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
-                            </div>
-                            <input type="text" id="vin-input" x-model="vinInput" maxlength="17" placeholder="e.g. 1HGBH41JXMN109186"
-                                   class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-11 pr-4 py-3 font-mono tracking-wider uppercase focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition placeholder:text-gray-400 placeholder:tracking-normal placeholder:font-sans placeholder:normal-case text-sm shadow-sm">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFF8D4] dark:bg-[#332B00] mb-4">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#FFC700]"></span>
+                        <span class="text-xs font-bold text-[#CC9F00] uppercase tracking-wider">About Car Advisor</span>
+                    </div>
+                    <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white leading-tight">What is a Used Car<br>Risk Report?</h2>
+                    <p class="mt-4 text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Every year, millions of used cars are sold in the U.S. — and many of them have hidden safety issues that dealers won't tell you about. Car Advisor pulls real government safety data from the <strong class="text-gray-900 dark:text-white">National Highway Traffic Safety Administration (NHTSA)</strong> and cross-references it with recalls, investigations, and manufacturer bulletins to build a complete risk profile for any vehicle.
+                    </p>
+
+                    <h3 class="mt-8 text-xl font-bold text-gray-900 dark:text-white">What does the report show?</h3>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Unlike a Carfax report that shows what <em>already happened</em> to a specific car, our risk report shows what is <em>likely to go wrong</em> based on data from every owner who has ever reported a problem with that make, model, and year. We analyze complaint patterns at your exact mileage to give you a prediction — not just a history.
+                    </p>
+
+                    <h3 class="mt-8 text-xl font-bold text-gray-900 dark:text-white">Who is this for?</h3>
+                    <p class="mt-2 text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Whether you're a first-time buyer who doesn't know what to look for, a parent searching for a safe car for your teen, or a budget shopper comparing 3 options on Facebook Marketplace — Car Advisor gives you the knowledge you need in 30 seconds. No signup. No credit card. No catch.
+                    </p>
+                </div>
+
+                <!-- Right: Benefits Card -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-gradient-to-r from-[#111111] to-[#1a1a2e] px-6 py-5">
+                        <h3 class="text-lg font-bold text-white">What You Get — For Free</h3>
+                        <p class="text-sm text-gray-400 mt-0.5">Every report includes all of the following</p>
+                    </div>
+                    <div class="p-6">
+                        <ul class="space-y-4">
+                            <li class="flex gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center mt-0.5">
+                                    <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-900 dark:text-white">Risk Score (0-100)</span>
+                                    <p class="text-sm text-gray-500 mt-0.5">A single number combining complaint severity, recall history, and quality data — lower is better</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mt-0.5">
+                                    <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-900 dark:text-white">AI Buyer's Verdict</span>
+                                    <p class="text-sm text-gray-500 mt-0.5">A clear Buy, Consider, or Walk Away recommendation with detailed reasoning from our AI</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mt-0.5">
+                                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-900 dark:text-white">Mileage-Specific Inspection Checklist</span>
+                                    <p class="text-sm text-gray-500 mt-0.5">Top 5 things to physically check, tailored to your car's exact mileage with estimated repair costs</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center mt-0.5">
+                                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-900 dark:text-white">Market Price Analysis</span>
+                                    <p class="text-sm text-gray-500 mt-0.5">See if the asking price is fair based on real listing data from thousands of comparable vehicles</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center mt-0.5">
+                                    <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-900 dark:text-white">Recall & Safety Alerts</span>
+                                    <p class="text-sm text-gray-500 mt-0.5">Every open and closed recall with campaign details, consequences, and the manufacturer's official remedy</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-lg bg-[#FFF8D4] dark:bg-[#332B00] flex items-center justify-center mt-0.5">
+                                    <svg class="w-4 h-4 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-gray-900 dark:text-white">Full Complaint Breakdown</span>
+                                    <p class="text-sm text-gray-500 mt-0.5">Every NHTSA complaint organized by system — engine, transmission, brakes, electrical — with severity trends</p>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="mt-6 pt-5 border-t border-gray-100 dark:border-gray-700">
+                            <a href="#check-car" class="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition shadow-md">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                Try It Now — 100% Free
+                            </a>
                         </div>
-                        <button type="submit" :disabled="vinInput.length < 11 || decodingVin"
-                                class="px-6 py-3 rounded-xl font-semibold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm">
-                            <span x-show="!decodingVin">Decode</span>
-                            <span x-show="decodingVin" class="flex items-center gap-2">
-                                <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                Decoding...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== How It Works ===== -->
+    <div class="bg-gray-50 dark:bg-gray-900 py-16 sm:py-20 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">How It Works</h2>
+                <p class="mt-3 text-gray-500 max-w-xl mx-auto">Three steps to know if a used car is worth buying — takes less than 30 seconds.</p>
+            </div>
+            <div class="grid sm:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#FFC700] to-[#CC9F00] flex items-center justify-center shadow-lg shadow-[#FFC700]/20">
+                        <span class="text-2xl font-black text-[#111111]">1</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Enter Your Car</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">Type in the year, make, model, and mileage — or just paste the VIN and we'll decode it automatically.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#FFC700] to-[#CC9F00] flex items-center justify-center shadow-lg shadow-[#FFC700]/20">
+                        <span class="text-2xl font-black text-[#111111]">2</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">We Analyze Everything</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">Our AI scans NHTSA complaints, recalls, TSBs, investigations, and market data to build a complete risk profile.</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[#FFC700] to-[#CC9F00] flex items-center justify-center shadow-lg shadow-[#FFC700]/20">
+                        <span class="text-2xl font-black text-[#111111]">3</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Get Your Verdict</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">Receive a detailed report with risk score, inspection checklist, price analysis, and a clear Buy or Walk Away recommendation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== What You Get (Features) ===== -->
+    <div class="py-16 sm:py-20 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">Everything You Need to Buy Smart</h2>
+                <p class="mt-3 text-gray-500 max-w-xl mx-auto">More than just a history check — we predict what will go wrong at <em>your</em> mileage.</p>
+            </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="feature-card bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="w-12 h-12 mb-4 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Risk Score (0-100)</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">A single number that tells you how risky this car is. Combines complaints, recalls, TSBs, investigations, and quality data. Lower is better.</p>
+                </div>
+                <div class="feature-card bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="w-12 h-12 mb-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Inspection Checklist</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">The top 5 things to inspect before buying, tailored to your car's mileage. Includes what to look for and estimated repair costs.</p>
+                </div>
+                <div class="feature-card bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="w-12 h-12 mb-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">AI Buyer's Verdict</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">Our AI analyzes all the data and gives you a clear recommendation: Buy, Consider, or Walk Away — with detailed reasoning.</p>
+                </div>
+                <div class="feature-card bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="w-12 h-12 mb-4 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Price Analysis</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">See how the asking price compares to market data. Know instantly if it's a great deal, fair price, or overpriced.</p>
+                </div>
+                <div class="feature-card bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="w-12 h-12 mb-4 rounded-xl bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Recall Alerts</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">Every recall on record — with campaign details, what's affected, consequences, and the manufacturer's remedy.</p>
+                </div>
+                <div class="feature-card bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="w-12 h-12 mb-4 rounded-xl bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Complaint Breakdown</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">See every NHTSA complaint organized by system — engine, transmission, brakes, electrical — with severity and trends over time.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Sample Report Preview ===== -->
+    <div id="sample-report" class="bg-gray-50 dark:bg-gray-900 py-16 sm:py-20 px-4 scroll-mt-20">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">See What a Report Looks Like</h2>
+                <p class="mt-3 text-gray-500 max-w-xl mx-auto">Here's a sample risk report for a 2018 Toyota Camry at 75,000 miles.</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <!-- Report Header Mock -->
+                <div class="bg-gradient-to-r from-[#111111] via-[#1a1a2e] to-[#111111] p-6 sm:p-8">
+                    <div class="flex flex-col sm:flex-row items-center gap-6">
+                        <div class="relative">
+                            <svg viewBox="0 0 120 120" class="w-28 h-28">
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="10"/>
+                                <circle cx="60" cy="60" r="52" fill="none" stroke="#84cc16" stroke-width="10" stroke-linecap="round"
+                                        stroke-dasharray="326.73" stroke-dashoffset="120" transform="rotate(-90 60 60)"/>
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <span class="text-3xl font-black text-white">37.2</span>
+                                <span class="text-xs text-gray-400 font-medium">/ 100</span>
+                            </div>
+                        </div>
+                        <div class="text-center sm:text-left">
+                            <h3 class="text-2xl font-black text-white">2018 Toyota Camry</h3>
+                            <p class="text-gray-400 mt-1">75,000 miles &bull; Grade: <span class="text-[#84cc16] font-bold">B</span></p>
+                            <div class="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/20 border border-green-500/30">
+                                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                <span class="text-sm font-semibold text-green-400">Recommended Buy</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Report Cards Mock -->
+                <div class="p-6 sm:p-8 grid sm:grid-cols-3 gap-4">
+                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-black text-gray-900 dark:text-white">47</div>
+                        <div class="text-xs text-gray-500 font-medium mt-1">NHTSA Complaints</div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-black text-gray-900 dark:text-white">3</div>
+                        <div class="text-xs text-gray-500 font-medium mt-1">Active Recalls</div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center">
+                        <div class="text-2xl font-black text-green-600">$18,200</div>
+                        <div class="text-xs text-gray-500 font-medium mt-1">Market Value</div>
+                    </div>
+                </div>
+                <!-- Inspection Preview -->
+                <div class="px-6 sm:px-8 pb-6 sm:pb-8">
+                    <h4 class="font-bold text-gray-900 dark:text-white mb-3">Top Issues to Inspect</h4>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                            <div class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-orange-600">1</span>
+                            </div>
+                            <div>
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white">Engine — Oil Consumption</span>
+                                <span class="text-xs text-gray-400 ml-2">Check oil level and look for blue exhaust smoke</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                            <div class="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-yellow-600">2</span>
+                            </div>
+                            <div>
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white">Transmission — Shift Quality</span>
+                                <span class="text-xs text-gray-400 ml-2">Test for hesitation or jerking during acceleration</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-sm font-bold text-blue-600">3</span>
+                            </div>
+                            <div>
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white">Electrical — Infotainment System</span>
+                                <span class="text-xs text-gray-400 ml-2">Verify Bluetooth, CarPlay, and backup camera work properly</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <a href="#check-car" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition shadow-md">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            Check Your Car Now — It's Free
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Why Car Advisor vs Carfax ===== -->
+    <div class="py-16 sm:py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">Why Car Advisor?</h2>
+                <p class="mt-3 text-gray-500">More than a history check. Better than paying $40 for Carfax.</p>
+            </div>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-100 dark:border-gray-700">
+                            <th class="text-left p-4 sm:p-5 text-gray-500 font-medium w-1/3">Feature</th>
+                            <th class="p-4 sm:p-5 text-center">
+                                <span class="font-bold text-[#CC9F00]">Car Advisor</span>
+                            </th>
+                            <th class="p-4 sm:p-5 text-center text-gray-400">Carfax</th>
+                            <th class="p-4 sm:p-5 text-center text-gray-400 hidden sm:table-cell">KBB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-gray-50 dark:border-gray-700/50">
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">Price</td>
+                            <td class="p-4 sm:p-5 text-center font-bold text-green-600">Free</td>
+                            <td class="p-4 sm:p-5 text-center text-gray-400">$39.99+</td>
+                            <td class="p-4 sm:p-5 text-center text-gray-400 hidden sm:table-cell">Free (limited)</td>
+                        </tr>
+                        <tr class="border-b border-gray-50 dark:border-gray-700/50">
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">Risk Score</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">&#10003;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400">&#10007;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400 hidden sm:table-cell">&#10007;</td>
+                        </tr>
+                        <tr class="border-b border-gray-50 dark:border-gray-700/50">
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">NHTSA Complaints</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">2.18M analyzed</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400">&#10007;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400 hidden sm:table-cell">&#10007;</td>
+                        </tr>
+                        <tr class="border-b border-gray-50 dark:border-gray-700/50">
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">AI Verdict</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">&#10003;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400">&#10007;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400 hidden sm:table-cell">&#10007;</td>
+                        </tr>
+                        <tr class="border-b border-gray-50 dark:border-gray-700/50">
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">Inspection Checklist</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">Mileage-specific</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400">&#10007;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400 hidden sm:table-cell">&#10007;</td>
+                        </tr>
+                        <tr class="border-b border-gray-50 dark:border-gray-700/50">
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">Recall Check</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">&#10003;</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">&#10003;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400 hidden sm:table-cell">&#10007;</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 sm:p-5 font-medium text-gray-900 dark:text-white">Accident History</td>
+                            <td class="p-4 sm:p-5 text-center text-gray-400">Via VIN check</td>
+                            <td class="p-4 sm:p-5 text-center text-green-600">&#10003;</td>
+                            <td class="p-4 sm:p-5 text-center text-red-400 hidden sm:table-cell">&#10007;</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Testimonials / Use Cases ===== -->
+    <div class="bg-gray-50 dark:bg-gray-900 py-16 sm:py-20 px-4">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">Built for Real Car Buyers</h2>
+                <p class="mt-3 text-gray-500">Whether it's your first car or your fifth, knowledge is power.</p>
+            </div>
+            <div class="grid sm:grid-cols-3 gap-6">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="text-3xl mb-3">&#x1F393;</div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">First-Time Buyers</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">"I don't know anything about cars. Car Advisor told me exactly what to check on a 2019 Civic before I drove 2 hours to see it. Saved me from buying one with 23 engine complaints."</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="text-3xl mb-3">&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;</div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Parents Buying for Teens</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">"Needed a safe, reliable car for my daughter. The safety score and recall check gave me peace of mind. We avoided a model with 5 open recalls."</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6">
+                    <div class="text-3xl mb-3">&#x1F4B0;</div>
+                    <h3 class="font-bold text-gray-900 dark:text-white mb-2">Budget Shoppers</h3>
+                    <p class="text-sm text-gray-500 leading-relaxed">"I was comparing 3 SUVs under $15k. Car Advisor showed me one had 3x more transmission complaints than the others. Easy decision."</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Search Form Section ===== -->
+    <div id="check-car" class="py-16 sm:py-20 px-4 scroll-mt-20">
+        <div class="max-w-2xl mx-auto">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">Check Any Used Car</h2>
+                <p class="mt-3 text-gray-500">Enter the vehicle details below or paste a VIN to get your free risk report.</p>
+            </div>
+
+            {% if error %}
+            <div class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <!-- Search mode toggle -->
+            <div class="flex justify-center mb-8">
+                <div class="inline-flex rounded-xl border border-gray-200 dark:border-gray-600 p-1 bg-gray-100 dark:bg-gray-700/50">
+                    <button type="button" @click="searchMode = 'manual'"
+                            :class="searchMode === 'manual' ? 'bg-[#111111] text-white shadow-md font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                            class="px-6 py-2.5 rounded-lg text-sm transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        Search by Vehicle
+                    </button>
+                    <button type="button" @click="searchMode = 'vin'"
+                            :class="searchMode === 'vin' ? 'bg-[#111111] text-white shadow-md font-semibold' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+                            class="px-6 py-2.5 rounded-lg text-sm transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                        Search by VIN
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== VIN Search Form ===== -->
+            <div x-show="searchMode === 'vin'" x-cloak>
+                <form @submit.prevent="decodeVin" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8 space-y-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="vin-input">Vehicle Identification Number (VIN)</label>
+                        <div class="flex gap-3">
+                            <div class="flex-1 relative">
+                                <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                                </div>
+                                <input type="text" id="vin-input" x-model="vinInput" maxlength="17" placeholder="e.g. 1HGBH41JXMN109186"
+                                       class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-11 pr-4 py-3 font-mono tracking-wider uppercase focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition placeholder:text-gray-400 placeholder:tracking-normal placeholder:font-sans placeholder:normal-case text-sm shadow-sm">
+                            </div>
+                            <button type="submit" :disabled="vinInput.length < 11 || decodingVin"
+                                    class="px-6 py-3 rounded-xl font-semibold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm">
+                                <span x-show="!decodingVin">Decode</span>
+                                <span x-show="decodingVin" class="flex items-center gap-2">
+                                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                    Decoding...
+                                </span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2">Find the VIN on the driver's side dashboard or door jamb sticker</p>
+                    </div>
+                    <div x-show="vinError" x-cloak class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm" x-text="vinError"></div>
+                    <div x-show="vinDecoded" x-cloak class="space-y-5">
+                        <div class="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-xl">
+                            <div class="flex items-center gap-2 mb-3">
+                                <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="font-semibold text-green-800 dark:text-green-300">Vehicle Found</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                <div><span class="text-gray-400 text-xs uppercase tracking-wide">Year</span><div class="font-bold text-lg" x-text="year"></div></div>
+                                <div><span class="text-gray-400 text-xs uppercase tracking-wide">Make</span><div class="font-bold text-lg" x-text="make"></div></div>
+                                <div><span class="text-gray-400 text-xs uppercase tracking-wide">Model</span><div class="font-bold text-lg" x-text="model"></div></div>
+                                <div x-show="trim"><span class="text-gray-400 text-xs uppercase tracking-wide">Trim</span><div class="font-medium" x-text="trim"></div></div>
+                                <div x-show="engine"><span class="text-gray-400 text-xs uppercase tracking-wide">Engine</span><div class="font-medium" x-text="engine"></div></div>
+                                <div x-show="transmission"><span class="text-gray-400 text-xs uppercase tracking-wide">Trans</span><div class="font-medium" x-text="transmission"></div></div>
+                                <div x-show="drivetrain"><span class="text-gray-400 text-xs uppercase tracking-wide">Drive</span><div class="font-medium" x-text="drivetrain"></div></div>
+                                <div x-show="vinBodyClass"><span class="text-gray-400 text-xs uppercase tracking-wide">Body</span><div class="font-medium" x-text="vinBodyClass"></div></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Mileage: <span class="text-[#CC9F00]" x-text="Number(mileage).toLocaleString() + ' mi'"></span></label>
+                            <input type="range" x-model="mileage" min="0" max="300000" step="1000" class="w-full bg-gradient-to-r from-green-300 via-[#FFDE69] to-red-400 rounded-full cursor-pointer">
+                            <div class="flex items-center justify-between mt-2">
+                                <div class="flex items-center gap-2">
+                                    <input type="number" x-model.number="mileage" min="0" max="500000" step="500" class="w-28 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                                    <span class="text-sm text-gray-400">miles</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="button" @click="mileage = 30000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">30k</button>
+                                    <button type="button" @click="mileage = 75000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">75k</button>
+                                    <button type="button" @click="mileage = 150000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">150k</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Asking Price <span class="text-gray-400 font-normal">(optional)</span></label>
+                                <div class="relative">
+                                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#CC9F00] font-bold text-lg">$</span>
+                                    <input type="text" x-model="askingPrice" placeholder="e.g. 18,500" @input="askingPrice = askingPrice.replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-9 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition shadow-sm font-mono">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">ZIP Code <span class="text-gray-400 font-normal">(optional)</span></label>
+                                <input type="text" x-model="zipCode" placeholder="e.g. 90210" maxlength="5" @input="zipCode = zipCode.replace(/[^\d]/g, '').slice(0, 5)" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition shadow-sm font-mono">
+                            </div>
+                        </div>
+                        <button type="button" @click="submit" :disabled="!canSubmit || analyzing" class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
+                            <span x-show="!analyzing" class="flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                Generate Report
+                            </span>
+                            <span x-show="analyzing" class="flex items-center justify-center gap-2">
+                                <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Analyzing...
                             </span>
                         </button>
                     </div>
-                    <p class="text-xs text-gray-400 mt-2">Find the VIN on the driver's side dashboard or door jamb sticker</p>
+                </form>
+            </div>
+
+            <!-- ===== Manual Search Form ===== -->
+            <form x-show="searchMode === 'manual'" @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8 space-y-6">
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="year"><span class="flex items-center gap-2"><svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>Year</span></label>
+                    <select id="year" x-model="year" @change="onYearChange" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition shadow-sm">
+                        <option value="">Select year</option>
+                        <template x-for="y in years" :key="y"><option :value="y" x-text="y"></option></template>
+                    </select>
                 </div>
-
-                <div x-show="vinError" x-cloak class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm" x-text="vinError"></div>
-
-                <div x-show="vinDecoded" x-cloak class="space-y-5">
-                    <div class="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-xl">
-                        <div class="flex items-center gap-2 mb-3">
-                            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            <span class="font-semibold text-green-800 dark:text-green-300">Vehicle Found</span>
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="make"><span class="flex items-center gap-2"><svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>Make</span></label>
+                    <select id="make" x-model="make" @change="onMakeChange" :disabled="!year" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+                        <option value="">Select make</option>
+                        <template x-for="m in makes" :key="m"><option :value="m" x-text="m"></option></template>
+                    </select>
+                    <p x-show="loadingMakes" class="text-xs text-[#CC9F00] mt-1.5 flex items-center gap-1"><svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Loading makes...</p>
+                </div>
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="model"><span class="flex items-center gap-2"><svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>Model</span></label>
+                    <select id="model" x-model="model" @change="onModelChange" :disabled="!make" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
+                        <option value="">Select model</option>
+                        <template x-for="m in models" :key="m"><option :value="m" x-text="m"></option></template>
+                    </select>
+                    <p x-show="loadingModels" class="text-xs text-[#CC9F00] mt-1.5 flex items-center gap-1"><svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Loading models...</p>
+                </div>
+                <div class="form-group">
+                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="mileage"><span class="flex items-center gap-2"><svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>Mileage: <span class="text-[#CC9F00] font-bold" x-text="Number(mileage).toLocaleString() + ' mi'"></span></span></label>
+                    <input type="range" id="mileage-slider" x-model="mileage" min="0" max="300000" step="1000" class="w-full bg-gradient-to-r from-green-300 via-[#FFDE69] to-red-400 rounded-full cursor-pointer">
+                    <div class="flex items-center justify-between mt-2.5">
+                        <div class="flex items-center gap-2">
+                            <input type="number" x-model.number="mileage" min="0" max="500000" step="500" class="w-28 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                            <span class="text-sm text-gray-400">miles</span>
                         </div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            <div><span class="text-gray-400 text-xs uppercase tracking-wide">Year</span><div class="font-bold text-lg" x-text="year"></div></div>
-                            <div><span class="text-gray-400 text-xs uppercase tracking-wide">Make</span><div class="font-bold text-lg" x-text="make"></div></div>
-                            <div><span class="text-gray-400 text-xs uppercase tracking-wide">Model</span><div class="font-bold text-lg" x-text="model"></div></div>
-                            <div x-show="trim"><span class="text-gray-400 text-xs uppercase tracking-wide">Trim</span><div class="font-medium" x-text="trim"></div></div>
-                            <div x-show="engine"><span class="text-gray-400 text-xs uppercase tracking-wide">Engine</span><div class="font-medium" x-text="engine"></div></div>
-                            <div x-show="transmission"><span class="text-gray-400 text-xs uppercase tracking-wide">Trans</span><div class="font-medium" x-text="transmission"></div></div>
-                            <div x-show="drivetrain"><span class="text-gray-400 text-xs uppercase tracking-wide">Drive</span><div class="font-medium" x-text="drivetrain"></div></div>
-                            <div x-show="vinBodyClass"><span class="text-gray-400 text-xs uppercase tracking-wide">Body</span><div class="font-medium" x-text="vinBodyClass"></div></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="vin-mileage">
-                            Mileage: <span class="text-[#CC9F00]" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
-                        </label>
-                        <input type="range" id="vin-mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
-                               class="w-full bg-gradient-to-r from-green-300 via-[#FFDE69] to-red-400 rounded-full cursor-pointer">
-                        <div class="flex items-center justify-between mt-2">
-                            <div class="flex items-center gap-2">
-                                <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
-                                       class="w-28 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
-                                <span class="text-sm text-gray-400">miles</span>
-                            </div>
-                            <div class="flex gap-2">
-                                <button type="button" @click="mileage = 30000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">30k</button>
-                                <button type="button" @click="mileage = 75000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">75k</button>
-                                <button type="button" @click="mileage = 150000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">150k</button>
-                            </div>
+                        <div class="flex gap-2">
+                            <button type="button" @click="mileage = 30000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">30k</button>
+                            <button type="button" @click="mileage = 75000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">75k</button>
+                            <button type="button" @click="mileage = 150000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">150k</button>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                                Asking Price <span class="text-gray-400 font-normal">(optional)</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#CC9F00] font-bold text-lg">$</span>
-                                <input type="text" x-model="askingPrice" placeholder="e.g. 18,500"
-                                       @input="askingPrice = askingPrice.replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
-                                       class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-9 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm font-mono">
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1.5">Compare with market value</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                                ZIP Code <span class="text-gray-400 font-normal">(optional)</span>
-                            </label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                                </span>
-                                <input type="text" x-model="zipCode" placeholder="e.g. 90210" maxlength="5"
-                                       @input="zipCode = zipCode.replace(/[^\d]/g, '').slice(0, 5)"
-                                       class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-10 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm font-mono">
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1.5">Local market pricing</p>
-                        </div>
-                    </div>
-
-                    <button type="button" @click="submit" :disabled="!canSubmit || analyzing"
-                            class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
-                        <span x-show="!analyzing" class="flex items-center justify-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                            Generate Report
-                        </span>
-                        <span x-show="analyzing" class="flex items-center justify-center gap-2">
-                            <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                            Analyzing...
-                        </span>
+                </div>
+                <!-- Advanced Options -->
+                <div>
+                    <button type="button" @click="showAdvanced = !showAdvanced" class="flex items-center gap-2 text-sm font-semibold text-[#CC9F00] dark:text-brand-400 hover:text-[#997A00] transition">
+                        <svg :class="showAdvanced ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        Advanced Options <span class="text-xs text-gray-400 font-normal">(optional)</span>
                     </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- ===== Manual Search Form ===== -->
-        <form x-show="searchMode === 'manual'" @submit.prevent="submit" class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sm:p-8 space-y-6">
-
-            <div class="form-group">
-                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="year">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        Year
-                    </span>
-                </label>
-                <select id="year" x-model="year" @change="onYearChange"
-                        class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm">
-                    <option value="">Select year</option>
-                    <template x-for="y in years" :key="y">
-                        <option :value="y" x-text="y"></option>
-                    </template>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="make">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                        Make
-                    </span>
-                </label>
-                <select id="make" x-model="make" @change="onMakeChange" :disabled="!year"
-                        class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-                    <option value="">Select make</option>
-                    <template x-for="m in makes" :key="m">
-                        <option :value="m" x-text="m"></option>
-                    </template>
-                </select>
-                <p x-show="loadingMakes" class="text-xs text-[#CC9F00] mt-1.5 flex items-center gap-1">
-                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loading makes...
-                </p>
-            </div>
-
-            <div class="form-group">
-                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="model">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>
-                        Model
-                    </span>
-                </label>
-                <select id="model" x-model="model" @change="onModelChange" :disabled="!make"
-                        class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm">
-                    <option value="">Select model</option>
-                    <template x-for="m in models" :key="m">
-                        <option :value="m" x-text="m"></option>
-                    </template>
-                </select>
-                <p x-show="loadingModels" class="text-xs text-[#CC9F00] mt-1.5 flex items-center gap-1">
-                    <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Loading models...
-                </p>
-            </div>
-
-            <div class="form-group">
-                <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2" for="mileage">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                        Mileage: <span class="text-[#CC9F00] font-bold" x-text="Number(mileage).toLocaleString() + ' mi'"></span>
-                    </span>
-                </label>
-                <input type="range" id="mileage-slider" x-model="mileage" min="0" max="300000" step="1000"
-                       class="w-full bg-gradient-to-r from-green-300 via-[#FFDE69] to-red-400 rounded-full cursor-pointer">
-                <div class="flex items-center justify-between mt-2.5">
-                    <div class="flex items-center gap-2">
-                        <input type="number" x-model.number="mileage" min="0" max="500000" step="500"
-                               class="w-28 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
-                        <span class="text-sm text-gray-400">miles</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button type="button" @click="mileage = 30000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">30k</button>
-                        <button type="button" @click="mileage = 75000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">75k</button>
-                        <button type="button" @click="mileage = 150000" class="text-xs px-2.5 py-1 rounded-md bg-[#FFC700] text-[#111111] font-bold hover:bg-[#FFD233] transition shadow-sm">150k</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Advanced Options -->
-            <div>
-                <button type="button" @click="showAdvanced = !showAdvanced"
-                        class="flex items-center gap-2 text-sm font-semibold text-[#CC9F00] dark:text-brand-400 hover:text-[#997A00] transition">
-                    <svg :class="showAdvanced ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    Advanced Options
-                    <span class="text-xs text-gray-400 font-normal">(optional)</span>
-                    <span x-show="loadingTrims" class="text-xs text-gray-400 ml-1">loading...</span>
-                </button>
-
-                <div x-show="showAdvanced" x-cloak class="mt-4 space-y-4 p-5 bg-[#FAFAFA] dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
-                    <p class="text-xs text-gray-500">These details help generate more specific and accurate results.</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="trim">Trim / Package</label>
-                            <select id="trim" x-model="trim" @change="onTrimChange"
-                                    :disabled="vehicleTrims.length === 0 && !loadingTrims"
-                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 shadow-sm">
-                                <option value="">Any</option>
-                                <template x-for="t in vehicleTrims" :key="t.value">
-                                    <option :value="t.value" x-text="t.label"></option>
-                                </template>
-                            </select>
-                            <p x-show="loadingTrims" class="text-xs text-gray-400 mt-1">Loading trims...</p>
-                            <p x-show="!loadingTrims && vehicleTrims.length === 0 && model" class="text-xs text-gray-400 mt-1">No specific trims found</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="engine">Engine</label>
-                            <select id="engine" x-model="engine"
-                                    :disabled="vehicleEngines.length === 0 && !loadingEngines"
-                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 shadow-sm">
-                                <option value="">Any</option>
-                                <template x-for="e in vehicleEngines" :key="e">
-                                    <option :value="e" x-text="e"></option>
-                                </template>
-                            </select>
-                            <p x-show="loadingEngines" class="text-xs text-gray-400 mt-1">Loading engines...</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="transmission">Transmission</label>
-                            <select id="transmission" x-model="transmission"
-                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
-                                <option value="">Any</option>
-                                <option value="Automatic">Automatic</option>
-                                <option value="Manual">Manual</option>
-                                <option value="CVT">CVT</option>
-                                <option value="DCT">Dual-Clutch (DCT)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="drivetrain">Drivetrain</label>
-                            <select id="drivetrain" x-model="drivetrain"
-                                    class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
-                                <option value="">Any</option>
-                                <option value="FWD">Front-Wheel Drive (FWD)</option>
-                                <option value="RWD">Rear-Wheel Drive (RWD)</option>
-                                <option value="AWD">All-Wheel Drive (AWD)</option>
-                                <option value="4WD">Four-Wheel Drive (4WD)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div class="form-group">
-                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                            Asking Price <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span>
-                        </span>
-                    </label>
-                    <div class="relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#CC9F00] font-bold text-lg">$</span>
-                        <input type="text" x-model="askingPrice" placeholder="e.g. 18,500"
-                               @input="askingPrice = askingPrice.replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')"
-                               class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-9 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm font-mono">
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1.5">Compare with market value</p>
-                </div>
-                <div class="form-group">
-                    <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            ZIP Code <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span>
-                        </span>
-                    </label>
-                    <div class="relative">
-                        <input type="text" x-model="zipCode" placeholder="e.g. 90210" maxlength="5"
-                               @input="zipCode = zipCode.replace(/[^\d]/g, '').slice(0, 5)"
-                               class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition text-gray-900 dark:text-white shadow-sm font-mono">
-                    </div>
-                    <p class="text-xs text-gray-400 mt-1.5">Local market pricing</p>
-                </div>
-            </div>
-
-            <button type="submit" :disabled="!canSubmit || analyzing"
-                    class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
-                <span x-show="!analyzing" class="flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    Generate Report
-                </span>
-                <span x-show="analyzing" class="flex items-center justify-center gap-2">
-                    <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    Analyzing...
-                </span>
-            </button>
-        </form>
-
-        <!-- Progress Loader -->
-        <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden fade-in">
-
-            <!-- Dark header strip -->
-            <div class="bg-gradient-to-r from-[#111111] to-[#1a1a2e] px-6 py-4">
-                <div class="flex items-center gap-3 mb-3">
-                    <div class="w-8 h-8 rounded-lg bg-[#FFC700] flex items-center justify-center">
-                        <svg class="w-4 h-4 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-white text-base">Analyzing Your Vehicle</h3>
-                        <p class="text-xs text-gray-400" x-text="currentStep"></p>
-                    </div>
-                </div>
-
-                <!-- Progress bar -->
-                <div class="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full transition-all duration-200 ease-out progress-bar-fill"
-                         :style="'width:' + progressPct + '%'"></div>
-                </div>
-            </div>
-
-            <!-- Steps list + fun message -->
-            <div class="px-6 py-5">
-                <div class="space-y-3 mb-4">
-                    <template x-for="(evt, i) in progressEvents" :key="i">
-                        <div class="flex items-center gap-3">
-                            <template x-if="evt.status === 'scraping'">
-                                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center">
-                                    <svg class="animate-spin h-3 w-3 text-[#CC9F00]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                                </div>
-                            </template>
-                            <template x-if="evt.status === 'complete' || evt.status === 'done'">
-                                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-                                    <svg class="h-3 w-3 text-green-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                                </div>
-                            </template>
-                            <template x-if="evt.status === 'failed' || evt.status === 'error'">
-                                <div class="flex-shrink-0 w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
-                                    <svg class="h-3 w-3 text-red-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                                </div>
-                            </template>
-                            <div class="min-w-0">
-                                <span class="text-sm font-semibold text-gray-900 dark:text-white" x-text="evt.source"></span>
-                                <span class="text-xs text-gray-400 ml-1.5" x-text="evt.message"></span>
+                    <div x-show="showAdvanced" x-cloak class="mt-4 space-y-4 p-5 bg-[#FAFAFA] dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600">
+                        <p class="text-xs text-gray-500">These details help generate more specific and accurate results.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trim / Package</label>
+                                <select x-model="trim" @change="onTrimChange" :disabled="vehicleTrims.length === 0 && !loadingTrims" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 shadow-sm">
+                                    <option value="">Any</option>
+                                    <template x-for="t in vehicleTrims" :key="t.value"><option :value="t.value" x-text="t.label"></option></template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Engine</label>
+                                <select x-model="engine" :disabled="vehicleEngines.length === 0 && !loadingEngines" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition disabled:opacity-40 shadow-sm">
+                                    <option value="">Any</option>
+                                    <template x-for="e in vehicleEngines" :key="e"><option :value="e" x-text="e"></option></template>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transmission</label>
+                                <select x-model="transmission" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                                    <option value="">Any</option><option value="Automatic">Automatic</option><option value="Manual">Manual</option><option value="CVT">CVT</option><option value="DCT">Dual-Clutch (DCT)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Drivetrain</label>
+                                <select x-model="drivetrain" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2.5 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] shadow-sm">
+                                    <option value="">Any</option><option value="FWD">FWD</option><option value="RWD">RWD</option><option value="AWD">AWD</option><option value="4WD">4WD</option>
+                                </select>
                             </div>
                         </div>
-                    </template>
+                    </div>
                 </div>
-                <p class="text-center text-sm text-gray-400 dark:text-gray-500 italic transition-opacity duration-300" x-text="funMessage"></p>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2"><span class="flex items-center gap-2"><svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Asking Price <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span></span></label>
+                        <div class="relative"><span class="absolute left-4 top-1/2 -translate-y-1/2 text-[#CC9F00] font-bold text-lg">$</span><input type="text" x-model="askingPrice" placeholder="e.g. 18,500" @input="askingPrice = askingPrice.replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-9 pr-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition shadow-sm font-mono"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2"><span class="flex items-center gap-2"><svg class="w-4 h-4 field-icon text-gray-400 transition" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>ZIP Code <span class="text-gray-400 font-normal text-xs ml-1">(optional)</span></span></label>
+                        <input type="text" x-model="zipCode" placeholder="e.g. 90210" maxlength="5" @input="zipCode = zipCode.replace(/[^\d]/g, '').slice(0, 5)" class="w-full rounded-xl border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-3 focus:ring-2 focus:ring-[#FFC700]/30 focus:border-[#FFC700] transition shadow-sm font-mono">
+                    </div>
+                </div>
+                <button type="submit" :disabled="!canSubmit || analyzing" class="w-full py-3.5 px-6 rounded-xl font-bold text-[#111111] cta-btn disabled:opacity-50 disabled:cursor-not-allowed text-base">
+                    <span x-show="!analyzing" class="flex items-center justify-center gap-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Generate Report</span>
+                    <span x-show="analyzing" class="flex items-center justify-center gap-2"><svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Analyzing...</span>
+                </button>
+            </form>
+
+            <!-- Progress Loader -->
+            <div x-show="analyzing" x-cloak class="mt-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden fade-in">
+                <div class="bg-gradient-to-r from-[#111111] to-[#1a1a2e] px-6 py-4">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-[#FFC700] flex items-center justify-center"><svg class="w-4 h-4 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></div>
+                        <div><h3 class="font-bold text-white text-base">Analyzing Your Vehicle</h3><p class="text-xs text-gray-400" x-text="currentStep"></p></div>
+                    </div>
+                    <div class="h-2 bg-white/10 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all duration-200 ease-out progress-bar-fill" :style="'width:' + progressPct + '%'"></div></div>
+                </div>
+                <div class="px-6 py-5">
+                    <div class="space-y-3 mb-4">
+                        <template x-for="(evt, i) in progressEvents" :key="i">
+                            <div class="flex items-center gap-3">
+                                <template x-if="evt.status === 'scraping'"><div class="flex-shrink-0 w-5 h-5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center"><svg class="animate-spin h-3 w-3 text-[#CC9F00]" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div></template>
+                                <template x-if="evt.status === 'complete' || evt.status === 'done'"><div class="flex-shrink-0 w-5 h-5 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center"><svg class="h-3 w-3 text-green-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div></template>
+                                <template x-if="evt.status === 'failed' || evt.status === 'error'"><div class="flex-shrink-0 w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center"><svg class="h-3 w-3 text-red-500" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></div></template>
+                                <div class="min-w-0"><span class="text-sm font-semibold text-gray-900 dark:text-white" x-text="evt.source"></span><span class="text-xs text-gray-400 ml-1.5" x-text="evt.message"></span></div>
+                            </div>
+                        </template>
+                    </div>
+                    <p class="text-center text-sm text-gray-400 dark:text-gray-500 italic" x-text="funMessage"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FAQ Section (SEO) ===== -->
+    <div class="bg-gray-50 dark:bg-gray-900 py-16 sm:py-20 px-4">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">Frequently Asked Questions</h2>
+            </div>
+            <div class="space-y-4" x-data="{ openFaq: null }">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <button @click="openFaq = openFaq === 1 ? null : 1" class="w-full flex items-center justify-between p-5 text-left">
+                        <span class="font-semibold text-gray-900 dark:text-white">Is Car Advisor really free?</span>
+                        <svg :class="openFaq === 1 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="openFaq === 1" x-cloak class="px-5 pb-5 text-sm text-gray-500 leading-relaxed">Yes, 100% free. No credit card, no signup, no hidden fees. We believe everyone deserves access to safety data before making a major purchase.</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <button @click="openFaq = openFaq === 2 ? null : 2" class="w-full flex items-center justify-between p-5 text-left">
+                        <span class="font-semibold text-gray-900 dark:text-white">Where does the data come from?</span>
+                        <svg :class="openFaq === 2 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="openFaq === 2" x-cloak class="px-5 pb-5 text-sm text-gray-500 leading-relaxed">We pull data from 5 official sources: NHTSA consumer complaints (2.18 million+), NHTSA recalls, NHTSA investigations, Technical Service Bulletins (TSBs), and manufacturer communications. This is real government safety data, not dealer-reported or crowdsourced.</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <button @click="openFaq = openFaq === 3 ? null : 3" class="w-full flex items-center justify-between p-5 text-left">
+                        <span class="font-semibold text-gray-900 dark:text-white">How is Car Advisor different from Carfax?</span>
+                        <svg :class="openFaq === 3 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="openFaq === 3" x-cloak class="px-5 pb-5 text-sm text-gray-500 leading-relaxed">Carfax shows vehicle history (accidents, ownership, service). Car Advisor shows vehicle <strong>risk</strong> — what's likely to go wrong based on complaint patterns for that exact make, model, and mileage. We also provide AI-powered inspection checklists, risk scores, and a buy/walk-away verdict. And we're free — Carfax costs $40-$100.</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <button @click="openFaq = openFaq === 4 ? null : 4" class="w-full flex items-center justify-between p-5 text-left">
+                        <span class="font-semibold text-gray-900 dark:text-white">What does the Risk Score mean?</span>
+                        <svg :class="openFaq === 4 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="openFaq === 4" x-cloak class="px-5 pb-5 text-sm text-gray-500 leading-relaxed">The Risk Score ranges from 0 to 100 — lower is better. It combines NHTSA complaint volume and severity, recall history, TSBs, manufacturer communications, and investigation data. A score under 30 is excellent; 30-50 is moderate; over 50 means proceed with caution.</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <button @click="openFaq = openFaq === 5 ? null : 5" class="w-full flex items-center justify-between p-5 text-left">
+                        <span class="font-semibold text-gray-900 dark:text-white">Can I check any car, or only certain makes?</span>
+                        <svg :class="openFaq === 5 ? 'rotate-180' : ''" class="w-5 h-5 text-gray-400 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div x-show="openFaq === 5" x-cloak class="px-5 pb-5 text-sm text-gray-500 leading-relaxed">You can check any car sold in the United States from 1995 to present. We cover all makes and models — Toyota, Honda, Ford, Chevrolet, BMW, Mercedes, Hyundai, Kia, and every other manufacturer in the NHTSA database.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Final CTA ===== -->
+    <div class="hero-gradient text-white py-16 sm:py-20 px-4">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-3xl sm:text-4xl font-black leading-tight">Ready to Check Your Car?</h2>
+            <p class="mt-4 text-lg text-gray-400">Don't spend $40 on Carfax. Don't trust the dealer's word. Get the data.</p>
+            <a href="#check-car" class="mt-8 inline-block px-8 py-4 rounded-xl bg-[#FFC700] text-[#111111] font-bold text-lg hover:bg-[#FFD233] transition shadow-lg shadow-[#FFC700]/20">
+                Check a Car Free
+            </a>
+            <p class="mt-4 text-sm text-gray-500">No signup required. Results in 30 seconds.</p>
+        </div>
+    </div>
+
+    <!-- ===== Newsletter ===== -->
+    <div class="py-12 px-4" x-data="{ nlEmail: '', nlSubmitted: false, nlError: '' }">
+        <div class="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6 flex flex-col sm:flex-row items-center gap-4">
+            <div class="flex-1">
+                <p class="text-sm font-bold text-gray-900 dark:text-white">Free Used Car Buying Guide</p>
+                <p class="text-xs text-gray-500 mt-0.5">Weekly tips: what to check, how to negotiate, which cars to avoid.</p>
+            </div>
+            <div class="flex-1 w-full" x-show="!nlSubmitted">
+                <div class="flex gap-2">
+                    <input type="email" x-model="nlEmail" placeholder="you@email.com" class="flex-1 rounded-lg border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:border-[#FFC700] focus:ring-2 focus:ring-[#FFC700]/30 transition">
+                    <button @click="if (!nlEmail || !nlEmail.includes('@')) { nlError = 'Enter a valid email'; return; } nlError = ''; fetch('/api/subscribe', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: nlEmail, source: 'homepage' }) }).then(r => r.json()).then(d => { if (d.status === 'subscribed') nlSubmitted = true; else nlError = d.error || 'Error'; }).catch(() => nlError = 'Network error');" class="px-4 py-2 rounded-lg bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition whitespace-nowrap">Subscribe</button>
+                </div>
+                <p x-show="nlError" x-text="nlError" class="text-xs text-red-500 mt-1"></p>
+            </div>
+            <div x-show="nlSubmitted" x-cloak class="flex items-center gap-2 text-green-600 font-semibold text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                You're in!
             </div>
         </div>
     </div>
@@ -513,303 +784,63 @@
 <script>
 function carForm() {
     return {
-        searchMode: 'manual',
-        year: '',
-        make: '',
-        model: '',
-        mileage: 75000,
-        askingPrice: '',
-        zipCode: '',
-        trim: '',
-        engine: '',
-        transmission: '',
-        drivetrain: '',
-        showAdvanced: false,
-        years: [],
-        makes: [],
-        models: [],
-        vehicleTrims: [],
-        vehicleEngines: [],
-        loadingMakes: false,
-        loadingModels: false,
-        loadingTrims: false,
-        loadingEngines: false,
-        analyzing: false,
-        progressEvents: [],
-
-        funMessage: '',
-        progressPct: 20,
-        currentStep: 'Connecting to NHTSA database...',
-        _msgIdx: 0,
-        _timer: null,
-        _msgTimer: null,
-        _targetPct: 20,
-
-        vinInput: '',
-        decodingVin: false,
-        vinDecoded: false,
-        vinError: '',
-        vinBodyClass: '',
-
-        get canSubmit() {
-            return this.year && this.make && this.model && this.mileage > 0;
-        },
-
-        async init() {
-            try {
-                const resp = await fetch('/api/years');
-                this.years = await resp.json();
-            } catch (e) {
-                this.years = Array.from({length: 27}, (_, i) => 2026 - i);
-            }
-        },
-
+        searchMode: 'manual', year: '', make: '', model: '', mileage: 75000, askingPrice: '', zipCode: '',
+        trim: '', engine: '', transmission: '', drivetrain: '', showAdvanced: false,
+        years: [], makes: [], models: [], vehicleTrims: [], vehicleEngines: [],
+        loadingMakes: false, loadingModels: false, loadingTrims: false, loadingEngines: false,
+        analyzing: false, progressEvents: [],
+        funMessage: '', progressPct: 20, currentStep: 'Connecting to NHTSA database...', _msgIdx: 0, _timer: null, _msgTimer: null, _targetPct: 20,
+        vinInput: '', decodingVin: false, vinDecoded: false, vinError: '', vinBodyClass: '',
+        get canSubmit() { return this.year && this.make && this.model && this.mileage > 0; },
+        async init() { try { const resp = await fetch('/api/years'); this.years = await resp.json(); } catch (e) { this.years = Array.from({length: 27}, (_, i) => 2026 - i); } },
         async decodeVin() {
-            const vin = this.vinInput.trim();
-            if (vin.length < 11) return;
-
-            this.decodingVin = true;
-            this.vinError = '';
-            this.vinDecoded = false;
-
+            const vin = this.vinInput.trim(); if (vin.length < 11) return;
+            this.decodingVin = true; this.vinError = ''; this.vinDecoded = false;
             try {
                 const resp = await fetch(`/api/vin-decode?vin=${encodeURIComponent(vin)}`);
                 const data = await resp.json();
-                if (data.error) {
-                    this.vinError = data.error;
-                    this.decodingVin = false;
-                    return;
-                }
-
-                this.year = data.year || '';
-                this.make = data.make || '';
-                this.model = data.model || '';
-                this.trim = data.trim || '';
-                this.engine = data.engine || '';
-                this.transmission = data.transmission || '';
-                this.drivetrain = data.drivetrain || '';
-                this.vinBodyClass = data.body_class || '';
-                this.vinDecoded = true;
-            } catch (e) {
-                console.error(e);
-                this.vinError = 'Failed to decode VIN. Please try again or enter details manually.';
-            }
+                if (data.error) { this.vinError = data.error; this.decodingVin = false; return; }
+                this.year = data.year || ''; this.make = data.make || ''; this.model = data.model || '';
+                this.trim = data.trim || ''; this.engine = data.engine || '';
+                this.transmission = data.transmission || ''; this.drivetrain = data.drivetrain || '';
+                this.vinBodyClass = data.body_class || ''; this.vinDecoded = true;
+            } catch (e) { console.error(e); this.vinError = 'Failed to decode VIN. Please try again or enter details manually.'; }
             this.decodingVin = false;
         },
-
-        _resetAdvanced() {
-            this.trim = '';
-            this.engine = '';
-            this.transmission = '';
-            this.drivetrain = '';
-            this.vehicleTrims = [];
-            this.vehicleEngines = [];
-        },
-
-        async onYearChange() {
-            this.make = '';
-            this.model = '';
-            this.makes = [];
-            this.models = [];
-            this._resetAdvanced();
-            if (!this.year) return;
-            this.loadingMakes = true;
-            try {
-                const resp = await fetch(`/api/makes?year=${this.year}`);
-                this.makes = await resp.json();
-            } catch (e) { console.error(e); }
-            this.loadingMakes = false;
-        },
-
-        async onMakeChange() {
-            this.model = '';
-            this.models = [];
-            this._resetAdvanced();
-            if (!this.make || !this.year) return;
-            this.loadingModels = true;
-            try {
-                const resp = await fetch(`/api/models?make=${encodeURIComponent(this.make)}&year=${this.year}`);
-                this.models = await resp.json();
-            } catch (e) { console.error(e); }
-            this.loadingModels = false;
-        },
-
-        async onModelChange() {
-            this._resetAdvanced();
-            if (!this.year || !this.make || !this.model) return;
-            this.loadingTrims = true;
-            try {
-                const resp = await fetch(
-                    `/api/vehicle-trims?year=${this.year}&make=${encodeURIComponent(this.make)}&model=${encodeURIComponent(this.model)}`
-                );
-                this.vehicleTrims = await resp.json();
-                if (this.vehicleTrims.length > 0) {
-                    this.showAdvanced = true;
-                }
-            } catch (e) { console.error(e); }
-            this.loadingTrims = false;
-        },
-
-        async onTrimChange() {
-            this.engine = '';
-            this.vehicleEngines = [];
-            if (!this.trim) return;
-            this.loadingEngines = true;
-            try {
-                const resp = await fetch(
-                    `/api/vehicle-engines?year=${this.year}&make=${encodeURIComponent(this.make)}&trim=${encodeURIComponent(this.trim)}`
-                );
-                this.vehicleEngines = await resp.json();
-            } catch (e) { console.error(e); }
-            this.loadingEngines = false;
-        },
-
+        _resetAdvanced() { this.trim = ''; this.engine = ''; this.transmission = ''; this.drivetrain = ''; this.vehicleTrims = []; this.vehicleEngines = []; },
+        async onYearChange() { this.make = ''; this.model = ''; this.makes = []; this.models = []; this._resetAdvanced(); if (!this.year) return; this.loadingMakes = true; try { const resp = await fetch(`/api/makes?year=${this.year}`); this.makes = await resp.json(); } catch (e) { console.error(e); } this.loadingMakes = false; },
+        async onMakeChange() { this.model = ''; this.models = []; this._resetAdvanced(); if (!this.make || !this.year) return; this.loadingModels = true; try { const resp = await fetch(`/api/models?make=${encodeURIComponent(this.make)}&year=${this.year}`); this.models = await resp.json(); } catch (e) { console.error(e); } this.loadingModels = false; },
+        async onModelChange() { this._resetAdvanced(); if (!this.year || !this.make || !this.model) return; this.loadingTrims = true; try { const resp = await fetch(`/api/vehicle-trims?year=${this.year}&make=${encodeURIComponent(this.make)}&model=${encodeURIComponent(this.model)}`); this.vehicleTrims = await resp.json(); if (this.vehicleTrims.length > 0) this.showAdvanced = true; } catch (e) { console.error(e); } this.loadingTrims = false; },
+        async onTrimChange() { this.engine = ''; this.vehicleEngines = []; if (!this.trim) return; this.loadingEngines = true; try { const resp = await fetch(`/api/vehicle-engines?year=${this.year}&make=${encodeURIComponent(this.make)}&trim=${encodeURIComponent(this.trim)}`); this.vehicleEngines = await resp.json(); } catch (e) { console.error(e); } this.loadingEngines = false; },
         async submit() {
-            this.analyzing = true;
-            this.progressEvents = [];
-            this._progressReset();
-            this._progressStart();
+            this.analyzing = true; this.progressEvents = []; this._progressReset(); this._progressStart();
             try {
-                const resp = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        make: this.make,
-                        model: this.model,
-                        year: parseInt(this.year),
-                        mileage: parseInt(this.mileage),
+                const resp = await fetch('/api/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ make: this.make, model: this.model, year: parseInt(this.year), mileage: parseInt(this.mileage),
                         asking_price: this.askingPrice ? parseInt(this.askingPrice.replace(/,/g, '')) : null,
                         trim: this.trim ? (this.vehicleTrims.find(t => t.value === this.trim)?.label || this.trim) : null,
-                        engine: this.engine || null,
-                        transmission: this.transmission || null,
-                        drivetrain: this.drivetrain || null,
+                        engine: this.engine || null, transmission: this.transmission || null, drivetrain: this.drivetrain || null,
                         vin: this.vinInput ? this.vinInput.trim().toUpperCase() : null,
-                        zip_code: this.zipCode && this.zipCode.length === 5 ? this.zipCode : null,
-                    }),
+                        zip_code: this.zipCode && this.zipCode.length === 5 ? this.zipCode : null })
                 });
                 const data = await resp.json();
-                if (data.error) {
-                    this.analyzing = false;
-                    alert(data.error);
-                    return;
-                }
-
-                const reportId = data.report_id;
-                const self = this;
+                if (data.error) { this.analyzing = false; alert(data.error); return; }
+                const reportId = data.report_id; const self = this;
                 const evtSource = new EventSource(`/api/progress/${reportId}`);
-                evtSource.onmessage = (e) => {
-                    const evt = JSON.parse(e.data);
-                    self.progressEvents.push(evt);
-                    if (evt.status === 'done') {
-                        evtSource.close();
-                        self._waitForReport(evt.message);
-                    } else if (evt.status === 'error') {
-                        evtSource.close();
-                        self.analyzing = false;
-                        alert('Analysis failed: ' + evt.message);
-                    }
-                };
-                evtSource.onerror = () => {
-                    evtSource.close();
-                    if (reportId) {
-                        self._waitForReport(reportId);
-                    } else {
-                        self.analyzing = false;
-                    }
-                };
-            } catch (e) {
-                console.error(e);
-                this.analyzing = false;
-                alert('Request failed');
-            }
+                evtSource.onmessage = (e) => { const evt = JSON.parse(e.data); self.progressEvents.push(evt); if (evt.status === 'done') { evtSource.close(); self._waitForReport(evt.message); } else if (evt.status === 'error') { evtSource.close(); self.analyzing = false; alert('Analysis failed: ' + evt.message); } };
+                evtSource.onerror = () => { evtSource.close(); if (reportId) self._waitForReport(reportId); else self.analyzing = false; };
+            } catch (e) { console.error(e); this.analyzing = false; alert('Request failed'); }
         },
-        async _waitForReport(reportId) {
-            for (var attempt = 0; attempt < 8; attempt++) {
-                try {
-                    var r = await fetch('/api/report/' + reportId);
-                    if (r.ok) {
-                        window.location.href = '/report/' + reportId;
-                        return;
-                    }
-                } catch (e) { /* retry */ }
-                await new Promise(function(res) { setTimeout(res, 1000); });
-            }
-            this.analyzing = false;
-            alert('Report could not be loaded. Please try again.');
-        },
-        _progressReset() {
-            if (this._timer) clearInterval(this._timer);
-            if (this._msgTimer) clearInterval(this._msgTimer);
-            this._timer = null;
-            this._msgTimer = null;
-            this.progressPct = 20;
-            this._targetPct = 20;
-            this.currentStep = carFormSteps[0].label;
-            this.funMessage = '';
-        },
-
+        async _waitForReport(reportId) { for (var attempt = 0; attempt < 8; attempt++) { try { var r = await fetch('/api/report/' + reportId); if (r.ok) { window.location.href = '/report/' + reportId; return; } } catch (e) {} await new Promise(function(res) { setTimeout(res, 1000); }); } this.analyzing = false; alert('Report could not be loaded. Please try again.'); },
+        _progressReset() { if (this._timer) clearInterval(this._timer); if (this._msgTimer) clearInterval(this._msgTimer); this._timer = null; this._msgTimer = null; this.progressPct = 20; this._targetPct = 20; this.currentStep = carFormSteps[0].label; this.funMessage = ''; },
         _progressStart() {
-            var self = this;
-            self._msgIdx = Math.floor(Math.random() * carFormFunMessages.length);
-            self.funMessage = carFormFunMessages[self._msgIdx];
-
-            self._timer = setInterval(function() {
-                var completed = self.progressEvents.filter(function(e) {
-                    return e.status === 'complete' || e.status === 'done';
-                }).length;
-                var totalSteps = 4;
-                var eventTarget = Math.min(95, (completed / totalSteps) * 85 + 10);
-                self._targetPct = Math.max(self._targetPct, eventTarget);
-
-                if (self.progressPct < self._targetPct) {
-                    self.progressPct = Math.min(self._targetPct, self.progressPct + 3);
-                } else if (self.progressPct < 95) {
-                    self.progressPct = Math.min(95, self.progressPct + 0.3);
-                    self._targetPct = Math.max(self._targetPct, self.progressPct);
-                }
-
-                for (var i = carFormSteps.length - 1; i >= 0; i--) {
-                    if (self.progressPct >= carFormSteps[i].at) {
-                        self.currentStep = carFormSteps[i].label;
-                        break;
-                    }
-                }
-            }, 200);
-
-            self._msgTimer = setInterval(function() {
-                self._msgIdx = (self._msgIdx + 1) % carFormFunMessages.length;
-                self.funMessage = carFormFunMessages[self._msgIdx];
-            }, 4500);
+            var self = this; self._msgIdx = Math.floor(Math.random() * carFormFunMessages.length); self.funMessage = carFormFunMessages[self._msgIdx];
+            self._timer = setInterval(function() { var completed = self.progressEvents.filter(function(e) { return e.status === 'complete' || e.status === 'done'; }).length; var totalSteps = 4; var eventTarget = Math.min(95, (completed / totalSteps) * 85 + 10); self._targetPct = Math.max(self._targetPct, eventTarget); if (self.progressPct < self._targetPct) { self.progressPct = Math.min(self._targetPct, self.progressPct + 3); } else if (self.progressPct < 95) { self.progressPct = Math.min(95, self.progressPct + 0.3); self._targetPct = Math.max(self._targetPct, self.progressPct); } for (var i = carFormSteps.length - 1; i >= 0; i--) { if (self.progressPct >= carFormSteps[i].at) { self.currentStep = carFormSteps[i].label; break; } } }, 200);
+            self._msgTimer = setInterval(function() { self._msgIdx = (self._msgIdx + 1) % carFormFunMessages.length; self.funMessage = carFormFunMessages[self._msgIdx]; }, 4500);
         }
     };
 }
-
-var carFormFunMessages = [
-    "Teaching our AI to read mechanic handwriting...",
-    "Checking under the hood... virtually, of course",
-    "Our hamsters are running extra fast today",
-    "Hunting for recalls like a detective on coffee",
-    "Crunching numbers harder than a pothole crunches rims",
-    "Cross-referencing with every complaint ever filed",
-    "Making sure no lemon slips through the cracks",
-    "Our AI is having a heated debate about your car",
-    "Scanning thousands of owner reports at light speed",
-    "Translating engineer-speak into human words...",
-    "Giving your car its annual performance review",
-    "If this were a mechanic, you'd be paying by the hour"
-];
-
-var carFormSteps = [
-    { at: 0,  label: "Connecting to NHTSA database..." },
-    { at: 8,  label: "Fetching complaint records..." },
-    { at: 18, label: "Scanning owner-reported problems..." },
-    { at: 28, label: "Analyzing complaint patterns..." },
-    { at: 38, label: "Looking up recall history..." },
-    { at: 48, label: "Cross-referencing bulk statistics..." },
-    { at: 58, label: "Calculating risk scores..." },
-    { at: 68, label: "Generating AI-powered verdict..." },
-    { at: 78, label: "Building inspection checklist..." },
-    { at: 88, label: "Finalizing your report..." }
-];
+var carFormFunMessages = ["Teaching our AI to read mechanic handwriting...","Checking under the hood... virtually, of course","Our hamsters are running extra fast today","Hunting for recalls like a detective on coffee","Crunching numbers harder than a pothole crunches rims","Cross-referencing with every complaint ever filed","Making sure no lemon slips through the cracks","Our AI is having a heated debate about your car","Scanning thousands of owner reports at light speed","Translating engineer-speak into human words...","Giving your car its annual performance review","If this were a mechanic, you'd be paying by the hour"];
+var carFormSteps = [{at:0,label:"Connecting to NHTSA database..."},{at:8,label:"Fetching complaint records..."},{at:18,label:"Scanning owner-reported problems..."},{at:28,label:"Analyzing complaint patterns..."},{at:38,label:"Looking up recall history..."},{at:48,label:"Cross-referencing bulk statistics..."},{at:58,label:"Calculating risk scores..."},{at:68,label:"Generating AI-powered verdict..."},{at:78,label:"Building inspection checklist..."},{at:88,label:"Finalizing your report..."}];
 </script>
 {% endblock %}

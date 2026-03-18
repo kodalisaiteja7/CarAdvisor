@@ -337,6 +337,320 @@ def admin_download_sync():
 # ------------------------------------------------------------------
 
 
+@app.route("/api/subscribe", methods=["POST"])
+def api_subscribe():
+    """Collect email for newsletter / report delivery."""
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return jsonify({"error": "Valid email required"}), 400
+
+    report_id = (data.get("report_id") or "").strip()
+    source = data.get("source", "report")
+
+    subscribers_file = Path(__file__).resolve().parent.parent / "subscribers.csv"
+    from datetime import datetime
+    line = f"{datetime.utcnow().isoformat()},{email},{source},{report_id}\n"
+    is_new = not subscribers_file.exists()
+    with open(str(subscribers_file), "a", encoding="utf-8") as f:
+        if is_new:
+            f.write("timestamp,email,source,report_id\n")
+        f.write(line)
+
+    logger.info("New subscriber: %s (source=%s)", email, source)
+    return jsonify({"status": "subscribed"})
+
+
+_BLOG_ARTICLES = {
+    "is-toyota-camry-reliable": {
+        "title": "Is the Toyota Camry Reliable? Common Problems, Recalls & Risk Score",
+        "excerpt": "We analyzed every NHTSA complaint ever filed against the Toyota Camry. Here's what the data says about its reliability across all model years.",
+        "date": "2026-03-09",
+        "read_time": 8,
+        "category": "Reliability Report",
+        "content": """
+<p>The Toyota Camry is consistently one of the <strong>best-selling sedans in America</strong>, and for good reason — it has a well-earned reputation for reliability. But is that reputation backed by data? We analyzed <strong>every NHTSA complaint</strong> ever filed against the Camry to find out.</p>
+
+<h2>What the NHTSA Data Shows</h2>
+<p>Across all model years, the Camry has fewer complaints per vehicle than the industry average. However, some model years stand out as significantly worse than others.</p>
+
+<h3>Best Model Years (Fewest Complaints)</h3>
+<ul>
+<li><strong>2020-2024</strong> — Very few complaints, modern safety tech, excellent reliability</li>
+<li><strong>2012-2014</strong> — Mature platform, most issues well-documented and resolved</li>
+<li><strong>2005-2006</strong> — Bulletproof generation, minimal issues</li>
+</ul>
+
+<h3>Model Years to Avoid</h3>
+<ul>
+<li><strong>2007-2009</strong> — Higher engine oil consumption complaints, dashboard cracking</li>
+<li><strong>2018</strong> — First year of new generation, typical first-year teething issues</li>
+<li><strong>2002-2003</strong> — Transmission hesitation complaints, some engine sludge reports</li>
+</ul>
+
+<h2>Most Common Problems</h2>
+<p>Based on NHTSA complaint data, these are the most frequently reported issues:</p>
+<ol>
+<li><strong>Engine</strong> — Oil consumption, especially in 2007-2011 4-cylinder models</li>
+<li><strong>Electrical</strong> — Dashboard rattles, infotainment bugs in newer models</li>
+<li><strong>Transmission</strong> — Hesitation on older models, generally reliable on newer ones</li>
+<li><strong>Brakes</strong> — Brake pulsation/warping, relatively common but inexpensive to fix</li>
+</ol>
+
+<h2>Recall History</h2>
+<p>Toyota has issued recalls for airbag inflators (Takata), floor mat entrapment, and fuel pump issues. Most are well-addressed by now, but always verify with a <a href="/">free Car Advisor report</a> to check for open recalls on a specific vehicle.</p>
+
+<h2>Bottom Line</h2>
+<p>The Toyota Camry remains one of the <strong>most reliable sedans you can buy</strong>. Stick with the recommended model years, avoid first-year redesigns, and always run a <a href="/">risk report</a> before purchasing.</p>
+
+<p><strong>Want to check a specific Camry?</strong> <a href="/">Run a free risk report</a> — it takes 30 seconds and analyzes every complaint, recall, and TSB on record.</p>
+""",
+    },
+    "is-honda-civic-reliable": {
+        "title": "Is the Honda Civic Reliable? NHTSA Complaints, Known Issues & Buying Guide",
+        "excerpt": "The Honda Civic is a perennial favorite for first-time buyers. We analyzed NHTSA data to reveal which model years are safest and which to avoid.",
+        "date": "2026-03-09",
+        "read_time": 7,
+        "category": "Reliability Report",
+        "content": """
+<p>The Honda Civic is one of the <strong>most popular compact cars</strong> in the world, known for fuel efficiency, low maintenance costs, and strong resale value. But some model years have significant problems. Here's what the NHTSA data tells us.</p>
+
+<h2>Best Civic Model Years</h2>
+<ul>
+<li><strong>2022-2024 (11th gen)</strong> — Excellent reliability, modern safety, refined platform</li>
+<li><strong>2014-2015 (9th gen refresh)</strong> — Proven platform with sorted issues</li>
+<li><strong>2009-2011 (8th gen)</strong> — Simple, reliable, and affordable to maintain</li>
+</ul>
+
+<h2>Civic Model Years to Avoid</h2>
+<ul>
+<li><strong>2016-2018 (10th gen)</strong> — Oil dilution in 1.5T engines, AC condenser leaks, infotainment bugs</li>
+<li><strong>2006-2008</strong> — Cracked engine blocks (1.8L), paint peeling issues</li>
+<li><strong>2001-2003</strong> — Transmission failures, especially in automatic models</li>
+</ul>
+
+<h2>Most Common Complaints</h2>
+<ol>
+<li><strong>Engine (1.5T Oil Dilution)</strong> — Fuel mixing with oil in cold climates, 2016-2018 models</li>
+<li><strong>AC Condenser</strong> — Premature failure requiring $800-1,200 replacement</li>
+<li><strong>Paint/Clear Coat</strong> — Peeling and fading on 2006-2011 models</li>
+<li><strong>Transmission</strong> — Shuddering in CVT models, some older automatics fail</li>
+</ol>
+
+<h2>Is the Honda Civic a Good Used Car?</h2>
+<p><strong>Yes</strong>, if you pick the right model year. The Civic holds its value exceptionally well and is inexpensive to maintain. Avoid the 2016-2018 1.5-turbo if you live in a cold climate, and always <a href="/">check the risk report</a> before buying.</p>
+""",
+    },
+    "is-ford-f150-reliable": {
+        "title": "Is the Ford F-150 Reliable? Complaints, Common Problems & What to Inspect",
+        "excerpt": "The Ford F-150 is America's best-selling vehicle. We analyzed NHTSA complaints to find which years are bulletproof and which have costly problems.",
+        "date": "2026-03-09",
+        "read_time": 8,
+        "category": "Reliability Report",
+        "content": """
+<p>The Ford F-150 has been <strong>America's best-selling vehicle for over 40 years</strong>. With millions on the road, there's a huge used market. But not all F-150s are created equal — some model years have serious issues.</p>
+
+<h2>Best F-150 Model Years</h2>
+<ul>
+<li><strong>2021-2023 (14th gen)</strong> — Refined platform, PowerBoost hybrid option, strong reliability</li>
+<li><strong>2018-2020 (13th gen refresh)</strong> — Sorted out early 13th-gen issues, 5.0L V8 is rock-solid</li>
+<li><strong>2012-2014 (12th gen)</strong> — Proven platform, widely available, affordable</li>
+</ul>
+
+<h2>F-150 Model Years to Avoid</h2>
+<ul>
+<li><strong>2015-2017</strong> — First aluminum body years, some panel fit issues, 2.7L EcoBoost carbon buildup</li>
+<li><strong>2004-2006</strong> — Spark plug ejection issues (5.4L), cam phaser problems</li>
+<li><strong>2010-2011</strong> — Some powertrain issues, but generally acceptable</li>
+</ul>
+
+<h2>Most Common Complaints by Engine</h2>
+<h3>5.0L Coyote V8</h3>
+<p>Generally very reliable. Some oil consumption complaints in early years. Tick noise is common but usually harmless.</p>
+
+<h3>3.5L EcoBoost</h3>
+<p>Powerful and efficient. Watch for timing chain issues in early models (2011-2013) and condensation/intercooler leaks.</p>
+
+<h3>2.7L EcoBoost</h3>
+<p>Carbon buildup on intake valves is the main concern. Regular maintenance (walnut blasting every 60-80k miles) prevents this.</p>
+
+<h2>What to Inspect Before Buying</h2>
+<ol>
+<li>Check for cam phaser noise on startup (5.0L)</li>
+<li>Inspect for oil leaks around the turbo oil lines (EcoBoost)</li>
+<li>Test the transmission — 10-speed should shift smoothly without hunting</li>
+<li>Check for rust on frame and cab corners (especially northern trucks)</li>
+<li>Verify all recalls have been completed with a <a href="/">free risk report</a></li>
+</ol>
+""",
+    },
+    "free-carfax-alternative": {
+        "title": "Free Carfax Alternative: How to Check a Used Car Without Paying $40",
+        "excerpt": "You don't need to spend $40-$100 on Carfax. Here are free tools and methods to check any used car's history, complaints, and reliability.",
+        "date": "2026-03-09",
+        "read_time": 6,
+        "category": "Buyer Guide",
+        "content": """
+<p>Carfax charges <strong>$39.99 for a single report</strong> or $99.99 for six. If you're shopping for a used car and checking multiple vehicles, those costs add up fast. The good news? You can get most of the same information — and even more — for free.</p>
+
+<h2>What Carfax Tells You (and Its Limitations)</h2>
+<p>Carfax provides accident history, ownership count, service records, and title information. However, it has significant gaps:</p>
+<ul>
+<li>Only shows accidents reported to insurance or police — many aren't</li>
+<li>Service records depend on shops that report to Carfax (many don't)</li>
+<li>Doesn't tell you what <em>will</em> go wrong based on complaint patterns</li>
+<li>Doesn't provide risk scores or reliability ratings</li>
+</ul>
+
+<h2>Free Alternatives</h2>
+
+<h3>1. Car Advisor (This Site)</h3>
+<p><a href="/">Car Advisor</a> analyzes <strong>2.18 million NHTSA complaints</strong> to give you a comprehensive risk report including:</p>
+<ul>
+<li>Risk score (0-100) based on real complaint data</li>
+<li>Every recall on record</li>
+<li>AI-powered inspection checklist tailored to the mileage</li>
+<li>Price analysis comparing to market data</li>
+<li>Buyer's verdict: Buy or Walk Away</li>
+</ul>
+<p>It's completely free, no signup required.</p>
+
+<h3>2. NHTSA Recall Check</h3>
+<p>The government's <a href="https://www.nhtsa.gov/recalls" target="_blank">recall lookup tool</a> lets you search by VIN for open recalls. This is free and authoritative.</p>
+
+<h3>3. NMVTIS (Title Check)</h3>
+<p>The National Motor Vehicle Title Information System provides title history for about $2-10 per check through approved providers.</p>
+
+<h3>4. VINCheck by NICB</h3>
+<p>The National Insurance Crime Bureau offers a free VIN check for theft and total loss records at <a href="https://www.nicb.org/vincheck" target="_blank">nicb.org/vincheck</a>.</p>
+
+<h2>The Best Free Strategy</h2>
+<ol>
+<li><strong>Run a <a href="/">Car Advisor report</a></strong> for complaints, recalls, and risk assessment</li>
+<li><strong>Check NHTSA.gov</strong> for open recalls by VIN</li>
+<li><strong>Check NICB VINCheck</strong> for theft/total loss</li>
+<li><strong>Google "[car year model] problems"</strong> for forum discussions</li>
+<li><strong>Get a pre-purchase inspection</strong> from an independent mechanic ($100-200)</li>
+</ol>
+
+<p>This combination gives you <strong>more actionable information</strong> than a Carfax report — and the only cost is the mechanic inspection.</p>
+""",
+    },
+    "used-car-inspection-checklist": {
+        "title": "How to Inspect a Used Car Before Buying: Complete 2026 Checklist",
+        "excerpt": "Don't buy a used car without checking these 15 critical items. A complete inspection guide that catches problems before they cost you thousands.",
+        "date": "2026-03-09",
+        "read_time": 10,
+        "category": "Buyer Guide",
+        "content": """
+<p>Buying a used car without a proper inspection is like buying a house without a home inspection — it's a gamble that can cost you thousands. This checklist covers <strong>everything you should check</strong> before handing over your money.</p>
+
+<h2>Before You Visit: Research Phase</h2>
+<ol>
+<li><strong>Run a <a href="/">Car Advisor risk report</a></strong> — see all NHTSA complaints, recalls, and known issues for the specific year/make/model</li>
+<li><strong>Check the VIN</strong> for recalls at NHTSA.gov</li>
+<li><strong>Research fair market price</strong> — know what the car should cost before negotiating</li>
+</ol>
+
+<h2>Exterior Inspection</h2>
+<ol>
+<li><strong>Paint consistency</strong> — Mismatched colors or texture between panels indicates bodywork/accident repair</li>
+<li><strong>Panel gaps</strong> — Uneven gaps between doors, hood, and trunk suggest collision damage</li>
+<li><strong>Tire wear</strong> — Uneven wear indicates alignment issues or suspension problems. Check all four tires.</li>
+<li><strong>Rust</strong> — Check wheel wells, rocker panels, door bottoms, and under the car. Surface rust is cosmetic; structural rust is a deal-breaker.</li>
+<li><strong>Glass</strong> — Check windshield for chips/cracks. Verify all windows match (same manufacturer stamp).</li>
+</ol>
+
+<h2>Under the Hood</h2>
+<ol>
+<li><strong>Oil condition</strong> — Pull the dipstick. Black is normal; milky/frothy suggests a head gasket leak (expensive). Low oil suggests consumption issues.</li>
+<li><strong>Coolant</strong> — Should be green, orange, or pink (not brown or milky). Brown coolant means neglected maintenance; milky means oil contamination.</li>
+<li><strong>Belts and hoses</strong> — Look for cracks, fraying, or bulging. Replacement is $200-600.</li>
+<li><strong>Battery terminals</strong> — Heavy corrosion suggests electrical issues or an old battery.</li>
+</ol>
+
+<h2>Interior Check</h2>
+<ol>
+<li><strong>All electronics</strong> — Test every button, switch, window, lock, mirror, and light</li>
+<li><strong>AC/Heat</strong> — Run the AC on max cold for 5 minutes. Should blow cold within 2 minutes. AC repair is $500-1,500+.</li>
+<li><strong>Odors</strong> — Musty smell means water leaks or flood damage. Sweet smell could be a coolant leak.</li>
+</ol>
+
+<h2>Test Drive (Most Important!)</h2>
+<ol>
+<li><strong>Cold start</strong> — Visit when the car hasn't been warmed up. Listen for unusual noises on startup.</li>
+<li><strong>Transmission</strong> — Should shift smoothly. Jerking, hesitation, or slipping needs immediate attention.</li>
+<li><strong>Brakes</strong> — Should stop straight without pulling, pulsation, or grinding</li>
+<li><strong>Steering</strong> — Should track straight on a level road. No vibration at highway speed.</li>
+<li><strong>Highway driving</strong> — Get up to 60+ mph. Listen for wind noise, vibrations, or drone.</li>
+</ol>
+
+<h2>Final Steps</h2>
+<ul>
+<li><strong>Get a pre-purchase inspection</strong> from an independent mechanic ($100-200). This is the best money you'll spend.</li>
+<li><strong>Review the risk report</strong> from <a href="/">Car Advisor</a> to understand what issues are most likely at the current mileage</li>
+<li><strong>Negotiate based on findings</strong> — use any issues found as leverage for a lower price</li>
+</ul>
+""",
+    },
+}
+
+
+@app.route("/blog")
+def blog_index():
+    return render_template("blog_index.html", articles=_BLOG_ARTICLES)
+
+
+@app.route("/blog/<slug>")
+def blog_article(slug: str):
+    article = _BLOG_ARTICLES.get(slug)
+    if not article:
+        return render_template("index.html", error="Article not found"), 404
+    related = {k: v for k, v in list(_BLOG_ARTICLES.items())[:4] if k != slug}
+    return render_template("blog_article.html", article=article, slug=slug, related=related)
+
+
+@app.route("/privacy")
+def privacy_policy():
+    return render_template("privacy.html")
+
+
+@app.route("/terms")
+def terms_of_service():
+    return render_template("terms.html")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    content = "User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /trace/\nDisallow: /api/admin/\n\nSitemap: " + request.host_url.rstrip("/") + "/sitemap.xml\n"
+    return Response(content, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    from datetime import datetime
+    base = request.host_url.rstrip("/")
+    now = datetime.utcnow().strftime("%Y-%m-%d")
+
+    urls = [
+        {"loc": base + "/", "changefreq": "weekly", "priority": "1.0"},
+        {"loc": base + "/blog", "changefreq": "weekly", "priority": "0.8"},
+    ]
+
+    for slug in _BLOG_ARTICLES:
+        urls.append({"loc": f"{base}/blog/{slug}", "changefreq": "monthly", "priority": "0.7"})
+
+    xml_entries = []
+    for u in urls:
+        xml_entries.append(
+            f"  <url>\n    <loc>{u['loc']}</loc>\n    <lastmod>{now}</lastmod>\n"
+            f"    <changefreq>{u['changefreq']}</changefreq>\n    <priority>{u['priority']}</priority>\n  </url>"
+        )
+
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "\n".join(xml_entries) + "\n</urlset>\n"
+    return Response(xml, mimetype="application/xml")
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -792,7 +1106,7 @@ def _run_analysis(
             "tsb": {"score": v2.tsb_component, "weight": 25, "label": "Technical Service Bulletins"},
             "investigation": {"score": v2.investigation_component, "weight": 15, "label": "NHTSA Investigations"},
             "mfr_comm": {"score": v2.mfr_comm_component, "weight": 10, "label": "Manufacturer Communications"},
-            "dashboard_light": {"score": v2.dl_qir_component, "weight": 15, "label": "Dashboard Light QIR"},
+            "brand_reliability": {"score": v2.dl_qir_component, "weight": 15, "label": "Brand Reliability Index"},
         }
         v2_signals["wear_factor"] = v2.wear_factor
         v2_signals["mileage_floor"] = v2.mileage_floor
@@ -1071,6 +1385,10 @@ def create_app() -> Flask:
             send_default_pii=False,
         )
         logger.info("Sentry error tracking enabled")
+
+    from config.settings import GA_MEASUREMENT_ID, CLARITY_PROJECT_ID
+    app.config["GA_MEASUREMENT_ID"] = GA_MEASUREMENT_ID
+    app.config["CLARITY_PROJECT_ID"] = CLARITY_PROJECT_ID
 
     init_db()
     init_store()
