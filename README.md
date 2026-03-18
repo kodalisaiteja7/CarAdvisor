@@ -1,4 +1,4 @@
-# Car Advisor
+# CarAdvisr
 
 A Python-based used car buying advisor that scrapes and aggregates data from multiple automotive sources, performs mileage-aware analysis, and generates detailed pre-purchase reports.
 
