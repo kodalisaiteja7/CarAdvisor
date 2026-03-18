@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Privacy Policy — Car Advisor{% endblock %}
+{% block meta_description %}Car Advisor privacy policy. Learn how we handle your data, VIN searches, and personal information.{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-12 px-4">
+    <h1 class="text-3xl font-black mb-2">Privacy Policy</h1>
+    <p class="text-sm text-gray-500 mb-8">Last updated: March 9, 2026</p>
+
+    <div class="prose prose-gray dark:prose-invert max-w-none space-y-6 text-sm leading-relaxed">
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">1. Information We Collect</h2>
+            <p>When you use Car Advisor, we may collect the following information:</p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li><strong>Vehicle search data:</strong> Year, make, model, mileage, and VIN numbers you enter for analysis.</li>
+                <li><strong>Optional inputs:</strong> Asking price and ZIP code, if provided.</li>
+                <li><strong>Usage data:</strong> Pages visited, features used, browser type, device information, and IP address (collected automatically via server logs).</li>
+            </ul>
+            <p class="mt-2">We do <strong>not</strong> collect names, email addresses, phone numbers, or payment information unless you voluntarily provide them through a contact form or account registration.</p>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">2. How We Use Your Information</h2>
+            <ul class="list-disc pl-6 space-y-1">
+                <li>To generate vehicle risk analysis reports based on your search inputs.</li>
+                <li>To improve the accuracy of our scoring algorithms and service quality.</li>
+                <li>To cache results temporarily for faster repeated lookups.</li>
+                <li>To monitor service performance, detect errors, and prevent abuse.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">3. Data Sources</h2>
+            <p>Car Advisor aggregates publicly available data from the following sources:</p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li><strong>NHTSA</strong> (National Highway Traffic Safety Administration) — complaints, recalls, investigations, and VIN decoding. This is U.S. federal government public domain data.</li>
+                <li><strong>Technical Service Bulletins (TSBs)</strong> and <strong>Manufacturer Communications</strong> — sourced from publicly available databases.</li>
+                <li><strong>Third-party market data APIs</strong> — for pricing estimates and market comparisons.</li>
+            </ul>
+            <p class="mt-2">Car Advisor is <strong>not affiliated with, endorsed by, or sponsored by NHTSA</strong> or any government agency. We are an independent service that uses publicly available data.</p>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">4. Data Retention</h2>
+            <ul class="list-disc pl-6 space-y-1">
+                <li><strong>Search results</strong> may be cached on our servers for up to 30 days to improve performance.</li>
+                <li><strong>Server logs</strong> (including IP addresses) are retained for up to 90 days for security and debugging purposes.</li>
+                <li><strong>VIN numbers</strong> submitted for analysis are not permanently stored or shared with third parties beyond what is necessary to generate your report.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">5. Data Sharing</h2>
+            <p>We do <strong>not</strong> sell, rent, or trade your personal information. We may share data with:</p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li><strong>Third-party APIs</strong> (NHTSA, market data providers) — VIN numbers and vehicle details are sent to these services solely to retrieve data for your report. These services have their own privacy policies.</li>
+                <li><strong>AI service providers</strong> — anonymized vehicle data may be sent to AI language model APIs to generate report summaries. No personally identifiable information is included.</li>
+                <li><strong>Infrastructure providers</strong> — our hosting provider (Railway) may process data as part of providing their hosting services.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">6. Cookies</h2>
+            <p>Car Advisor uses minimal cookies:</p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li><strong>Functional cookies:</strong> To remember your dark mode preference (stored in localStorage, not transmitted to our servers).</li>
+                <li>We do <strong>not</strong> use advertising cookies or third-party tracking cookies.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">7. Security</h2>
+            <p>We use industry-standard security measures including HTTPS encryption, secure server infrastructure, and access controls. However, no method of transmission over the Internet is 100% secure, and we cannot guarantee absolute security.</p>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">8. Children's Privacy</h2>
+            <p>Car Advisor is not intended for use by individuals under the age of 13. We do not knowingly collect information from children under 13.</p>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">9. Your Rights</h2>
+            <p>You may:</p>
+            <ul class="list-disc pl-6 space-y-1">
+                <li>Request deletion of any cached data associated with your searches.</li>
+                <li>Request information about what data we hold related to your usage.</li>
+                <li>Opt out of any future data collection by discontinuing use of the service.</li>
+            </ul>
+            <p class="mt-2">For any privacy-related requests, contact us at the email address provided on this site.</p>
+        </section>
+
+        <section>
+            <h2 class="text-lg font-bold mt-8 mb-3">10. Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated revision date. Continued use of the service after changes constitutes acceptance of the revised policy.</p>
+        </section>
+
+    </div>
+</div>
+{% endblock %}

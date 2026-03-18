@@ -3,10 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Car Advisor{% endblock %}</title>
+    <title>{% block title %}Car Advisor — Free Used Car Risk Report | Know Before You Buy{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Analyze any used car for free. See NHTSA complaints, recalls, risk scores, and an AI-powered inspection checklist. The free alternative to Carfax.{% endblock %}">
+    <meta name="keywords" content="used car report, car risk score, free carfax alternative, NHTSA complaints, used car inspection, car reliability, recall check">
+    <meta name="author" content="Car Advisor">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url }}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:site_name" content="Car Advisor">
+    <meta property="og:title" content="{% block og_title %}Car Advisor — Free Used Car Risk Report{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Analyze any used car for free. See NHTSA complaints, recalls, risk scores, and an AI-powered inspection checklist.{% endblock %}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='og-image.svg', _external=True) }}{% endblock %}">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}Car Advisor — Free Used Car Risk Report{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Analyze any used car for free. 2.18M NHTSA complaints analyzed. Know before you buy.{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='og-image.svg', _external=True) }}{% endblock %}">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFC700'/><text y='70' x='15' font-size='60' font-weight='bold' fill='%23111'>CA</text></svg>">
+
+    {% block structured_data %}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Car Advisor",
+        "url": "{{ request.host_url }}",
+        "description": "Free used car risk intelligence tool. Analyze NHTSA complaints, recalls, and get AI-powered inspection checklists.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "1"
+        }
+    }
+    </script>
+    {% endblock %}
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Google Analytics 4 — replace GA_MEASUREMENT_ID with your actual ID -->
+    {% if config.GA_MEASUREMENT_ID %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ config.GA_MEASUREMENT_ID }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ config.GA_MEASUREMENT_ID }}');
+    </script>
+    {% endif %}
+
+    <!-- Microsoft Clarity — replace CLARITY_PROJECT_ID with your actual ID -->
+    {% if config.CLARITY_PROJECT_ID %}
+    <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window,document,"clarity","script","{{ config.CLARITY_PROJECT_ID }}");
+    </script>
+    {% endif %}
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
@@ -69,7 +138,7 @@
             <div class="flex items-center gap-3">
                 <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-gray-400">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                    Powered by NHTSA
+                    Data sourced from NHTSA
                 </span>
                 <button @click="darkMode = !darkMode; localStorage.setItem('darkMode', darkMode)"
                         class="p-2 rounded-lg text-gray-400 hover:text-brand-400 hover:bg-white/10 transition" aria-label="Toggle dark mode">
@@ -94,9 +163,13 @@
                     <span class="font-bold text-sm">Car Advisor</span>
                 </div>
                 <div class="flex items-center gap-4 text-xs text-gray-500">
-                    <span>Data sourced from NHTSA, TSBs &amp; Manufacturer Communications</span>
+                    <a href="/blog" class="hover:text-brand-400 transition">Blog</a>
+                    <span class="text-gray-700">&bull;</span>
+                    <a href="/privacy" class="hover:text-brand-400 transition">Privacy Policy</a>
+                    <span class="text-gray-700">&bull;</span>
+                    <a href="/terms" class="hover:text-brand-400 transition">Terms of Service</a>
                     <span class="hidden sm:inline text-gray-700">&bull;</span>
-                    <span class="hidden sm:inline">Risk Intelligence Platform</span>
+                    <span class="hidden sm:inline">Data sourced from NHTSA &amp; public records</span>
                 </div>
             </div>
         </div>

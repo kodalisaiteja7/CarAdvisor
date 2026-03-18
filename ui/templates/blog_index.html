@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Car Advisor Blog — Used Car Reliability Reports & Buying Tips{% endblock %}
+{% block meta_description %}Expert used car buying guides, reliability reports, and inspection tips built with NHTSA public data. Learn which cars to buy and which to avoid.{% endblock %}
+{% block og_title %}Car Advisor Blog — Used Car Buying Tips & Reliability Reports{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-10">
+        <h1 class="text-3xl sm:text-4xl font-black text-gray-900 dark:text-white">Car Advisor Blog</h1>
+        <p class="mt-3 text-lg text-gray-500 dark:text-gray-400">Reliability reports, buying guides, and tips — all backed by real NHTSA data.</p>
+    </div>
+
+    <div class="grid gap-6">
+        {% for slug, article in articles.items() %}
+        <a href="/blog/{{ slug }}" class="block bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-100 dark:border-gray-700 p-6 hover:shadow-lg hover:-translate-y-0.5 transition group">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-xl bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-6 h-6 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-lg font-bold text-gray-900 dark:text-white group-hover:text-[#CC9F00] transition">{{ article.title }}</h2>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{{ article.excerpt }}</p>
+                    <div class="flex items-center gap-3 mt-3 text-xs text-gray-400">
+                        <span>{{ article.date }}</span>
+                        <span>&bull;</span>
+                        <span>{{ article.read_time }} min read</span>
+                        {% if article.category %}
+                        <span>&bull;</span>
+                        <span class="px-2 py-0.5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/30 text-[#CC9F00] font-semibold">{{ article.category }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="mt-12 p-6 rounded-2xl bg-gradient-to-r from-[#111111] via-[#1a1a2e] to-[#111111] text-white" x-data="{ email: '', submitted: false }">
+        <div class="text-center">
+            <h3 class="text-xl font-bold mb-2">Get Weekly Used Car Insights</h3>
+            <p class="text-sm text-gray-400 mb-4">Reliability rankings, recall alerts, and buying tips — delivered to your inbox.</p>
+            <div class="max-w-md mx-auto flex gap-2" x-show="!submitted">
+                <input type="email" x-model="email" placeholder="you@email.com" class="flex-1 rounded-xl border-2 border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-[#FFC700] transition">
+                <button @click="
+                    if (!email.includes('@')) return;
+                    fetch('/api/subscribe', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email, source: 'blog' }) })
+                    .then(r => r.json()).then(() => submitted = true);
+                " class="px-5 py-2.5 rounded-xl bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition">Subscribe</button>
+            </div>
+            <p x-show="submitted" x-cloak class="text-[#FFC700] font-semibold">You're subscribed!</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
