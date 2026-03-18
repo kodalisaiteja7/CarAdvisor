@@ -350,7 +350,7 @@
 
                     <!-- V2 Signal Summary Cards -->
                     {% if v2s %}
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5">
+                    <div class="grid grid-cols-3 gap-4 mt-5">
                         <div class="stat-card section-card p-4 text-center relative" x-data="{ infoOpen: false }">
                             <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -389,7 +389,6 @@
                             <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 text-left">
                                 Manufacturer Communications — service advisories, technical tips, and policy updates sent from the automaker directly to dealerships. High counts may indicate the manufacturer is actively addressing known issues.
                             </div>
-                        </div>
                         </div>
                     </div>
                     {% endif %}
