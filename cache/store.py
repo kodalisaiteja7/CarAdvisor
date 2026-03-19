@@ -83,21 +83,7 @@ class _FileBackend(_StoreBackend):
 
     def _write_json(self, path: Path, data) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        import os
-        import tempfile
-        fd, tmp_path = tempfile.mkstemp(
-            dir=str(path.parent), suffix=".tmp", prefix=f".{path.stem}_"
-        )
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(data, f, default=str)
-            Path(tmp_path).replace(path)
-        except OSError:
-            try:
-                Path(tmp_path).unlink(missing_ok=True)
-            except Exception:
-                pass
-            path.write_text(json.dumps(data, default=str), encoding="utf-8")
+        path.write_text(json.dumps(data, default=str), encoding="utf-8")
 
     @staticmethod
     def _safe_name(key: str) -> str:
