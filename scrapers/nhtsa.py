@@ -119,17 +119,19 @@ class NHTSAScraper(BaseScraper):
     respect_robots = False  # public government API
 
     def scrape(self, make: str, model: str, year: int) -> dict:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         result = self._empty_result(self.source_name, make, model, year)
 
-        recalls = self._fetch_recalls(make, model, year)
-        result["recalls"] = recalls
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            f_recalls = pool.submit(self._fetch_recalls, make, model, year)
+            f_complaints = pool.submit(self._fetch_complaints, make, model, year)
+            f_ratings = pool.submit(self._fetch_ratings, make, model, year)
 
-        complaints, complaint_dates = self._fetch_complaints(make, model, year)
+        result["recalls"] = f_recalls.result()
+        complaints, complaint_dates = f_complaints.result()
         result["problems"] = complaints
         result["complaint_dates"] = complaint_dates
-
-        ratings = self._fetch_ratings(make, model, year)
-        result["ratings"] = ratings
+        result["ratings"] = f_ratings.result()
 
         return result
 

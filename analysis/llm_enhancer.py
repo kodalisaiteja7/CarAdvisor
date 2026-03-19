@@ -2,15 +2,18 @@
 
 Uses Anthropic Claude to transform raw technical complaint data into
 clear, actionable guidance that a non-mechanic car buyer can understand.
+LLM responses are cached by vehicle key so repeat lookups skip the API.
 """
 
 from __future__ import annotations
 
 import ast
+import hashlib
 import json
 import logging
 import os
 import re
+import threading
 
 import anthropic
 
@@ -20,6 +23,8 @@ from utils.trace import get_trace
 logger = logging.getLogger(__name__)
 
 _client: anthropic.Anthropic | None = None
+_llm_cache: dict[str, str] = {}
+_llm_cache_lock = threading.Lock()
 
 
 def _get_client() -> anthropic.Anthropic:
@@ -130,8 +135,19 @@ def _extract_list(text: str) -> list | None:
     return None
 
 
-def _llm_call(prompt: str, max_tokens: int | None = None) -> str | None:
-    """Make a single LLM API call. Returns stripped text or None on failure."""
+def _llm_call(prompt: str, max_tokens: int | None = None, cache_key: str | None = None) -> str | None:
+    """Make a single LLM API call with optional in-memory caching.
+
+    If ``cache_key`` is provided, the response is cached so identical
+    vehicles don't re-trigger API calls across concurrent requests.
+    """
+    if cache_key:
+        with _llm_cache_lock:
+            cached = _llm_cache.get(cache_key)
+        if cached is not None:
+            logger.info("LLM cache hit for key %s", cache_key[:24])
+            return cached
+
     try:
         client = _get_client()
     except ValueError:
@@ -156,6 +172,13 @@ def _llm_call(prompt: str, max_tokens: int | None = None) -> str | None:
         if stop_reason not in ("end_turn", "stop_sequence"):
             logger.warning("LLM response truncated (stop_reason=%s)", stop_reason)
             return None
+
+        if cache_key and text:
+            with _llm_cache_lock:
+                if len(_llm_cache) > 500:
+                    oldest = next(iter(_llm_cache))
+                    del _llm_cache[oldest]
+                _llm_cache[cache_key] = text
 
         return text
     except Exception:
@@ -245,10 +268,13 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
         for i in range(0, len(items_for_prompt), _CHECKLIST_BATCH_SIZE)
     ]
 
+    vkey = f"{vehicle.get('make','')}-{vehicle.get('model','')}-{vehicle.get('year','')}"
+
     for batch_num, batch in enumerate(batches, 1):
         logger.info("Checklist batch %d/%d (%d items)", batch_num, len(batches), len(batch))
         prompt = _build_checklist_prompt(vehicle, batch)
-        text = _llm_call(prompt)
+        ck = f"checklist:{vkey}:b{batch_num}:{hashlib.md5(prompt.encode()).hexdigest()[:12]}"
+        text = _llm_call(prompt, cache_key=ck)
 
         trace = get_trace()
 
@@ -816,7 +842,9 @@ Return ONLY a valid JSON object with exactly these two keys:
 
 2. {reasoning_instruction}"""
 
-    text = _llm_call(prompt, max_tokens=1024)
+    vkey = f"{vehicle.get('make','')}-{vehicle.get('model','')}-{vehicle.get('year','')}-{vehicle.get('mileage','')}"
+    ck = f"verdict:{vkey}:{hashlib.md5(prompt.encode()).hexdigest()[:12]}"
+    text = _llm_call(prompt, max_tokens=1024, cache_key=ck)
 
     trace = get_trace()
 

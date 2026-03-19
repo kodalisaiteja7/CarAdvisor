@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = Path(__file__).resolve().parent.parent / "dataset" / "vehicle_signals.db"
 
-_CONN: sqlite3.Connection | None = None
+import threading
+_local = threading.local()
 
 CRITICAL_SYSTEMS = {"Engine", "Transmission", "Brakes", "Steering", "Fuel System"}
 PROACTIVE_SYSTEMS = {"Electrical", "HVAC", "Interior", "Body/Paint", "Other"}
@@ -84,15 +85,18 @@ class ScoreV2Result:
 
 
 def _get_conn() -> sqlite3.Connection:
-    global _CONN
-    if _CONN is None:
+    conn = getattr(_local, "conn", None)
+    if conn is None:
         if not DB_PATH.exists():
             raise FileNotFoundError(
                 f"vehicle_signals.db not found at {DB_PATH}. "
                 "Run `python -m data.preprocess_signals` first."
             )
-        _CONN = sqlite3.connect(str(DB_PATH), check_same_thread=False)
-    return _CONN
+        conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        _local.conn = conn
+    return conn
 
 
 def _load_brand_stats():

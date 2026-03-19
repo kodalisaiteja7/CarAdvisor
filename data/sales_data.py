@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import logging
 import sqlite3
+import threading
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -17,8 +18,9 @@ logger = logging.getLogger(__name__)
 _DB_PATH = Path(__file__).resolve().parent.parent / "dataset" / "us_vehicle_sales.db"
 _CSV_PATH = Path(__file__).resolve().parent.parent / "dataset" / "us_car_model_sales_2013_2022.csv"
 
-_db_conn: sqlite3.Connection | None = None
+_local = threading.local()
 _csv_cache: dict[str, dict[int, int]] | None = None
+_csv_lock = threading.Lock()
 
 _BRAND_MAP = {
     "VOLKSWAGEN": "VW",
@@ -34,17 +36,20 @@ _MODEL_ALIASES = {
 
 
 def _get_db() -> sqlite3.Connection | None:
-    """Get a connection to the sales DB, or None if unavailable."""
-    global _db_conn
-    if _db_conn is not None:
-        return _db_conn
+    """Get a thread-local connection to the sales DB, or None if unavailable."""
+    conn = getattr(_local, "db_conn", None)
+    if conn is not None:
+        return conn
     if not _DB_PATH.exists():
         return None
     try:
-        _db_conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
-        cnt = _db_conn.execute("SELECT COUNT(*) FROM vehicle_sales").fetchone()[0]
+        conn = sqlite3.connect(str(_DB_PATH), check_same_thread=False)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
+        _local.db_conn = conn
+        cnt = conn.execute("SELECT COUNT(*) FROM vehicle_sales").fetchone()[0]
         logger.info("Sales DB loaded: %d entries from %s", cnt, _DB_PATH.name)
-        return _db_conn
+        return conn
     except Exception as e:
         logger.warning("Failed to open sales DB: %s", e)
         return None
@@ -88,12 +93,15 @@ def _lookup_db(make: str, model: str, year: int) -> int | None:
 
 
 def _load_csv() -> dict[str, dict[int, int]]:
-    """Load the legacy Kaggle CSV as fallback."""
+    """Load the legacy Kaggle CSV as fallback (thread-safe)."""
     global _csv_cache
     if _csv_cache is not None:
         return _csv_cache
 
-    _csv_cache = {}
+    with _csv_lock:
+        if _csv_cache is not None:
+            return _csv_cache
+        _csv_cache = {}
     if not _CSV_PATH.exists():
         return _csv_cache
 
