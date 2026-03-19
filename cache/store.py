@@ -82,6 +82,7 @@ class _FileBackend(_StoreBackend):
         return None
 
     def _write_json(self, path: Path, data) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, default=str), encoding="utf-8")
         tmp.replace(path)
@@ -126,6 +127,7 @@ class _FileBackend(_StoreBackend):
 
     def set_cached_report_id(self, cache_key: str, report_id: str) -> None:
         path = self._base / "vcache" / f"{self._safe_name(cache_key)}.txt"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(report_id, encoding="utf-8")
 
     def clear_vehicle_cache(self) -> int:
