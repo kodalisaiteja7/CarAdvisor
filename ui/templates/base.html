@@ -16,17 +16,18 @@
     <meta property="og:title" content="{% block og_title %}CarAdvisr — Free Used Car Risk Report{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Analyze any used car for free. See NHTSA complaints, recalls, risk scores, and an AI-powered inspection checklist.{% endblock %}">
     <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='og-image.svg', _external=True) }}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='logo.png', _external=True) }}{% endblock %}">
     <meta property="og:locale" content="en_US">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{% block twitter_title %}CarAdvisr — Free Used Car Risk Report{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}Analyze any used car for free. 2.18M NHTSA complaints analyzed. Know before you buy.{% endblock %}">
-    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='og-image.svg', _external=True) }}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='logo.png', _external=True) }}{% endblock %}">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFC700'/><text y='70' x='15' font-size='60' font-weight='bold' fill='%23111'>CA</text></svg>">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
 
     {% block structured_data %}
     <script type="application/ld+json">
@@ -127,9 +128,7 @@
     <nav class="sticky top-0 z-50 bg-gradient-to-r from-[#0a0a14] via-[#111111] to-[#0a0a14] text-white shadow-lg shadow-black/20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
             <a href="/" class="flex items-center gap-2.5 font-bold tracking-tight group">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center shadow-md shadow-brand-400/20 group-hover:shadow-brand-400/40 transition-shadow">
-                    <svg class="w-5 h-5 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>
-                </div>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="CarAdvisr" class="h-10 w-auto">
                 <div class="flex flex-col">
                     <span class="text-xl font-extrabold">CarAdvisr</span>
                     <span class="text-[10px] text-brand-400 font-semibold tracking-widest uppercase -mt-0.5">Risk Intelligence</span>
@@ -157,9 +156,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-400 to-brand-500 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10m10 0H3m10 0h2m4 0h1a1 1 0 001-1v-4.586a1 1 0 00-.293-.707l-3.414-3.414A1 1 0 0016.586 6H13"/></svg>
-                    </div>
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="CarAdvisr" class="h-8 w-auto">
                     <span class="font-bold text-sm">CarAdvisr</span>
                 </div>
                 <div class="flex items-center gap-4 text-xs text-gray-500">
