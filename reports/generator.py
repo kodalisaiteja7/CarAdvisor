@@ -67,6 +67,31 @@ def generate_report(
     if bulk_stats and bulk_stats.get("total_complaints"):
         report["sections"]["vehicle_summary"]["total_complaints"] = bulk_stats["total_complaints"]
 
+    # Contextual comparison data for the template
+    vs = report["sections"]["vehicle_summary"]
+    if bulk_stats:
+        ratio = bulk_stats.get("complaint_ratio", 1.0)
+        vs["complaints_vs_avg"] = ratio
+        if ratio >= 2.0:
+            vs["complaints_avg_label"] = "High"
+            vs["complaints_avg_level"] = "high"
+        elif ratio >= 1.3:
+            vs["complaints_avg_label"] = "Above Average"
+            vs["complaints_avg_level"] = "moderate"
+        elif ratio >= 0.7:
+            vs["complaints_avg_label"] = "Average"
+            vs["complaints_avg_level"] = "average"
+        else:
+            vs["complaints_avg_label"] = "Below Average"
+            vs["complaints_avg_level"] = "low"
+    else:
+        vs["complaints_vs_avg"] = None
+        vs["complaints_avg_label"] = None
+        vs["complaints_avg_level"] = None
+
+    recalls = vs.get("recalls", [])
+    vs["recalls_status"] = "No recalls" if not recalls else f"{len(recalls)} recall{'s' if len(recalls) != 1 else ''}"
+
     trace = get_trace()
     if trace:
         trace.log_sections("pre_llm", report["sections"])

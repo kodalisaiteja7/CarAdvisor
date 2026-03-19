@@ -68,6 +68,9 @@ LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", 8192))
 
 MARKETCHECK_API_KEY = os.getenv("MARKETCHECK_API_KEY", "")
 
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev")
+
 GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "")
 CLARITY_PROJECT_ID = os.getenv("CLARITY_PROJECT_ID", "")
 

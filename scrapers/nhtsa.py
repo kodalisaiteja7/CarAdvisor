@@ -80,6 +80,38 @@ def _map_component(raw: str) -> str:
     return "Other"
 
 
+_VARIANT_SUFFIXES = re.compile(
+    r"\s+(PLUG-?IN|HYBRID|PHEV|EV|ELECTRIC|AWD|4WD|2WD|"
+    r"CABRIO|CONVERTIBLE|COUPE|SEDAN|HATCHBACK|WAGON|"
+    r"SPORT|LIMITED|TURBO|GT|ST|RS|SS|SRT)$",
+    re.IGNORECASE,
+)
+
+
+def _model_variants(model: str) -> list[str]:
+    """Generate model name variations for NHTSA API lookups.
+    Includes the original name, hyphen/space swaps, and the base model name."""
+    seen: set[str] = set()
+    variants: list[str] = []
+    for v in [
+        model,
+        model.replace("- ", "-"),
+        model.replace("-", " "),
+        model.replace(" ", "").replace("-", ""),
+    ]:
+        v = v.strip()
+        if v and v not in seen:
+            seen.add(v)
+            variants.append(v)
+
+    base = _VARIANT_SUFFIXES.sub("", model).strip()
+    if base and base not in seen:
+        seen.add(base)
+        variants.append(base)
+
+    return variants
+
+
 class NHTSAScraper(BaseScraper):
     source_name = "nhtsa"
     base_url = NHTSA_API_BASE
@@ -106,18 +138,7 @@ class NHTSAScraper(BaseScraper):
     # ------------------------------------------------------------------
 
     def _fetch_recalls(self, make: str, model: str, year: int) -> list[dict]:
-        seen: set[str] = set()
-        attempts: list[str] = []
-        for variant in [
-            model,
-            model.replace("- ", "-"),
-            model.replace("-", " "),
-            model.replace(" ", "").replace("-", ""),
-        ]:
-            v = variant.strip()
-            if v and v not in seen:
-                seen.add(v)
-                attempts.append(v)
+        attempts = _model_variants(model)
 
         for attempt_model in attempts:
             url = (
@@ -151,14 +172,28 @@ class NHTSAScraper(BaseScraper):
     # ------------------------------------------------------------------
 
     def _fetch_complaints(self, make: str, model: str, year: int) -> tuple[list[dict], list[str]]:
-        url = (
-            f"{self.base_url}/complaints/complaintsByVehicle"
-            f"?make={make}&model={model}&modelYear={year}"
-        )
-        try:
-            data = self._get_json(url)
-        except Exception:
-            logger.exception("[nhtsa] Failed to fetch complaints")
+        attempts = _model_variants(model)
+        data = None
+        for attempt_model in attempts:
+            url = (
+                f"{self.base_url}/complaints/complaintsByVehicle"
+                f"?make={make}&model={attempt_model}&modelYear={year}"
+            )
+            try:
+                candidate = self._get_json(url)
+                results = candidate.get("results", [])
+                if results:
+                    data = candidate
+                    if attempt_model != model:
+                        logger.info("[nhtsa] Complaints found under variant '%s' (original: '%s')",
+                                    attempt_model, model)
+                    break
+            except Exception:
+                continue
+
+        if data is None:
+            logger.warning("[nhtsa] No complaints found for %s %s %d (tried: %s)",
+                           make, model, year, ", ".join(attempts))
             return [], []
 
         complaint_dates: list[str] = []
@@ -307,29 +342,48 @@ class NHTSAScraper(BaseScraper):
     # Vehicle lookup helpers (used by the UI for cascading dropdowns)
     # ------------------------------------------------------------------
 
+    _PASSENGER_MAKES = {
+        "ACURA", "ALFA ROMEO", "ASTON MARTIN", "AUDI", "BENTLEY", "BMW",
+        "BUICK", "CADILLAC", "CHEVROLET", "CHRYSLER", "DAEWOO", "DAIHATSU",
+        "DODGE", "EAGLE", "FIAT", "FISKER", "FORD", "GENESIS", "GEO", "GMC",
+        "HONDA", "HUMMER", "HYUNDAI", "INEOS", "INFINITI", "ISUZU", "JAGUAR",
+        "JEEP", "KIA", "LAMBORGHINI", "LAND ROVER", "LEXUS", "LINCOLN",
+        "LOTUS", "LUCID", "MASERATI", "MAZDA", "MCLAREN", "MERCEDES-BENZ",
+        "MERCURY", "MINI", "MITSUBISHI", "NISSAN", "OLDSMOBILE", "PLYMOUTH",
+        "POLESTAR", "PONTIAC", "PORSCHE", "RAM", "RIVIAN", "ROLLS-ROYCE",
+        "SAAB", "SATURN", "SCION", "SMART", "SUBARU", "SUZUKI", "TESLA",
+        "TOYOTA", "VINFAST", "VOLKSWAGEN", "VOLVO",
+    }
+
     def get_makes(self, year: int | None = None) -> list[str]:
-        """Return a list of all makes (optionally filtered by year)."""
-        url = f"{self.base_url}/SafetyRatings"
+        """Return passenger-car makes from the NHTSA complaints products API."""
         if year:
-            url = f"{self.base_url}/SafetyRatings/modelyear/{year}"
+            url = f"{self.base_url}/products/vehicle/makes?modelYear={year}&issueType=c"
+        else:
+            url = f"{self.base_url}/products/vehicle/makes?issueType=c"
         try:
             data = self._get_json(url)
         except Exception:
             return []
-        results = data.get("Results", [])
-        makes = sorted({r.get("Make", "") for r in results if r.get("Make")})
+        results = data.get("results", [])
+        makes = sorted(
+            {r.get("make", "") for r in results if r.get("make")}
+            & self._PASSENGER_MAKES
+        )
         return makes
 
     def get_models(self, make: str, year: int) -> list[str]:
+        """Return models from the NHTSA complaints products API."""
         url = (
-            f"{self.base_url}/SafetyRatings/modelyear/{year}/make/{make}"
+            f"{self.base_url}/products/vehicle/models"
+            f"?modelYear={year}&make={make}&issueType=c"
         )
         try:
             data = self._get_json(url)
         except Exception:
             return []
-        results = data.get("Results", [])
-        models = sorted({r.get("Model", "") for r in results if r.get("Model")})
+        results = data.get("results", [])
+        models = sorted({r.get("model", "") for r in results if r.get("model")})
         return models
 
     def get_years(self) -> list[int]:
