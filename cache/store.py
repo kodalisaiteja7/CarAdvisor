@@ -278,7 +278,10 @@ def init_store() -> None:
         return
 
     _backend = _MemoryBackend()
-    logger.info("Using in-memory store (single-worker only)")
+    logger.warning(
+        "Using in-memory store — NOT SAFE for multi-worker production. "
+        "Set REDIS_URL or RAILWAY_VOLUME_MOUNT_PATH for shared state."
+    )
 
 
 def _store() -> _StoreBackend:

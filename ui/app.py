@@ -152,6 +152,10 @@ def admin_volume_clean():
     return jsonify({"deleted": len(deleted), "freed_mb": round(freed, 2), "files": deleted, "errors": errors})
 
 
+import threading as _threading
+_bulk_download_lock = _threading.Lock()
+import threading
+_bulk_download_lock = threading.Lock()
 _bulk_download_status = {"running": False, "progress": "", "error": ""}
 
 GDRIVE_BULK_DB_ID = "1CR4-W4ZRfhrTRfruzZWo4gPsPGEAL4L5"
@@ -348,27 +352,46 @@ def api_subscribe():
     report_id = (data.get("report_id") or "").strip()
     source = data.get("source", "report")
 
-    subscribers_file = Path(__file__).resolve().parent.parent / "subscribers.csv"
     from datetime import datetime
-    line = f"{datetime.utcnow().isoformat()},{email},{source},{report_id}\n"
-    is_new = not subscribers_file.exists()
-    with open(str(subscribers_file), "a", encoding="utf-8") as f:
-        if is_new:
-            f.write("timestamp,email,source,report_id\n")
-        f.write(line)
+    try:
+        from database.models import get_session, engine as db_engine
+        from sqlalchemy import text
+        with db_engine.connect() as conn:
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS subscribers ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "timestamp TEXT, email TEXT, source TEXT, report_id TEXT)"
+            ))
+            conn.execute(
+                text("INSERT INTO subscribers (timestamp, email, source, report_id) VALUES (:ts, :em, :src, :rid)"),
+                {"ts": datetime.utcnow().isoformat(), "em": email, "src": source, "rid": report_id},
+            )
+            conn.commit()
+    except Exception:
+        logger.warning("DB subscriber insert failed, falling back to CSV")
+        subscribers_file = Path(__file__).resolve().parent.parent / "subscribers.csv"
+        line = f"{datetime.utcnow().isoformat()},{email},{source},{report_id}\n"
+        is_new = not subscribers_file.exists()
+        with open(str(subscribers_file), "a", encoding="utf-8") as f:
+            if is_new:
+                f.write("timestamp,email,source,report_id\n")
+            f.write(line)
 
     logger.info("New subscriber: %s (source=%s)", email, source)
 
-    email_sent = False
     if report_id:
-        report = get_report(report_id)
-        if report:
-            from services.email_service import send_report_email
+        rpt = get_report(report_id)
+        if rpt:
             base_url = request.url_root.rstrip("/")
-            result = send_report_email(email, report, report_id, base_url)
-            email_sent = result is not None
+            def _send_bg(em, r, rid, bu):
+                try:
+                    from services.email_service import send_report_email
+                    send_report_email(em, r, rid, bu)
+                except Exception:
+                    logger.exception("Background email send failed for %s", em)
+            Thread(target=_send_bg, args=(email, rpt, report_id, base_url), daemon=True).start()
 
-    return jsonify({"status": "subscribed", "email_sent": email_sent})
+    return jsonify({"status": "subscribed", "email_sent": True})
 
 
 _BLOG_ARTICLES = {
@@ -947,14 +970,25 @@ def api_analyze():
         logger.info("Cache hit for %s — returning report %s", cache_key, report_id)
         return jsonify({"report_id": report_id, "cached": True})
 
-    report_id = str(uuid.uuid4())[:8]
+    with _inflight_lock:
+        if cache_key in _inflight_reports:
+            inflight_id = _inflight_reports[cache_key]
+            logger.info("Dedup: attaching to in-flight report %s for %s", inflight_id, cache_key)
+            return jsonify({"report_id": inflight_id, "cached": False})
+
+        report_id = str(uuid.uuid4())[:8]
+        _inflight_reports[cache_key] = report_id
+
     init_progress(report_id)
 
-    thread = Thread(
-        target=_run_analysis,
-        args=(report_id, make, model, year, mileage, options, cache_key),
-        daemon=True,
-    )
+    def _wrapped_analysis():
+        try:
+            _run_analysis(report_id, make, model, year, mileage, options, cache_key)
+        finally:
+            with _inflight_lock:
+                _inflight_reports.pop(cache_key, None)
+
+    thread = Thread(target=_wrapped_analysis, daemon=True)
     thread.start()
 
     return jsonify({"report_id": report_id})
@@ -1028,6 +1062,10 @@ def trace_page(report_id: str):
 # Background analysis
 # ------------------------------------------------------------------
 
+_REPORT_SEMAPHORE = threading.Semaphore(20)
+_inflight_reports: dict[str, str] = {}
+_inflight_lock = threading.Lock()
+
 
 def _make_cache_key(
     make: str, model: str, year: int, mileage: int, options: dict,
@@ -1058,8 +1096,23 @@ def _run_analysis(
     options: dict | None = None, cache_key: str | None = None,
 ):
     """Run scraping + analysis in a background thread."""
+    acquired = _REPORT_SEMAPHORE.acquire(timeout=60)
+    if not acquired:
+        _emit(report_id, "system", "error", "Server is busy, please try again in a moment.")
+        return
+
     options = options or {}
 
+    try:
+        _run_analysis_inner(report_id, make, model, year, mileage, options, cache_key)
+    finally:
+        _REPORT_SEMAPHORE.release()
+
+
+def _run_analysis_inner(
+    report_id: str, make: str, model: str, year: int, mileage: int,
+    options: dict, cache_key: str | None = None,
+):
     trace = start_trace(report_id)
     trace.log_user_query(
         make=make, model=model, year=year, mileage=mileage, options=options,
@@ -1137,41 +1190,53 @@ def _run_analysis(
 
         _emit(report_id, "Analysis", "complete", "Data analysis complete")
 
-        bulk_stats = None
-        try:
-            _emit(report_id, "Bulk Data", "scraping", "Looking up NHTSA bulk statistics...")
-            from data.stats_builder import get_model_stats
-            bulk_stats = get_model_stats(make, model, year)
-            if bulk_stats:
-                logger.info(
-                    "Bulk stats found: %d complaints, %sth percentile",
-                    bulk_stats.get("total_complaints", 0),
-                    bulk_stats.get("complaints_percentile", "?"),
-                )
-            _emit(report_id, "Bulk Data", "complete", "Bulk data retrieved")
-        except Exception as exc:
-            logger.info("Bulk data not available (this is OK if not set up): %s", exc)
-            _emit(report_id, "Bulk Data", "complete", "Bulk data not available (using scraper data only)")
+        from concurrent.futures import ThreadPoolExecutor
 
-        price_data = None
-        try:
+        def _fetch_bulk():
+            _emit(report_id, "Bulk Data", "scraping", "Looking up NHTSA bulk statistics...")
+            try:
+                from data.stats_builder import get_model_stats
+                stats = get_model_stats(make, model, year)
+                if stats:
+                    logger.info(
+                        "Bulk stats found: %d complaints, %sth percentile",
+                        stats.get("total_complaints", 0),
+                        stats.get("complaints_percentile", "?"),
+                    )
+                _emit(report_id, "Bulk Data", "complete", "Bulk data retrieved")
+                return stats
+            except Exception as exc:
+                logger.info("Bulk data not available: %s", exc)
+                _emit(report_id, "Bulk Data", "complete", "Bulk data not available (using scraper data only)")
+                return None
+
+        def _fetch_price():
             _emit(report_id, "Pricing", "scraping", "Fetching market prices from MarketCheck...")
-            from scrapers.price_scraper import fetch_avg_price
-            price_data = fetch_avg_price(
-                make, model, year, mileage,
-                trim=options.get("trim"),
-                engine=options.get("engine"),
-                vin=options.get("vin"),
-                zip_code=options.get("zip_code"),
-            )
-            source = price_data.get("source", "estimate")
-            count = price_data.get("listings_count", 0)
-            match = price_data.get("match_level", "estimate")
-            _emit(report_id, "Pricing", "complete",
-                  f"Market price: ${price_data.get('avg_price', 0):,} ({source}, {match})")
-        except Exception as exc:
-            logger.warning("Price fetch failed: %s", exc)
-            _emit(report_id, "Pricing", "complete", "Price data not available")
+            try:
+                from scrapers.price_scraper import fetch_avg_price
+                pd = fetch_avg_price(
+                    make, model, year, mileage,
+                    trim=options.get("trim"),
+                    engine=options.get("engine"),
+                    vin=options.get("vin"),
+                    zip_code=options.get("zip_code"),
+                )
+                source = pd.get("source", "estimate")
+                match = pd.get("match_level", "estimate")
+                _emit(report_id, "Pricing", "complete",
+                      f"Market price: ${pd.get('avg_price', 0):,} ({source}, {match})")
+                return pd
+            except Exception as exc:
+                logger.warning("Price fetch failed: %s", exc)
+                _emit(report_id, "Pricing", "complete", "Price data not available")
+                return None
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f_bulk = pool.submit(_fetch_bulk)
+            f_price = pool.submit(_fetch_price)
+
+        bulk_stats = f_bulk.result()
+        price_data = f_price.result()
 
         _emit(report_id, "AI Insights", "scraping", "Generating AI-powered insights and guidance...")
         report = generate_report(
@@ -1400,6 +1465,15 @@ def create_app() -> Flask:
     from config.settings import GA_MEASUREMENT_ID, CLARITY_PROJECT_ID
     app.config["GA_MEASUREMENT_ID"] = GA_MEASUREMENT_ID
     app.config["CLARITY_PROJECT_ID"] = CLARITY_PROJECT_ID
+
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
+
+    @app.after_request
+    def _add_cache_headers(response):
+        if request.path.startswith("/static/"):
+            response.cache_control.public = True
+            response.cache_control.max_age = 86400
+        return response
 
     init_db()
     init_store()

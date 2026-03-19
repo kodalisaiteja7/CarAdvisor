@@ -133,9 +133,22 @@ def _parse_date(val: str) -> datetime | None:
         return None
 
 
+_bulk_engine = None
+_bulk_engine_lock = __import__("threading").Lock()
+
+
 def _get_bulk_engine():
-    engine = create_engine(BULK_DB_URL, echo=False)
-    return engine
+    global _bulk_engine
+    if _bulk_engine is not None:
+        return _bulk_engine
+    with _bulk_engine_lock:
+        if _bulk_engine is not None:
+            return _bulk_engine
+        _bulk_engine = create_engine(
+            BULK_DB_URL, echo=False,
+            connect_args={"check_same_thread": False},
+        )
+        return _bulk_engine
 
 
 def get_bulk_session() -> Session:
