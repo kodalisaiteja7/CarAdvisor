@@ -339,7 +339,7 @@ def admin_download_sync():
 
 @app.route("/api/subscribe", methods=["POST"])
 def api_subscribe():
-    """Collect email for newsletter / report delivery."""
+    """Collect email for newsletter / report delivery, and send report via Resend."""
     data = request.get_json() or {}
     email = (data.get("email") or "").strip().lower()
     if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
@@ -358,7 +358,17 @@ def api_subscribe():
         f.write(line)
 
     logger.info("New subscriber: %s (source=%s)", email, source)
-    return jsonify({"status": "subscribed"})
+
+    email_sent = False
+    if report_id:
+        report = get_report(report_id)
+        if report:
+            from services.email_service import send_report_email
+            base_url = request.url_root.rstrip("/")
+            result = send_report_email(email, report, report_id, base_url)
+            email_sent = result is not None
+
+    return jsonify({"status": "subscribed", "email_sent": email_sent})
 
 
 _BLOG_ARTICLES = {
@@ -673,7 +683,8 @@ def report_page(report_id: str):
     _postprocess_current_risk(report)
     _ensure_safety_score(report)
     _strip_extra_llm_content(report)
-    return render_template("report.html", report=report, report_id=report_id)
+    tpl = "report_v1.html" if request.args.get("layout") == "v1" else "report.html"
+    return render_template(tpl, report=report, report_id=report_id)
 
 
 def _postprocess_current_risk(report: dict):

@@ -39,11 +39,11 @@
     .sidebar-link {
         transition: all .15s ease;
         font-weight: 600;
-        color: #6b7280;
+        color: #000000;
         font-size: 0.875rem;
     }
     .sidebar-link:hover {
-        color: #374151;
+        color: #000000;
         background: #f3f4f6;
     }
     .sidebar-link.active {
@@ -53,10 +53,10 @@
         border-left: 3px solid var(--risk-color);
     }
     .dark .sidebar-link {
-        color: #9ca3af;
+        color: #f3f4f6;
     }
     .dark .sidebar-link:hover {
-        color: #d1d5db;
+        color: #ffffff;
         background: rgba(255,255,255,.08);
     }
     .dark .sidebar-link.active {
@@ -81,66 +81,8 @@
         transition: width 0.8s cubic-bezier(.4,0,.2,1);
         border-radius: 0 6px 6px 0;
     }
-    .severity-high { background: #fef2f2; border-color: #fca5a5; }
-    .severity-medium { background: #fffbeb; border-color: #fde68a; }
-    .severity-low { background: #f0fdf4; border-color: #bbf7d0; }
-    .dark .severity-high { background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.3); }
-    .dark .severity-medium { background: rgba(234,179,8,.08); border-color: rgba(234,179,8,.3); }
-    .dark .severity-low { background: rgba(34,197,94,.08); border-color: rgba(34,197,94,.3); }
     @media (max-width: 1023px) {
         .report-sidebar { display: none; }
-    }
-    @media print {
-        nav, footer, .print-hide { display: none !important; }
-
-        body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        * { color-adjust: exact !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-        .report-sidebar { display: none !important; }
-        .lg\:block.w-52 { display: none !important; }
-
-        .report-hero { padding: 20px !important; margin: 0 !important; }
-        .section-card { box-shadow: none !important; border: 1px solid #e5e7eb !important; }
-
-        [x-cloak] { display: block !important; }
-        [x-show] { display: block !important; }
-
-        .checklist-check::before { content: '☐ '; }
-
-        button svg[class*="rotate"], svg[\\:class*="rotate"] { display: none !important; }
-        button[\\@click*="open"], button[\\@click*="ownerOpen"], button[\\@click*="showAll"], button[\\@click*="showAllRecalls"] {
-            pointer-events: none;
-        }
-        [x-text="ownerOpen ? 'Hide' : 'Show'"]  { display: none !important; }
-        button[\\@click*="showAll"][x-text] { display: none !important; }
-        button[\\@click*="showAllRecalls"] { display: none !important; }
-
-        #sec-checklist { break-before: page; }
-        #sec-complaints { break-before: page; }
-        #sec-recalls { break-before: page; }
-        #sec-risk { break-before: page; }
-        #sec-price { break-before: page; }
-
-        .border-l-4 { break-inside: avoid; }
-        blockquote { break-inside: avoid; }
-        .border.rounded-xl { break-inside: avoid; }
-
-        canvas { max-height: 280px !important; }
-
-        .backdrop-blur-sm, .backdrop-blur { backdrop-filter: none !important; }
-        .sticky { position: relative !important; }
-
-        .max-w-7xl { max-width: 100% !important; padding: 0 !important; }
-        .lg\:flex-row { flex-direction: row !important; }
-        .lg\:col-span-2 { grid-column: span 2 !important; }
-        .lg\:col-span-3 { grid-column: span 3 !important; }
-        .lg\:grid-cols-2 { grid-template-columns: repeat(2, 1fr) !important; }
-        .lg\:grid-cols-5 { grid-template-columns: repeat(5, 1fr) !important; }
-        .sm\:grid-cols-3 { grid-template-columns: repeat(3, 1fr) !important; }
-
-        .line-clamp-1 { -webkit-line-clamp: unset !important; overflow: visible !important; }
-
-        @page { margin: 0.5in; size: letter; }
     }
 </style>
 {% endblock %}
@@ -204,6 +146,10 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0 print-hide">
+                <a href="/trace/{{ report_id }}" target="_blank"
+                   class="text-xs px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:bg-white/10 transition">
+                    Debug
+                </a>
                 <button onclick="window.print()" class="hidden sm:flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg border border-white/20 text-gray-400 hover:text-white hover:bg-white/10 transition">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
                     Print
@@ -215,13 +161,13 @@
         </div>
     </div>
 
-    <!-- ===== Buyer's Verdict Banner (always visible, prominent) ===== -->
+    <!-- ===== Buyer's Verdict Banner ===== -->
     {% set exec_summary = report.sections.get("executive_summary", {}) %}
     {% if exec_summary.get("text") %}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-5 mb-6 relative z-10">
         <div class="section-card p-6 border-l-4 shadow-lg
             {% if risk_score > 75 %}border-l-red-600{% elif risk_score > 60 %}border-l-red-500{% elif risk_score > 45 %}border-l-orange-500{% elif risk_score > 30 %}border-l-[#FFC700]{% elif risk_score > 20 %}border-l-lime-500{% else %}border-l-green-500{% endif %}
-            fade-in print-section">
+            fade-in print-section" x-data="{ reasonOpen: false }">
             <div class="flex items-start gap-4">
                 <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center
                     {% if risk_score > 60 %}bg-red-50 dark:bg-red-900/20{% elif risk_score > 45 %}bg-orange-50 dark:bg-orange-900/20{% elif risk_score > 30 %}bg-[#FFF8D4] dark:bg-brand-900/20{% else %}bg-green-50 dark:bg-green-900/20{% endif %}">
@@ -238,14 +184,24 @@
                     <p class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ exec_summary.text }}</p>
                     {% set reasoning = exec_summary.get("verdict_reasoning", []) %}
                     {% if reasoning %}
-                    <ul class="space-y-2 mt-3">
-                        {% for reason in reasoning %}
-                        <li class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-                            <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-[#FFC700]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-                            <span>{{ reason }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <button @click="reasonOpen = !reasonOpen" class="flex items-center justify-between w-full text-left group cursor-pointer">
+                            <h3 class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Why This Verdict</h3>
+                            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors duration-150"
+                                 :class="reasonOpen ? 'bg-[#FFC700] text-[#111111]' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-[#FFF8D4] group-hover:text-[#CC9F00] dark:group-hover:bg-brand-900/40 dark:group-hover:text-[#FFC700]'">
+                                <span x-text="reasonOpen ? 'Hide' : 'Show'"></span>
+                                <svg :class="reasonOpen ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </button>
+                        <ul x-show="reasonOpen" x-cloak class="space-y-2 mt-3">
+                            {% for reason in reasoning %}
+                            <li class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-[#FFC700]" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                <span>{{ reason }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -253,13 +209,12 @@
     </div>
     {% endif %}
 
-    <!-- ===== Mobile Section Nav ===== -->
+    <!-- ===== Mobile Section Nav (horizontal pills) ===== -->
     <div class="lg:hidden sticky top-16 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm px-4 py-2 border-b border-gray-200 dark:border-gray-800 mb-4 print-hide">
         <div class="flex gap-1.5 overflow-x-auto scrollbar-hide">
             <template x-for="s in sections" :key="s.id">
                 <a :href="'#' + s.id" @click.prevent="scrollTo(s.id)"
-                   :class="activeSection === s.id ? 'text-white' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'"
-                   :style="activeSection === s.id ? 'background:var(--risk-color);color:var(--risk-text)' : ''"
+                   :class="activeSection === s.id ? 'bg-[#111111] text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'"
                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition" x-text="s.label"></a>
             </template>
         </div>
@@ -277,8 +232,8 @@
                            :class="activeSection === s.id ? 'active' : ''"
                            class="sidebar-link flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[0.8125rem]">
                             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                  :class="activeSection === s.id ? '' : 'bg-gray-400 dark:bg-gray-500'"
-                                  :style="activeSection === s.id ? 'background:var(--risk-text)' : ''"></span>
+                                  :class="activeSection === s.id ? '' : 'bg-black dark:bg-gray-400'"
+                                  :style="activeSection === s.id ? 'background:var(--risk-dot)' : ''"></span>
                             <span x-text="s.label"></span>
                         </a>
                     </template>
@@ -288,21 +243,21 @@
             <!-- Content Area -->
             <div class="flex-1 min-w-0 space-y-8">
 
-                <!-- ================================================================ -->
-                <!-- SECTION 1: THE VERDICT                                           -->
-                <!-- ================================================================ -->
-                <section id="sec-verdict" class="scroll-mt-24 fade-in print-section">
+                <!-- ============================================================= -->
+                <!-- SECTION A: Score Overview -->
+                <!-- ============================================================= -->
+                <section id="sec-overview" class="scroll-mt-24 fade-in print-section">
                     <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
                         <!-- Risk Gauge -->
                         <div class="lg:col-span-2 section-card p-6 flex flex-col items-center justify-center relative" x-data="{ infoOpen: false }">
-                            <button @click="infoOpen = !infoOpen" class="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition cursor-pointer z-10 print-hide" title="How is this calculated?">
+                            <button @click="infoOpen = !infoOpen" class="absolute top-3 right-3 p-1.5 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition cursor-pointer z-10" title="How is this calculated?">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </button>
-                            <div x-show="infoOpen" x-cloak class="w-full mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 space-y-2 print-hide">
+                            <div x-show="infoOpen" x-cloak class="w-full mb-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300 space-y-2">
                                 <p class="font-bold text-gray-900 dark:text-white">How is the Risk Score calculated?</p>
                                 <p>The Risk Score (0–100) combines multiple real-world data sources to estimate overall vehicle reliability risk. It factors in owner-reported complaints from NHTSA, manufacturer-acknowledged repair bulletins (TSBs), any open government safety investigations, dealer service advisories, and the brand's overall quality rating. Higher mileage vehicles receive an additional wear adjustment to reflect accumulated risk. A lower score means fewer reported problems and better expected reliability.</p>
                             </div>
-                            <a href="#sec-risk" onclick="event.preventDefault();document.getElementById('sec-risk').scrollIntoView({behavior:'smooth',block:'start'})" class="relative w-44 h-44 mb-4 block cursor-pointer" title="View Risk Breakdown">
+                            <div class="relative w-44 h-44 mb-4" style="position:relative;">
                                 <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
                                     <circle cx="60" cy="60" r="52" fill="none" stroke="#e8eaed" stroke-width="10" class="dark:stroke-gray-700"/>
                                     {% set dash = 326.7 %}
@@ -330,7 +285,7 @@
                                     <span class="text-xs text-gray-400 font-semibold mt-0.5 uppercase tracking-wider">Risk Score</span>
                                     <span class="text-[10px] text-gray-400 mt-0.5">lower is better</span>
                                 </div>
-                            </a>
+                            </div>
                             <span class="text-sm font-bold px-4 py-1.5 rounded-full
                                 {% if risk_score > 75 %}bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400
                                 {% elif risk_score > 60 %}bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400
@@ -342,188 +297,120 @@
                             </span>
                         </div>
 
-                        <!-- Contextual Stat Badges -->
+                        <!-- Stats Grid -->
                         <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <!-- Complaints -->
-                            <a href="#sec-complaints" onclick="event.preventDefault();document.getElementById('sec-complaints').scrollIntoView({behavior:'smooth',block:'start'})" class="stat-card section-card p-5 cursor-pointer block no-underline">
+                            <div class="stat-card section-card p-5 relative" x-data="{ infoOpen: false }">
+                                <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
                                 <div class="w-9 h-9 rounded-lg bg-[#FFF8D4] dark:bg-brand-900/30 flex items-center justify-center mb-3">
                                     <svg class="w-4.5 h-4.5 text-[#CC9F00]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </div>
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Complaints</div>
                                 <div class="text-3xl font-black text-gray-900 dark:text-white">{{ vs.total_complaints }}</div>
-                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Complaints</div>
-                            </a>
-
-                            <!-- Recalls -->
-                            <a href="#sec-recalls" onclick="event.preventDefault();document.getElementById('sec-recalls').scrollIntoView({behavior:'smooth',block:'start'})" class="stat-card section-card p-5 cursor-pointer block no-underline">
+                                <div class="text-xs text-gray-400 mt-1">NHTSA filings</div>
+                                <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
+                                    Total number of owner complaints filed with the National Highway Traffic Safety Administration (NHTSA) for this specific make, model, and year. Higher counts indicate more reported issues.
+                                </div>
+                            </div>
+                            <div class="stat-card section-card p-5 relative" x-data="{ infoOpen: false }">
+                                <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                </button>
                                 <div class="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-3">
                                     <svg class="w-4.5 h-4.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
                                 </div>
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Recalls</div>
                                 <div class="text-3xl font-black text-gray-900 dark:text-white">{{ vs.total_recalls }}</div>
-                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Recalls</div>
-                            </a>
-
-                            <!-- Average Price -->
-                            <a href="#sec-price" onclick="event.preventDefault();var el=document.getElementById('sec-price');if(el){el.scrollIntoView({behavior:'smooth',block:'start'})}" class="stat-card section-card p-5 cursor-pointer block no-underline">
-                                <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center mb-3">
-                                    <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <div class="text-xs text-gray-400 mt-1">safety campaigns</div>
+                                <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
+                                    Official safety recalls issued by the manufacturer or mandated by NHTSA. Recalls address defects that could affect safety. Check if all recalls have been completed on the specific vehicle you're considering.
                                 </div>
-                                {% if pricing.get("avg_market_price") %}
-                                <div class="text-3xl font-black text-gray-900 dark:text-white">${{ "{:,}".format(pricing.avg_market_price) }}</div>
-                                {% else %}
-                                <div class="text-3xl font-black text-gray-400">N/A</div>
-                                {% endif %}
-                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Avg. Price</div>
-                            </a>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- ================================================================ -->
-                <!-- SECTION 2: WHAT TO CHECK (Inspection Guide moved up)             -->
-                <!-- ================================================================ -->
-                <section id="sec-checklist" class="scroll-mt-24 fade-in print-section">
-                    <div class="section-card overflow-hidden">
-                        <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-[#111111] to-[#1a1a2e]">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 rounded-lg bg-[#FFC700] flex items-center justify-center">
-                                        <svg class="w-5 h-5 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
-                                    </div>
-                                    <div>
-                                        <h2 class="text-xl font-bold text-white">What to Check Before Buying</h2>
-                                        <p class="text-sm text-gray-400">Top issues for the {{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} at {{ "{:,}".format(report.vehicle.mileage) }} miles</p>
-                                    </div>
-                                </div>
-                                <button onclick="window.print()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white transition print-hide">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
-                                    Print Checklist
+                            </div>
+                            {% set safety = vs.safety_score | default(0) %}
+                            <div class="stat-card section-card p-5 relative" x-data="{ infoOpen: false }">
+                                <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 </button>
+                                <div class="w-9 h-9 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center mb-3">
+                                    <svg class="w-4.5 h-4.5 text-green-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                                </div>
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Safety Score</div>
+                                <div class="text-3xl font-black
+                                    {% if safety > 50 %}text-red-500
+                                    {% elif safety > 25 %}text-[#CC9F00]
+                                    {% else %}text-green-500{% endif %}">{{ safety }}</div>
+                                <div class="text-xs text-gray-400 mt-1">lower is better</div>
+                                <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300">
+                                    A composite score based on crash rates, fire incidents, and injury/death reports in NHTSA complaints. Lower scores mean fewer safety-critical incidents have been reported for this vehicle.
+                                </div>
                             </div>
-                        </div>
-
-                        {% macro render_checklist_v2(item, severity) %}
-                        {% set sev_class = 'severity-high' if severity == 'high' else ('severity-medium' if severity == 'medium' else 'severity-low') %}
-                        {% set sev_label = 'HIGH' if severity == 'high' else ('MEDIUM' if severity == 'medium' else 'LOW') %}
-                        {% set sev_color = 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400' if severity == 'high' else ('text-[#CC9F00] bg-[#FFF8D4] dark:bg-brand-900/30 dark:text-[#FFC700]' if severity == 'medium' else 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400') %}
-                        <div class="border rounded-xl {{ sev_class }} overflow-hidden" x-data="{ open: false }">
-                            <button @click="open = !open" class="w-full flex items-center justify-between p-4 text-left gap-3 cursor-pointer group transition-all duration-150 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-                                <div class="flex items-center gap-3 min-w-0 flex-1">
-                                    <span class="text-[10px] font-black px-2 py-0.5 rounded {{ sev_color }} flex-shrink-0">{{ sev_label }}</span>
-                                    <div class="min-w-0">
-                                        <h3 class="font-bold text-sm sm:text-base">
-                                            {% if item.title %}{{ item.title }}{% else %}{{ item.system }} Inspection{% endif %}
-                                        </h3>
-                                        {% if item.why_it_matters %}
-                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{{ item.why_it_matters }}</p>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 flex-shrink-0">
-                                    {% if item.estimated_cost_if_bad %}
-                                    <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-gray-900 text-white dark:bg-gray-600 whitespace-nowrap">{{ item.estimated_cost_if_bad }}</span>
-                                    {% endif %}
-                                    <svg :class="open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform text-gray-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                                </div>
-                            </button>
-                            <div x-show="open" x-cloak class="px-4 pb-4 space-y-3 border-t border-gray-200/60 dark:border-gray-700/60">
-                                {% if item.how_to_check %}
-                                <div class="pt-3">
-                                    <h4 class="text-xs font-bold text-gray-800 dark:text-gray-200 mb-2 uppercase tracking-wide">What to Check</h4>
-                                    <ul class="space-y-2">
-                                        {% for step in item.how_to_check %}
-                                        <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
-                                            <span class="flex-shrink-0 w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-500 flex items-center justify-center mt-0.5 checklist-check"></span>
-                                            <span>{{ step }}</span>
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-                                {% if item.red_flags %}
-                                <div>
-                                    <h4 class="text-xs font-bold text-red-700 dark:text-red-400 mb-2 uppercase tracking-wide">Red Flags</h4>
-                                    <ul class="space-y-1.5">
-                                        {% for flag in item.red_flags %}
-                                        <li class="flex items-start gap-2 text-sm text-red-700 dark:text-red-400">
-                                            <span class="flex-shrink-0 mt-0.5">&#x2716;</span>
-                                            <span>{{ flag }}</span>
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-                                {% if item.ask_the_seller %}
-                                <div>
-                                    <h4 class="text-xs font-bold text-gray-800 dark:text-gray-200 mb-2 uppercase tracking-wide">Ask the Seller</h4>
-                                    <ul class="space-y-1.5">
-                                        {% for q in item.ask_the_seller %}
-                                        <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                            <span class="flex-shrink-0 text-[#FFC700] font-bold">Q:</span>
-                                            <span class="italic">"{{ q }}"</span>
-                                        </li>
-                                        {% endfor %}
-                                    </ul>
-                                </div>
-                                {% endif %}
-                                {% if not item.how_to_check and not item.red_flags %}
-                                <div class="pt-3">
-                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ item.what_to_look_for }}</p>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endmacro %}
-
-                        <div class="p-6 space-y-3">
-                            {% for item in cl.must_check %}
-                                {{ render_checklist_v2(item, 'high') }}
-                            {% endfor %}
-                            {% for item in cl.recommended %}
-                                {{ render_checklist_v2(item, 'medium') }}
-                            {% endfor %}
-                            {% for item in cl.standard %}
-                                {{ render_checklist_v2(item, 'low') }}
-                            {% endfor %}
-                            {% if not cl.must_check and not cl.recommended and not cl.standard %}
-                            <div class="text-center py-8">
-                                <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <h3 class="text-lg font-bold mb-1">No Major Concerns</h3>
-                                <p class="text-sm text-gray-500">Standard pre-purchase inspection recommended.</p>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
-                </section>
 
-                <!-- ================================================================ -->
-                <!-- SECTION 3: PRICE ANALYSIS                                        -->
-                <!-- ================================================================ -->
-                {% if pricing.get("available") and pricing.get("asking_price") %}
-                <section id="sec-price" class="scroll-mt-24 fade-in print-section">
-                    <div class="section-card p-6">
+                    <!-- V2 Signal Summary Cards -->
+                    {% if v2s %}
+                    <div class="grid grid-cols-3 gap-4 mt-5">
+                        <div class="stat-card section-card p-4 text-center relative" x-data="{ infoOpen: false }">
+                            <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div class="w-8 h-8 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center mx-auto mb-2">
+                                <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            </div>
+                            <div class="text-2xl font-black text-gray-900 dark:text-white">{{ v2s.tsb_total }}</div>
+                            <div class="text-xs text-gray-400 mt-0.5">TSBs</div>
+                            <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 text-left">
+                                Technical Service Bulletins — official notices from the manufacturer to dealers about known issues and recommended repair procedures. Not recalls, but acknowledged problems.
+                            </div>
+                        </div>
+                        <div class="stat-card section-card p-4 text-center relative" x-data="{ infoOpen: false }">
+                            <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-2">
+                                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </div>
+                            <div class="text-2xl font-black {% if v2s.inv_count > 0 %}text-red-500{% else %}text-gray-900 dark:text-white{% endif %}">{{ v2s.inv_count }}</div>
+                            <div class="text-xs text-gray-400 mt-0.5">Investigations</div>
+                            <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 text-left">
+                                Formal safety investigations opened by NHTSA when a pattern of complaints suggests a potential defect. Types include Preliminary Evaluations (PE), Engineering Analyses (EA), and Recalls (RQ).
+                            </div>
+                        </div>
+                        <div class="stat-card section-card p-4 text-center relative" x-data="{ infoOpen: false }">
+                            <button @click="infoOpen = !infoOpen" class="absolute top-2 right-2 p-1 rounded-full text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 transition cursor-pointer" title="What is this?">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </button>
+                            <div class="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center mx-auto mb-2">
+                                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                            </div>
+                            <div class="text-2xl font-black text-gray-900 dark:text-white">{{ v2s.mfr_comm_count }}</div>
+                            <div class="text-xs text-gray-400 mt-0.5">MFR Comms</div>
+                            <div x-show="infoOpen" x-cloak class="mt-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-300 text-left">
+                                Manufacturer Communications — service advisories, technical tips, and policy updates sent from the automaker directly to dealerships. High counts may indicate the manufacturer is actively addressing known issues.
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Price Analysis -->
+                    {% if pricing.get("available") %}
+                    <div class="section-card p-6 mt-5 fade-in">
                         <div class="flex items-center gap-3 mb-5">
                             <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
                                 <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             </div>
                             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Price Analysis</h3>
-                            {% if pricing.get("price_position") %}
-                            <span class="ml-auto text-sm font-bold px-3 py-1 rounded-full
-                                {% if pricing.price_position.percentile <= 20 %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400
-                                {% elif pricing.price_position.percentile <= 40 %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400
-                                {% elif pricing.price_position.percentile <= 60 %}bg-[#FFF8D4] dark:bg-brand-900/30 text-[#CC9F00]
-                                {% elif pricing.price_position.percentile <= 80 %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400
-                                {% else %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400{% endif %}">
-                                {{ pricing.price_position.label }}
-                            </span>
-                            {% endif %}
                             {% if pricing.get("days_on_market") %}
-                            <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                            <span class="ml-auto text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                                <svg class="w-3.5 h-3.5 inline -mt-0.5 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 Avg. {{ pricing.days_on_market }} days on market
                             </span>
                             {% endif %}
                         </div>
 
                         <div class="grid grid-cols-1 {% if pricing.get('asking_price') %}sm:grid-cols-3{% else %}sm:grid-cols-2{% endif %} gap-4">
+                            <!-- Average Market Price -->
                             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 text-center">
                                 <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Market Average</div>
                                 <div class="text-3xl font-black text-gray-900 dark:text-white">${{ "{:,}".format(pricing.avg_market_price) }}</div>
@@ -531,12 +418,16 @@
                                 <div class="text-xs text-gray-400 mt-1">${{ "{:,}".format(pricing.price_range.low) }} - ${{ "{:,}".format(pricing.price_range.high) }}</div>
                                 {% endif %}
                             </div>
+
                             {% if pricing.get("asking_price") %}
+                            <!-- Asking Price -->
                             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5 text-center">
                                 <div class="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Asking Price</div>
                                 <div class="text-3xl font-black text-gray-900 dark:text-white">${{ "{:,}".format(pricing.asking_price) }}</div>
                                 <div class="text-xs text-gray-400 mt-1">seller's price</div>
                             </div>
+
+                            <!-- Difference -->
                             <div class="rounded-xl p-5 text-center
                                 {% if pricing.price_verdict == 'below_market' %}bg-green-50 dark:bg-green-900/20
                                 {% elif pricing.price_verdict == 'above_market' %}bg-red-50 dark:bg-red-900/20
@@ -545,7 +436,9 @@
                                     {% if pricing.price_verdict == 'below_market' %}text-green-600 dark:text-green-400
                                     {% elif pricing.price_verdict == 'above_market' %}text-red-600 dark:text-red-400
                                     {% else %}text-[#CC9F00] dark:text-brand-200{% endif %} mb-1">
-                                    {% if pricing.price_verdict == 'below_market' %}Below Market{% elif pricing.price_verdict == 'above_market' %}Above Market{% else %}At Market{% endif %}
+                                    {% if pricing.price_verdict == 'below_market' %}Below Market
+                                    {% elif pricing.price_verdict == 'above_market' %}Above Market
+                                    {% else %}At Market{% endif %}
                                 </div>
                                 <div class="text-3xl font-black
                                     {% if pricing.price_verdict == 'below_market' %}text-green-600 dark:text-green-400
@@ -557,17 +450,30 @@
                                     {% if pricing.price_verdict == 'below_market' %}text-green-500
                                     {% elif pricing.price_verdict == 'above_market' %}text-red-500
                                     {% else %}text-[#CC9F00]{% endif %}">
-                                    {% if pricing.price_verdict == 'below_market' %}good deal{% elif pricing.price_verdict == 'above_market' %}negotiate lower{% else %}fair price{% endif %}
+                                    {% if pricing.price_verdict == 'below_market' %}good deal
+                                    {% elif pricing.price_verdict == 'above_market' %}negotiate lower
+                                    {% else %}fair price{% endif %}
                                 </div>
                             </div>
                             {% endif %}
                         </div>
 
                         {% if pricing.get("price_position") %}
+                        <!-- Price Position Visualization -->
                         <div class="mt-5 bg-gray-50 dark:bg-gray-700/50 rounded-xl p-5">
                             <div class="flex items-center justify-between mb-5">
                                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Where This Price Falls</span>
+                                <span class="text-sm font-bold px-2.5 py-0.5 rounded-full
+                                    {% if pricing.price_position.percentile <= 20 %}bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400
+                                    {% elif pricing.price_position.percentile <= 40 %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400
+                                    {% elif pricing.price_position.percentile <= 60 %}bg-[#FFF8D4] dark:bg-brand-900/30 text-[#CC9F00]
+                                    {% elif pricing.price_position.percentile <= 80 %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400
+                                    {% else %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400{% endif %}">
+                                    {{ pricing.price_position.label }}
+                                </span>
                             </div>
+
+                            <!-- Price tag above the bar -->
                             <div class="relative h-6 mb-1">
                                 <div class="absolute -translate-x-1/2" style="left:clamp(2%, {{ pricing.price_position.percentile }}%, 98%)">
                                     <div class="bg-[#111111] text-white text-xs font-bold px-2.5 py-1 rounded-lg whitespace-nowrap shadow-md">
@@ -576,20 +482,36 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- The gradient bar -->
                             <div class="relative">
                                 <div class="h-4 rounded-full bg-gradient-to-r from-green-400 via-[#FFDE69] to-red-400"></div>
+
+                                <!-- Asking price indicator pin -->
                                 <div class="absolute top-0 bottom-0 -translate-x-1/2" style="left:clamp(2%, {{ pricing.price_position.percentile }}%, 98%)">
                                     <div class="w-3.5 h-3.5 rounded-full bg-[#111111] dark:bg-white border-[3px] border-white dark:border-gray-800 shadow-lg" style="margin-top:-1px"></div>
                                 </div>
-                                <div class="absolute top-0 h-full -translate-x-px" style="left:22%"><div class="w-0.5 h-full bg-white/60 rounded-full"></div></div>
-                                <div class="absolute top-0 h-full -translate-x-px" style="left:50%"><div class="w-0.5 h-full bg-white/80 rounded-full"></div></div>
-                                <div class="absolute top-0 h-full -translate-x-px" style="left:78%"><div class="w-0.5 h-full bg-white/60 rounded-full"></div></div>
+
+                                <!-- Percentile tick marks -->
+                                <div class="absolute top-0 h-full -translate-x-px" style="left:22%">
+                                    <div class="w-0.5 h-full bg-white/60 rounded-full"></div>
+                                </div>
+                                <div class="absolute top-0 h-full -translate-x-px" style="left:50%">
+                                    <div class="w-0.5 h-full bg-white/80 rounded-full"></div>
+                                </div>
+                                <div class="absolute top-0 h-full -translate-x-px" style="left:78%">
+                                    <div class="w-0.5 h-full bg-white/60 rounded-full"></div>
+                                </div>
                             </div>
+
+                            <!-- Labels row -->
                             <div class="relative mt-2 h-5">
                                 <span class="absolute text-[10px] font-medium text-gray-400 -translate-x-1/2" style="left:22%">25th</span>
                                 <span class="absolute text-[10px] font-medium text-gray-500 dark:text-gray-400 -translate-x-1/2" style="left:50%">Median</span>
                                 <span class="absolute text-[10px] font-medium text-gray-400 -translate-x-1/2" style="left:78%">75th</span>
                             </div>
+
+                            <!-- Min/Max prices -->
                             <div class="flex justify-between text-xs text-gray-400 -mt-0.5">
                                 <span>${{ "{:,}".format(pricing.price_position.p5) }}</span>
                                 <span>${{ "{:,}".format(pricing.price_position.p95) }}</span>
@@ -597,6 +519,7 @@
                         </div>
                         {% endif %}
 
+                        <!-- Source info -->
                         <div class="mt-4 flex items-center justify-between text-xs text-gray-400">
                             <span>
                                 {% if pricing.listings_count > 0 %}
@@ -618,14 +541,10 @@
                             </div>
                         </div>
                     </div>
-                </section>
-                {% endif %}
+                    {% endif %}
 
-                <!-- ================================================================ -->
-                <!-- SECTION: COMPLAINTS (charts)                                     -->
-                <!-- ================================================================ -->
-                <section id="sec-complaints" class="scroll-mt-24 fade-in print-section space-y-5">
-                    <div id="systemRiskCard" class="section-card p-6" x-data="complaintsChart()">
+                    <!-- Complaints by System (modernized) -->
+                    <div id="systemRiskCard" class="section-card p-6 mt-5" x-data="complaintsChart()">
                         <div class="flex items-center justify-between mb-5">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
@@ -660,8 +579,9 @@
                         </div>
                     </div>
 
+                    <!-- Complaints Over Time (only if data exists) -->
                     {% if cby %}
-                    <div class="section-card p-6">
+                    <div class="section-card p-6 mt-5">
                         <div class="flex items-center gap-3 mb-4">
                             <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
                                 <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
@@ -676,154 +596,55 @@
                         </div>
                     </div>
                     {% endif %}
-
-                    <!-- Owner Complaints (collapsible dropdown inside Complaints section) -->
-                    <div class="section-card overflow-hidden" x-data="{ ownerOpen: false }">
-                        <button @click="ownerOpen = !ownerOpen" class="w-full flex items-center justify-between p-6 text-left cursor-pointer group hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
-                            <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
-                                    <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/></svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Owner Complaints</h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ oe.report_count }} reports from real owners</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
-                                 :class="ownerOpen ? 'bg-[#FFC700] text-[#111111]' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 group-hover:bg-[#FFF8D4] group-hover:text-[#CC9F00]'">
-                                <span x-text="ownerOpen ? 'Hide' : 'Show'"></span>
-                                <svg :class="ownerOpen ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                            </div>
-                        </button>
-                        <div x-show="ownerOpen" x-cloak class="border-t border-gray-200 dark:border-gray-700 p-6">
-                            <p class="text-sm text-[#CC9F00] dark:text-[#FFC700] bg-[#FFF8D4] dark:bg-brand-900/20 border border-[#FFDE69]/60 dark:border-brand-800 rounded-lg p-3 mb-4">
-                                {{ oe.note }}
-                            </p>
-                            {% if oe.sample_reports %}
-                            <div class="space-y-4" x-data="{ showAll: false }">
-                                {% for report_text in oe.sample_reports[:5] %}
-                                <blockquote class="border-l-4 border-[#FFDE69] dark:border-[#FFC700]/40 pl-4 text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
-                                    "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
-                                </blockquote>
-                                {% endfor %}
-                                {% if oe.sample_reports|length > 5 %}
-                                <div x-show="showAll" x-cloak class="space-y-4">
-                                    {% for report_text in oe.sample_reports[5:] %}
-                                    <blockquote class="border-l-4 border-[#FFDE69] dark:border-[#FFC700]/40 pl-4 text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
-                                        "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
-                                    </blockquote>
-                                    {% endfor %}
-                                </div>
-                                <button @click="showAll = !showAll" class="text-sm text-[#CC9F00] dark:text-[#FFC700] hover:underline font-semibold cursor-pointer" x-text="showAll ? 'Show less' : 'Show all {{ oe.sample_reports|length }} reports'"></button>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <p class="text-gray-400 italic">No owner reports collected yet.</p>
-                            {% endif %}
-                        </div>
-                    </div>
                 </section>
 
-                <!-- ================================================================ -->
-                <!-- SECTION: RECALLS                                                 -->
-                <!-- ================================================================ -->
-                <section id="sec-recalls" class="scroll-mt-24 fade-in print-section">
-                    {% if vs.recalls %}
-                    <div class="section-card p-6" x-data="{ showAllRecalls: false }">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Safety Recalls</h2>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ vs.total_recalls }} recall{{ "s" if vs.total_recalls != 1 }} issued for this vehicle</p>
-                            </div>
-                        </div>
-                        <div class="space-y-4">
-                            {% for r in vs.recalls[:3] %}
-                            <div class="border-l-4 border-red-400 pl-4 py-1">
-                                <div class="font-semibold">{{ r.component }}</div>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ r.summary }}</p>
-                                {% if r.consequence %}<p class="text-sm text-red-600 dark:text-red-400 mt-1"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>{% endif %}
-                                {% if r.remedy %}<p class="text-sm text-green-600 dark:text-green-400 mt-1"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>{% endif %}
-                                <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
-                            </div>
-                            {% endfor %}
-                            {% if vs.recalls|length > 3 %}
-                            <div x-show="showAllRecalls" x-cloak class="space-y-4">
-                                {% for r in vs.recalls[3:] %}
-                                <div class="border-l-4 border-red-400 pl-4 py-1">
-                                    <div class="font-semibold">{{ r.component }}</div>
-                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ r.summary }}</p>
-                                    {% if r.consequence %}<p class="text-sm text-red-600 dark:text-red-400 mt-1"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>{% endif %}
-                                    {% if r.remedy %}<p class="text-sm text-green-600 dark:text-green-400 mt-1"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>{% endif %}
-                                    <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <button @click="showAllRecalls = !showAllRecalls" class="text-sm text-[#CC9F00] dark:text-[#FFC700] hover:underline font-semibold cursor-pointer" x-text="showAllRecalls ? 'Show fewer recalls' : 'Show all {{ vs.recalls|length }} recalls'"></button>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="section-card p-8 text-center">
-                        <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <h3 class="text-lg font-bold mb-1">No Open Recalls</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">No safety recalls found for this vehicle.</p>
-                    </div>
-                    {% endif %}
-                </section>
-
-                <!-- ================================================================ -->
-                <!-- SECTION: RISK BREAKDOWN (signals only)                           -->
-                <!-- ================================================================ -->
+                <!-- ============================================================= -->
+                <!-- SECTION B: Risk Signal Analysis (V2) -->
+                <!-- ============================================================= -->
                 {% if sc %}
-                <section id="sec-risk" class="scroll-mt-24 fade-in print-section space-y-5">
+                <section id="sec-signals" class="scroll-mt-24 fade-in print-section">
+                    <!-- Score Breakdown -->
                     <div class="section-card p-6">
                         <div class="flex items-center gap-3 mb-5">
                             <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
                                 <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                             </div>
                             <div>
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Risk Signal Report Card</h3>
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Weighted scores — how each data source contributes to the risk score</p>
+                                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Risk Score Breakdown</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">Weighted scores — how each data source contributes to the overall risk score</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center">
-                            <div class="lg:col-span-3 space-y-4">
-                                {% set signal_colors = {"nhtsa": "#3b82f6", "tsb": "#f97316", "investigation": "#ef4444", "mfr_comm": "#8b5cf6"} %}
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div class="flex items-center justify-center">
+                                <div style="position:relative; width:280px; height:280px">
+                                    <canvas id="scoreBreakdownChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                {% set comp_colors = {"nhtsa": "#3b82f6", "tsb": "#f97316", "investigation": "#ef4444", "mfr_comm": "#8b5cf6"} %}
                                 {% for key in ["nhtsa", "tsb", "investigation", "mfr_comm"] %}
                                 {% set c = sc.get(key, {}) %}
-                                {% set score = c.get("score", 0) %}
-                                {% set grade = "A" if score < 15 else ("B" if score < 30 else ("C" if score < 50 else ("D" if score < 70 else "F"))) %}
-                                <div class="flex items-center gap-4">
-                                    <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center text-sm font-black
-                                        {% if score < 15 %}bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400
-                                        {% elif score < 30 %}bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-400
-                                        {% elif score < 50 %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400
-                                        {% elif score < 70 %}bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400
-                                        {% else %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400{% endif %}">{{ grade }}</span>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 rounded-full flex-shrink-0" style="background:{{ comp_colors[key] }}"></div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center justify-between mb-1">
-                                            <span class="text-sm font-semibold truncate">{{ c.get("label", key) }}</span>
-                                            <span class="text-sm font-bold tabular-nums text-gray-500">{{ score }}/100</span>
+                                            <span class="text-sm font-medium truncate">{{ c.get("label", key) }}</span>
+                                            <span class="text-sm font-bold tabular-nums w-10 text-right">{{ c.get("score", 0) }}</span>
                                         </div>
                                         <div class="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                            <div class="h-full rounded-full transition-all duration-700" style="width:{{ score }}%; background:{{ signal_colors[key] }}"></div>
+                                            <div class="h-full rounded-full transition-all duration-700" style="width:{{ c.get('score', 0) }}%; background:{{ comp_colors[key] }}"></div>
                                         </div>
                                     </div>
                                 </div>
                                 {% endfor %}
                             </div>
-                            <div class="lg:col-span-2 flex items-center justify-center">
-                                <div style="width:180px;height:180px">
-                                    <canvas id="riskRadarChart"></canvas>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    <!-- TSB, Investigations, MFR Grid -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+
+                        <!-- TSBs by System -->
                         {% if v2s.get("tsb_by_system") %}
                         <div class="section-card p-6">
                             <div class="flex items-center justify-between mb-4">
@@ -831,26 +652,39 @@
                                     <div class="w-9 h-9 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center">
                                         <svg class="w-4.5 h-4.5 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                     </div>
-                                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Service Bulletins by System</h3>
+                                    <h3 class="text-base font-bold text-gray-900 dark:text-white">Technical Service Bulletins</h3>
                                 </div>
                                 <span class="text-sm font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-3 py-1 rounded-full">{{ v2s.tsb_total }} total</span>
                             </div>
                             <div style="position:relative; height:{{ [v2s.tsb_by_system|length * 32, 200] | max }}px; max-height:320px">
                                 <canvas id="tsbSystemChart"></canvas>
                             </div>
+                            <div class="flex flex-wrap gap-3 mt-4">
+                                <span class="flex items-center gap-1.5 text-xs">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-red-500"></span> CRIT — safety-critical (2.5x weight)
+                                </span>
+                                <span class="flex items-center gap-1.5 text-xs">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-orange-400"></span> STD — standard
+                                </span>
+                                <span class="flex items-center gap-1.5 text-xs">
+                                    <span class="w-2.5 h-2.5 rounded-sm bg-gray-400"></span> LOW — proactive/cosmetic (0.4x weight)
+                                </span>
+                            </div>
                         </div>
                         {% endif %}
 
+                        <!-- Right Column: Investigations + MFR + DL stacked -->
                         <div class="space-y-5">
+                            <!-- Investigations -->
                             <div class="section-card p-6">
                                 <div class="flex items-center justify-between gap-4 mb-4">
                                     <div class="flex items-center gap-3 min-w-0">
                                         <div class="w-9 h-9 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
                                             <svg class="w-4.5 h-4.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                         </div>
-                                        <h3 class="text-base font-bold text-gray-900 dark:text-white">Federal Investigations</h3>
+                                        <h3 class="text-base font-bold text-gray-900 dark:text-white">NHTSA Investigations</h3>
                                     </div>
-                                    <span class="text-sm font-bold px-3 py-1 rounded-full flex-shrink-0
+                                    <span class="text-sm font-bold px-3 py-1 rounded-full flex-shrink-0 whitespace-nowrap
                                         {% if v2s.inv_count > 0 %}text-red-500 bg-red-50 dark:bg-red-900/20{% else %}text-green-500 bg-green-50 dark:bg-green-900/20{% endif %}">
                                         {{ v2s.inv_count }} found
                                     </span>
@@ -880,6 +714,7 @@
                                 {% endif %}
                             </div>
 
+                            <!-- Manufacturer Communications -->
                             <div class="section-card p-6">
                                 <div class="flex items-center justify-between gap-4">
                                     <div class="flex items-center gap-3 min-w-0">
@@ -887,34 +722,163 @@
                                             <svg class="w-4.5 h-4.5 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
                                         </div>
                                         <div class="min-w-0">
-                                            <h3 class="text-base font-bold text-gray-900 dark:text-white">Dealer Advisories</h3>
-                                            <p class="text-xs text-gray-400">Service bulletins from manufacturer to dealerships</p>
+                                            <h3 class="text-base font-bold text-gray-900 dark:text-white">Manufacturer Communications</h3>
+                                            <p class="text-xs text-gray-400">Dealer service advisories and technical bulletins from OEM</p>
                                         </div>
                                     </div>
-                                    <span class="text-2xl font-black text-purple-500 flex-shrink-0">{{ v2s.mfr_comm_count }}</span>
+                                    <span class="text-2xl font-black text-purple-500 flex-shrink-0 whitespace-nowrap">{{ v2s.mfr_comm_count }}</span>
                                 </div>
                             </div>
 
-                            <div class="section-card p-6">
-                                <div class="flex items-center justify-between gap-4">
-                                    <div class="flex items-center gap-3 min-w-0">
-                                        <div class="w-9 h-9 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-4.5 h-4.5 text-orange-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        </div>
-                                        <div class="min-w-0">
-                                            <h3 class="text-base font-bold text-gray-900 dark:text-white">Technical Service Bulletins</h3>
-                                            <p class="text-xs text-gray-400">Known fixes and service procedures</p>
-                                        </div>
-                                    </div>
-                                    <span class="text-2xl font-black text-orange-500 flex-shrink-0">{{ v2s.tsb_total | default(0) }}</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </section>
                 {% endif %}
 
-                <!-- Protection CTA -->
+                <!-- ============================================================= -->
+                <!-- SECTION C: Inspection Guide (orig B) -->
+                <!-- ============================================================= -->
+                <section id="sec-checklist" class="scroll-mt-24 fade-in print-section">
+                    <div class="section-card overflow-hidden">
+
+                        <!-- Header -->
+                        <div class="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-[#111111] to-[#1a1a2e]">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-[#FFC700] flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-[#111111]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-bold text-white">Top 5 Issues to Inspect</h2>
+                                    <p class="text-sm text-gray-400">Based on complaints &amp; TSBs for the {{ report.vehicle.year }} {{ report.vehicle.make }} {{ report.vehicle.model }} at {{ "{:,}".format(report.vehicle.mileage) }} miles</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% macro render_checklist_item(item, border_color, bg_color, cost_color) %}
+                        <div class="mb-3 last:mb-0 border {{ border_color }} rounded-xl {{ bg_color }} overflow-hidden checklist-accordion" x-data="{ open: false }">
+                            <button @click="open = !open" class="w-full flex items-start justify-between p-4 text-left gap-3 cursor-pointer group transition-all duration-150 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold bg-[#111111] text-white">{{ item.system }}</span>
+                                        {% if item.estimated_cost_if_bad %}
+                                        <span class="text-xs font-semibold {{ cost_color }}">{{ item.estimated_cost_if_bad }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <h3 class="font-bold text-base mt-2">
+                                        {% if item.title %}{{ item.title }}{% else %}{{ item.system }} Inspection{% endif %}
+                                    </h3>
+                                    {% if item.why_it_matters %}
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ item.why_it_matters }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-shrink-0 flex items-center gap-1.5 mt-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-colors duration-150"
+                                     :class="open ? 'bg-[#FFC700] text-[#111111]' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-[#FFF8D4] group-hover:text-[#CC9F00] dark:group-hover:bg-brand-900/40 dark:group-hover:text-[#FFC700]'">
+                                    <span x-text="open ? 'Hide' : 'Details'"></span>
+                                    <svg :class="open ? 'rotate-180' : ''" class="w-3.5 h-3.5 transition-transform duration-200" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                </div>
+                            </button>
+                            <div x-show="open" x-cloak class="px-4 pb-5 space-y-4 border-t border-gray-200 dark:border-gray-700">
+                                {% if item.how_to_check %}
+                                <div class="pt-4">
+                                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-1.5">
+                                        <svg class="w-4 h-4 text-[#FFC700]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                                        How to Check
+                                    </h4>
+                                    <ol class="space-y-2 ml-1">
+                                        {% for step in item.how_to_check %}
+                                        <li class="flex items-start gap-2.5 text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="flex-shrink-0 w-5 h-5 rounded-full bg-[#FFF8D4] dark:bg-brand-900/40 text-[#CC9F00] flex items-center justify-center text-xs font-bold mt-0.5">{{ loop.index }}</span>
+                                            <span>{{ step }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ol>
+                                </div>
+                                {% endif %}
+                                {% if item.red_flags %}
+                                <div>
+                                    <h4 class="text-sm font-bold text-red-700 dark:text-red-400 mb-2">Red Flags</h4>
+                                    <ul class="space-y-1.5 ml-1">
+                                        {% for flag in item.red_flags %}
+                                        <li class="flex items-start gap-2 text-sm text-red-700 dark:text-red-400">
+                                            <span class="flex-shrink-0 mt-1">&#x2716;</span>
+                                            <span>{{ flag }}</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if item.ask_the_seller %}
+                                <div>
+                                    <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">Ask the Seller</h4>
+                                    <ul class="space-y-1.5 ml-1">
+                                        {% for q in item.ask_the_seller %}
+                                        <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="flex-shrink-0 text-[#FFC700] font-bold">Q:</span>
+                                            <span class="italic">"{{ q }}"</span>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if not item.how_to_check and not item.red_flags %}
+                                <div class="pt-3">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">{{ item.what_to_look_for }}</p>
+                                </div>
+                                {% endif %}
+                                <div class="flex flex-wrap items-center gap-2 pt-1">
+                                    {% for s in item.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-300">{{ s }}</span>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endmacro %}
+
+                        <!-- Body -->
+                        <div class="p-6 space-y-6">
+
+                            {% if cl.must_check %}
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                                    <h3 class="text-base font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">Must Check</h3>
+                                    <span class="text-xs text-gray-400 font-normal normal-case">&mdash; do not skip these</span>
+                                </div>
+                                {% for item in cl.must_check %}
+                                    {{ render_checklist_item(item, "border-red-200 dark:border-red-800", "bg-red-50/40 dark:bg-red-900/10", "text-red-600 dark:text-red-400") }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if cl.recommended %}
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-[#FFC700]"></span>
+                                    <h3 class="text-base font-bold text-[#CC9F00] dark:text-[#FFC700] uppercase tracking-wide">Recommended</h3>
+                                    <span class="text-xs text-gray-400 font-normal normal-case">&mdash; emerging issues</span>
+                                </div>
+                                {% for item in cl.recommended %}
+                                    {{ render_checklist_item(item, "border-[#FFDE69]/60 dark:border-brand-800", "bg-[#FFF8D4]/40 dark:bg-brand-900/10", "text-[#CC9F00] dark:text-[#FFC700]") }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                            {% if cl.standard %}
+                            <div>
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="w-3 h-3 rounded-full bg-gray-400"></span>
+                                    <h3 class="text-base font-bold uppercase tracking-wide">Also Worth Checking</h3>
+                                    <span class="text-xs text-gray-400 font-normal normal-case">&mdash; general inspection</span>
+                                </div>
+                                {% for item in cl.standard %}
+                                    {{ render_checklist_item(item, "border-gray-200 dark:border-gray-700", "bg-gray-50/40 dark:bg-gray-800/40", "text-gray-600 dark:text-gray-400") }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Contextual CTA: Protection -->
                 <div class="print-hide bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
                         <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
@@ -923,8 +887,186 @@
                         <p class="font-bold text-gray-900 dark:text-white text-sm">Protect Your Purchase</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Based on this vehicle's risk profile, consider getting a pre-purchase inspection from a certified mechanic ($100-200) and an extended warranty for high-risk systems.</p>
                     </div>
-                    <a href="/" class="px-4 py-2 rounded-lg bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition whitespace-nowrap flex-shrink-0">Check Another Car</a>
+                    <a href="/" class="px-4 py-2 rounded-lg bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition whitespace-nowrap flex-shrink-0">
+                        Check Another Car
+                    </a>
                 </div>
+
+                <!-- ============================================================= -->
+                <!-- SECTION C: Recalls -->
+                <!-- ============================================================= -->
+                <section id="sec-recalls" class="scroll-mt-24 fade-in print-section">
+                    {% if vs.recalls %}
+                    <div class="section-card p-6" x-data="{ showAllRecalls: false }">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Safety Recalls</h2>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">{{ vs.total_recalls }} recall{{ "s" if vs.total_recalls != 1 }} issued for this vehicle</p>
+                            </div>
+                        </div>
+                        <div class="space-y-4">
+                            {% for r in vs.recalls[:3] %}
+                            <div class="border-l-4 border-red-400 pl-4 py-1">
+                                <div class="font-semibold">{{ r.component }}</div>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ r.summary }}</p>
+                                {% if r.consequence %}
+                                <p class="text-sm text-red-600 dark:text-red-400 mt-1"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>
+                                {% endif %}
+                                {% if r.remedy %}
+                                <p class="text-sm text-green-600 dark:text-green-400 mt-1"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>
+                                {% endif %}
+                                <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
+                            </div>
+                            {% endfor %}
+                            {% if vs.recalls|length > 3 %}
+                            <div x-show="showAllRecalls" x-cloak class="space-y-4">
+                                {% for r in vs.recalls[3:] %}
+                                <div class="border-l-4 border-red-400 pl-4 py-1">
+                                    <div class="font-semibold">{{ r.component }}</div>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ r.summary }}</p>
+                                    {% if r.consequence %}
+                                    <p class="text-sm text-red-600 dark:text-red-400 mt-1"><span class="font-medium">Consequence:</span> {{ r.consequence }}</p>
+                                    {% endif %}
+                                    {% if r.remedy %}
+                                    <p class="text-sm text-green-600 dark:text-green-400 mt-1"><span class="font-medium">Remedy:</span> {{ r.remedy }}</p>
+                                    {% endif %}
+                                    <div class="text-xs text-gray-400 mt-1">Campaign {{ r.campaign }} &middot; {{ r.source }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <button @click="showAllRecalls = !showAllRecalls" class="text-sm text-[#CC9F00] dark:text-[#FFC700] hover:underline font-semibold" x-text="showAllRecalls ? 'Show fewer recalls' : 'Show all {{ vs.recalls|length }} recalls'"></button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="section-card p-8 text-center">
+                        <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <h3 class="text-lg font-bold mb-1">No Open Recalls</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No safety recalls found for this vehicle.</p>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- ============================================================= -->
+                <!-- SECTION D: Known Issues -->
+                <!-- ============================================================= -->
+                <section id="sec-issues" class="scroll-mt-24 fade-in print-section">
+                    {% if cr.top_issues %}
+                    <div class="section-card p-6">
+                        <div class="flex items-center gap-3 mb-1">
+                            <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
+                                <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Known Issues at {{ "{:,}".format(cr.mileage) }} miles</h3>
+                                    <span class="text-sm font-semibold text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">{{ cr.top_issues | length }} found</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-5 ml-12">Ranked by complaint frequency. Click to expand.</p>
+                        <div class="space-y-3" x-data="{ expanded: null }">
+                            {% for issue in cr.top_issues %}
+                            <div class="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden transition hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm">
+                                <button @click="expanded = expanded === {{ issue.rank }} ? null : {{ issue.rank }}"
+                                        class="w-full flex items-center justify-between p-4 text-left gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold
+                                            {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                                            {% elif issue.probability == 'Medium' %}bg-[#FFF8D4] text-[#CC9F00] dark:bg-brand-900/40 dark:text-brand-200
+                                            {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
+                                            {{ issue.rank }}
+                                        </span>
+                                        <div class="min-w-0">
+                                            <span class="font-semibold">{{ issue.system }}</span>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">{{ issue.complaint_count }} complaint{{ "s" if issue.complaint_count != 1 }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        <span class="text-xs px-2.5 py-1 rounded-full font-semibold
+                                            {% if issue.probability == 'High' %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300
+                                            {% elif issue.probability == 'Medium' %}bg-[#FFF8D4] text-[#CC9F00] dark:bg-brand-900/40 dark:text-brand-200
+                                            {% else %}bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300{% endif %}">
+                                            {{ issue.probability }}
+                                        </span>
+                                        <svg :class="expanded === {{ issue.rank }} ? 'rotate-180' : ''" class="w-5 h-5 transition-transform text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </button>
+                                <div x-show="expanded === {{ issue.rank }}" x-cloak class="px-4 pb-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+                                    <p class="text-sm text-gray-600 dark:text-gray-400 pt-3">{{ issue.description }}</p>
+                                    {% if issue.test_drive_tips %}
+                                    <div>
+                                        <h4 class="text-sm font-semibold mb-1">Test Drive Tips</h4>
+                                        <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                            {% for tip in issue.test_drive_tips %}<li>{{ tip }}</li>{% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    {% if issue.diagnostic_tests %}
+                                    <div>
+                                        <h4 class="text-sm font-semibold mb-1">Diagnostic Tests</h4>
+                                        <ul class="list-disc ml-5 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                            {% for t in issue.diagnostic_tests %}<li>{{ t }}</li>{% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                    <div class="flex flex-wrap gap-1">
+                                        {% for s in issue.sources %}<span class="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500">{{ s }}</span>{% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="section-card p-8 text-center">
+                        <svg class="w-12 h-12 text-green-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <h3 class="text-lg font-bold mb-1">No Major Issues Found</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">No significant issues at this mileage based on available data.</p>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <!-- ============================================================= -->
+                <!-- SECTION E: Owner Complaints -->
+                <!-- ============================================================= -->
+                <section id="sec-owners" class="scroll-mt-24 fade-in print-section">
+                    <div class="section-card p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-9 h-9 rounded-lg bg-[#111111] flex items-center justify-center">
+                                <svg class="w-4.5 h-4.5 text-[#FFC700]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/></svg>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Owner Reports ({{ oe.report_count }})</h3>
+                        </div>
+                        <p class="text-sm text-[#CC9F00] dark:text-[#FFC700] bg-[#FFF8D4] dark:bg-brand-900/20 border border-[#FFDE69]/60 dark:border-brand-800 rounded-lg p-3 mb-4">
+                            {{ oe.note }}
+                        </p>
+                        {% if oe.sample_reports %}
+                        <div class="space-y-4" x-data="{ showAll: false }">
+                            {% for report_text in oe.sample_reports[:5] %}
+                            <blockquote class="border-l-4 border-[#FFDE69] dark:border-[#FFC700]/40 pl-4 text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                                "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
+                            </blockquote>
+                            {% endfor %}
+                            {% if oe.sample_reports|length > 5 %}
+                            <div x-show="showAll" x-cloak class="space-y-4">
+                                {% for report_text in oe.sample_reports[5:] %}
+                                <blockquote class="border-l-4 border-[#FFDE69] dark:border-[#FFC700]/40 pl-4 text-sm text-gray-600 dark:text-gray-400 italic leading-relaxed">
+                                    "{{ report_text[:400] }}{% if report_text|length > 400 %}...{% endif %}"
+                                </blockquote>
+                                {% endfor %}
+                            </div>
+                            <button @click="showAll = !showAll" class="text-sm text-[#CC9F00] dark:text-[#FFC700] hover:underline font-semibold" x-text="showAll ? 'Show less' : 'Show all {{ oe.sample_reports|length }} reports'"></button>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-gray-400 italic">No owner reports collected yet.</p>
+                        {% endif %}
+                    </div>
+                </section>
 
                 <!-- Disclaimer -->
                 <div class="mt-6 p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
@@ -938,7 +1080,7 @@
                 </div>
 
                 <!-- Email Capture -->
-                <div class="mt-6 p-6 rounded-2xl bg-gradient-to-r from-[#111111] via-[#1a1a2e] to-[#111111] text-white print-hide" x-data="{ email: '', submitted: false, emailSent: false, error: '' }">
+                <div class="mt-6 p-6 rounded-2xl bg-gradient-to-r from-[#111111] via-[#1a1a2e] to-[#111111] text-white" x-data="{ email: '', submitted: false, error: '' }">
                     <div class="flex flex-col sm:flex-row items-center gap-4">
                         <div class="flex-1">
                             <h3 class="text-lg font-bold mb-1">Save This Report</h3>
@@ -956,7 +1098,7 @@
                                         headers: {'Content-Type': 'application/json'},
                                         body: JSON.stringify({ email, report_id: '{{ report_id }}', source: 'report' })
                                     }).then(r => r.json()).then(d => {
-                                        if (d.status === 'subscribed') { submitted = true; emailSent = d.email_sent || false; }
+                                        if (d.status === 'subscribed') submitted = true;
                                         else error = d.error || 'Something went wrong';
                                     }).catch(() => error = 'Network error');
                                 " class="px-5 py-2.5 rounded-xl bg-[#FFC700] text-[#111111] font-bold text-sm hover:bg-[#FFD233] transition whitespace-nowrap">
@@ -967,7 +1109,7 @@
                         </div>
                         <div x-show="submitted" x-cloak class="flex items-center gap-2 text-[#FFC700] font-semibold">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                            <span x-text="emailSent ? 'Report sent! Check your inbox.' : 'Subscribed!'"></span>
+                            Subscribed! Check your inbox.
                         </div>
                     </div>
                 </div>
@@ -981,22 +1123,16 @@
 <script>
 function reportNav() {
     return {
-        activeSection: 'sec-verdict',
+        activeSection: 'sec-overview',
         sections: [
-            { id: 'sec-verdict', label: 'The Verdict' },
-            { id: 'sec-checklist', label: 'What to Check' },
-            {% if pricing.get("available") and pricing.get("asking_price") %}
-            { id: 'sec-price', label: 'Price Analysis' },
-            {% endif %}
-            { id: 'sec-complaints', label: 'Complaints' },
+            { id: 'sec-overview', label: 'Overview' },
+            { id: 'sec-signals', label: 'Risk Signals' },
+            { id: 'sec-checklist', label: 'Inspection Guide' },
             { id: 'sec-recalls', label: 'Recalls' },
-            { id: 'sec-risk', label: 'Risk Breakdown' },
+            { id: 'sec-issues', label: 'Known Issues' },
+            { id: 'sec-owners', label: 'Owner Complaints' },
         ],
         scrollTo(id) {
-            if (id === 'sec-verdict') {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
             const el = document.getElementById(id);
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         },
@@ -1101,33 +1237,33 @@ function complaintsChart() {
         var gridColor = isDark ? '#374151' : '#f3f4f6';
         var tickColor = isDark ? '#9ca3af' : '#6b7280';
 
-        var radarCanvas = document.getElementById('riskRadarChart');
-        if (radarCanvas) {
+        var breakdownCanvas = document.getElementById('scoreBreakdownChart');
+        if (breakdownCanvas) {
             var compData = {{ sc | default({}) | tojson }};
             var keys = ['nhtsa', 'tsb', 'investigation', 'mfr_comm'];
-            var radarLabels = keys.map(function(k) { return compData[k] ? compData[k].label : k; });
-            var radarScores = keys.map(function(k) { return compData[k] ? compData[k].score : 0; });
-            var radarColors = ['#3b82f6', '#f97316', '#ef4444', '#8b5cf6'];
-            new Chart(radarCanvas, {
+            var labels = keys.map(function(k) { return compData[k] ? compData[k].label : k; });
+            var scores = keys.map(function(k) { return compData[k] ? compData[k].score : 0; });
+            var colors = ['#3b82f6', '#f97316', '#ef4444', '#8b5cf6'];
+            new Chart(breakdownCanvas, {
                 type: 'radar',
                 data: {
-                    labels: radarLabels,
+                    labels: labels,
                     datasets: [{
-                        label: 'Weighted Score',
-                        data: radarScores,
+                        label: 'Risk Score',
+                        data: scores,
                         backgroundColor: isDark ? 'rgba(255,199,0,0.15)' : 'rgba(255,199,0,0.1)',
                         borderColor: '#FFC700',
                         borderWidth: 2.5,
-                        pointBackgroundColor: radarColors,
+                        pointBackgroundColor: colors,
                         pointBorderColor: isDark ? '#1f2937' : '#fff',
-                        pointBorderWidth: 1.5,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
                     scales: {
                         r: {
                             beginAtZero: true,
@@ -1136,9 +1272,9 @@ function complaintsChart() {
                             grid: { color: isDark ? 'rgba(75,85,99,0.5)' : 'rgba(229,231,235,0.8)' },
                             angleLines: { color: isDark ? 'rgba(75,85,99,0.5)' : 'rgba(229,231,235,0.8)' },
                             pointLabels: {
-                                font: { size: 9, weight: '600' },
+                                font: { size: 11, weight: '600' },
                                 color: isDark ? '#d1d5db' : '#4b5563',
-                                padding: 8
+                                padding: 15
                             }
                         }
                     },
@@ -1188,15 +1324,29 @@ function complaintsChart() {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor, precision: 0 } },
-                        y: { grid: { display: false }, ticks: { color: tickColor, font: { size: 11, weight: '500' } } }
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor, precision: 0 }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: tickColor, font: { size: 11, weight: '500' } }
+                        }
                     },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#111111', titleColor: '#fff', bodyColor: '#fff',
-                            borderColor: '#FFC700', borderWidth: 1, padding: 10, displayColors: false,
-                            callbacks: { label: function(ctx) { return ctx.raw + ' bulletins'; } }
+                            backgroundColor: '#111111',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#FFC700',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(ctx) { return ctx.raw + ' bulletins'; }
+                            }
                         }
                     }
                 }
@@ -1247,8 +1397,13 @@ function complaintsChart() {
                         plugins: {
                             legend: { display: false },
                             tooltip: {
-                                backgroundColor: '#111111', titleColor: '#fff', bodyColor: '#fff',
-                                borderColor: '#FFC700', borderWidth: 1, padding: 10, displayColors: false,
+                                backgroundColor: '#111111',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#FFC700',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
                                 callbacks: {
                                     title: function(items) { return items[0].label; },
                                     label: function(ctx) { return ctx.raw + ' complaint' + (ctx.raw !== 1 ? 's' : ''); }
@@ -1268,26 +1423,5 @@ function complaintsChart() {
         requestAnimationFrame(initCharts);
     }
 })();
-
-var _printState = [];
-window.addEventListener('beforeprint', function() {
-    _printState = [];
-    document.querySelectorAll('[x-data]').forEach(function(el) {
-        var stack = el._x_dataStack || (el.__x ? [el.__x.$data] : []);
-        stack.forEach(function(scope) {
-            var saved = {};
-            ['open','ownerOpen','showAll','showAllRecalls'].forEach(function(k) {
-                if (k in scope) { saved[k] = scope[k]; scope[k] = true; }
-            });
-            if (Object.keys(saved).length) _printState.push({scope: scope, saved: saved});
-        });
-    });
-});
-window.addEventListener('afterprint', function() {
-    _printState.forEach(function(entry) {
-        Object.keys(entry.saved).forEach(function(k) { entry.scope[k] = entry.saved[k]; });
-    });
-    _printState = [];
-});
 </script>
 {% endblock %}
