@@ -1,4 +1,4 @@
-"""Report generator — builds the structured buying report.
+"""Report generator: builds the structured buying report.
 
 Produces a dict with report sections ready for rendering by the web UI or CLI.
 """
@@ -114,13 +114,13 @@ def generate_report(
         try:
             report["sections"]["inspection_checklist"] = checklist_future.result(timeout=120)
         except Exception:
-            logger.warning("Checklist LLM failed — using raw checklist")
+            logger.warning("Checklist LLM failed; using raw checklist")
             report["sections"]["inspection_checklist"] = raw_checklist
 
         try:
             report = verdict_future.result(timeout=120)
         except Exception:
-            logger.warning("Verdict LLM failed — report will lack executive summary")
+            logger.warning("Verdict LLM failed; report will lack executive summary")
 
     if trace:
         trace.log_sections("post_llm", report["sections"])
@@ -403,7 +403,7 @@ def _format_cost_range(low: float | None, high: float | None) -> str | None:
         return f"${low:,.0f}" if low else None
     if low is None:
         return f"${high:,.0f}"
-    return f"${low:,.0f}-${high:,.0f}"
+    return f"${low:,.0f} to ${high:,.0f}"
 
 
 def _inspection_guidance(cp) -> str:
@@ -412,9 +412,9 @@ def _inspection_guidance(cp) -> str:
     guides = {
         "engine": "Check for unusual noises, smoke from exhaust, oil leaks. Request a compression test.",
         "transmission": "Test all gears during the drive. Feel for slipping, hard shifts, or delays.",
-        "electrical": "Test all electronics — windows, locks, lights, infotainment. Check for warning lights.",
+        "electrical": "Test all electronics: windows, locks, lights, infotainment. Check for warning lights.",
         "suspension": "Listen for clunks over bumps. Check tire wear for uneven patterns.",
-        "brakes": "Test braking feel — pulsation, pulling, or grinding indicates problems.",
+        "brakes": "Test braking feel: pulsation, pulling, or grinding indicates problems.",
         "steering": "Check for play in the steering wheel. Listen for whine during turns.",
         "cooling": "Check coolant level and color. Look for leaks under the car.",
         "hvac": "Test both heat and AC at all settings. Check for unusual smells.",
@@ -439,7 +439,7 @@ def _test_drive_tips(cp) -> list[str]:
     elif "transmission" in cat:
         tips.extend([
             "Drive through all gears and feel for hesitation",
-            "Test reverse — listen for clunks",
+            "Test reverse: listen for clunks",
             "Try stop-and-go driving to check for jerky shifts",
         ])
     elif "electrical" in cat:
@@ -450,7 +450,7 @@ def _test_drive_tips(cp) -> list[str]:
         ])
     elif "brakes" in cat:
         tips.extend([
-            "Brake firmly from 40 mph — feel for pulsation",
+            "Brake firmly from 40 mph: feel for pulsation",
             "Check if the car pulls to one side under braking",
         ])
     elif "suspension" in cat:

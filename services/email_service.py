@@ -1,4 +1,4 @@
-"""Email service — renders the report page to PDF via headless browser and sends via Resend."""
+"""Email service: renders the report page to PDF via headless browser and sends via Resend."""
 
 from __future__ import annotations
 
@@ -168,7 +168,7 @@ def send_report_email(
     vs = report.get("sections", {}).get("vehicle_summary", {})
     complaints = vs.get("total_complaints", 0)
     safe_title = title.replace(" ", "_")
-    filename = f"{safe_title}_Risk_Report_—_{complaints}_Complaints.pdf"
+    filename = f"{safe_title}_Risk_Report_{complaints}_Complaints.pdf"
 
     try:
         params: resend.Emails.SendParams = {

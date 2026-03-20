@@ -312,9 +312,9 @@ def _apply_recency_adjustment(
     """Adjust risk based on when complaints were filed relative to model year.
 
     Late complaints (filed 5+ years after model year) signal persistent
-    long-term issues — slight risk increase.  Early-only complaints
+    long-term issues: slight risk increase.  Early-only complaints
     (mostly in years 1-2) suggest manufacturing defects that may have
-    been fixed — slight risk decrease for used buyers.
+    been fixed: slight risk decrease for used buyers.
     """
     if not complaint_dates or not model_year:
         return risk

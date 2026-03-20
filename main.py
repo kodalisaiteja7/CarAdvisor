@@ -1,4 +1,4 @@
-"""CarAdvisr — entry point for CLI reports and the web server."""
+"""CarAdvisr: entry point for CLI reports and the web server."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def run_report(make: str, model: str, year: int, mileage: int) -> dict:
                         len(data.get("problems", [])),
                         len(data.get("recalls", [])))
         except Exception:
-            logger.exception("%s scraper failed — skipping", name)
+            logger.exception("%s scraper failed; skipping", name)
 
     if not results:
         logger.error("All scrapers failed. Cannot generate report.")
@@ -101,7 +101,7 @@ def print_cli_report(report: dict):
     summary = sections["vehicle_summary"]
 
     print("\n" + "=" * 70)
-    print(f"  {v['year']} {v['make']} {v['model']}  —  {v['mileage']:,} miles")
+    print(f"  {v['year']} {v['make']} {v['model']}   {v['mileage']:,} miles")
     print("=" * 70)
     print(f"  Reliability Risk Score: {summary['reliability_risk_score']}/100"
           f"  (Grade: {summary['letter_grade']})")
@@ -124,7 +124,7 @@ def print_cli_report(report: dict):
         for issue in risk["top_issues"]:
             print(f"    #{issue['rank']} {issue['system']}"
                   f" ({issue['probability']} probability)"
-                  f" — {issue['complaint_count']} complaints")
+                  f" ({issue['complaint_count']} complaints)")
             print(f"       {issue['description'][:100]}")
 
     # System risks
@@ -227,7 +227,7 @@ def cmd_setup_bulk(filepath: str | None = None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="CarAdvisr — used car buying report generator"
+        description="CarAdvisr: used car buying report generator"
     )
     parser.add_argument("command", nargs="?", default=None,
                         help="'serve' | 'load-bulk-data' | 'build-stats' | 'build-vectors' | 'setup-bulk'")

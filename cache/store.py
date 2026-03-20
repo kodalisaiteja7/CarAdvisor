@@ -279,7 +279,7 @@ def init_store() -> None:
 
     _backend = _MemoryBackend()
     logger.warning(
-        "Using in-memory store — NOT SAFE for multi-worker production. "
+        "Using in-memory store; NOT SAFE for multi-worker production. "
         "Set REDIS_URL or RAILWAY_VOLUME_MOUNT_PATH for shared state."
     )
 

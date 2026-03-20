@@ -1,4 +1,4 @@
-"""Flask application — web UI and API routes for CarAdvisr."""
+"""Flask web application and API routes for CarAdvisr."""
 
 from __future__ import annotations
 
@@ -15,9 +15,7 @@ from flask import Flask, Response, jsonify, render_template, request
 from config.settings import FLASK_SECRET_KEY
 from database.models import init_db
 from cache.store import (
-    init_store, get_report, set_report, get_progress, push_progress,
-    init_progress, get_trace, set_trace, get_cached_report_id,
-    set_cached_report_id,
+    init_store, get_report, set_report, get_progress, push_progress, init_progress, get_trace, set_trace, get_cached_report_id, set_cached_report_id,
 )
 from scrapers.nhtsa import NHTSAScraper
 from analysis.aggregator import aggregate
@@ -36,12 +34,9 @@ def _valid_report_id(report_id: str) -> bool:
     return bool(_REPORT_ID_RE.match(report_id))
 
 app = Flask(
-    __name__,
-    template_folder="templates",
-    static_folder="static",
+    __name__, template_folder="templates", static_folder="static",
 )
 app.secret_key = FLASK_SECRET_KEY
-
 
 
 SCRAPERS = [
@@ -105,9 +100,7 @@ def admin_volume_list():
                 size = fp.stat().st_size
                 total += size
                 files.append({
-                    "path": str(fp.relative_to(vol_path)),
-                    "size_mb": round(size / 1024 / 1024, 2),
-                })
+                    "path": str(fp.relative_to(vol_path)), "size_mb": round(size / 1024 / 1024, 2), })
             except OSError:
                 pass
     files.sort(key=lambda f: f["size_mb"], reverse=True)
@@ -296,7 +289,7 @@ def admin_download_test():
 
 @app.route("/api/admin/download-bulk-db/run", methods=["POST"])
 def admin_download_sync():
-    """Synchronous full download — blocks until complete (may take minutes)."""
+    """Synchronous full download , blocks until complete (may take minutes)."""
     secret = request.headers.get("X-Admin-Key") or request.args.get("key")
     if secret != os.environ.get("ADMIN_KEY", "car-advisor-clear-2026"):
         return jsonify({"error": "unauthorized"}), 403
@@ -363,9 +356,7 @@ def api_subscribe():
                 "timestamp TEXT, email TEXT, source TEXT, report_id TEXT)"
             ))
             conn.execute(
-                text("INSERT INTO subscribers (timestamp, email, source, report_id) VALUES (:ts, :em, :src, :rid)"),
-                {"ts": datetime.utcnow().isoformat(), "em": email, "src": source, "rid": report_id},
-            )
+                text("INSERT INTO subscribers (timestamp, email, source, report_id) VALUES (:ts, :em, :src, :rid)"), {"ts": datetime.utcnow().isoformat(), "em": email, "src": source, "rid": report_id}, )
             conn.commit()
     except Exception:
         logger.warning("DB subscriber insert failed, falling back to CSV")
@@ -394,40 +385,73 @@ def api_subscribe():
     return jsonify({"status": "subscribed", "email_sent": True})
 
 
+@app.route("/api/feedback", methods=["POST"])
+def api_feedback():
+    """Store user feedback (rating + optional text) from the report page."""
+    from datetime import datetime
+
+    data = request.get_json() or {}
+    try:
+        rating = int(data.get("rating", 0))
+    except (TypeError, ValueError):
+        rating = 0
+    if rating < 1 or rating > 5:
+        return jsonify({"error": "Please choose a rating from 1 to 5 stars"}), 400
+
+    message = (data.get("message") or "").strip()
+    if len(message) > 2000:
+        message = message[:2000]
+
+    report_id = (data.get("report_id") or "").strip()
+    if report_id and not _valid_report_id(report_id):
+        report_id = ""
+
+    payload = {
+        "timestamp": datetime.utcnow().isoformat() + "Z", "rating": rating, "message": message, "report_id": report_id or None, "user_agent": (request.headers.get("User-Agent") or "")[:500], }
+
+    log_dir = Path(__file__).resolve().parent.parent / "logs"
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        path = log_dir / "feedback.jsonl"
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except OSError as exc:
+        logger.warning("Could not write feedback: %s", exc)
+        return jsonify({"error": "Could not save feedback. Please try again."}), 500
+
+    logger.info("Feedback received: rating=%s report_id=%s", rating, report_id or "-")
+    return jsonify({"status": "ok"})
+
+
 _BLOG_ARTICLES = {
     "is-toyota-camry-reliable": {
-        "title": "Is the Toyota Camry Reliable? Common Problems, Recalls & Risk Score",
-        "excerpt": "We analyzed every NHTSA complaint ever filed against the Toyota Camry. Here's what the data says about its reliability across all model years.",
-        "date": "2026-03-09",
-        "read_time": 8,
-        "category": "Reliability Report",
-        "content": """
-<p>The Toyota Camry is consistently one of the <strong>best-selling sedans in America</strong>, and for good reason — it has a well-earned reputation for reliability. But is that reputation backed by data? We analyzed <strong>every NHTSA complaint</strong> ever filed against the Camry to find out.</p>
+        "title": "Is the Toyota Camry Reliable? Common Problems, Recalls & Risk Score", "excerpt": "We analyzed every NHTSA complaint ever filed against the Toyota Camry. Here's what the data says about its reliability across all model years.", "date": "2026-03-09", "read_time": 8, "category": "Reliability Report", "content": """
+<p>The Toyota Camry is consistently one of the <strong>best-selling sedans in America</strong>, and for good reason , it has a well-earned reputation for reliability. But is that reputation backed by data? We analyzed <strong>every NHTSA complaint</strong> ever filed against the Camry to find out.</p>
 
 <h2>What the NHTSA Data Shows</h2>
 <p>Across all model years, the Camry has fewer complaints per vehicle than the industry average. However, some model years stand out as significantly worse than others.</p>
 
 <h3>Best Model Years (Fewest Complaints)</h3>
 <ul>
-<li><strong>2020-2024</strong> — Very few complaints, modern safety tech, excellent reliability</li>
-<li><strong>2012-2014</strong> — Mature platform, most issues well-documented and resolved</li>
-<li><strong>2005-2006</strong> — Bulletproof generation, minimal issues</li>
+<li><strong>2020 to 2024</strong> , Very few complaints, modern safety tech, excellent reliability</li>
+<li><strong>2012 to 2014</strong> , Mature platform, most issues well-documented and resolved</li>
+<li><strong>2005 to 2006</strong> , Bulletproof generation, minimal issues</li>
 </ul>
 
 <h3>Model Years to Avoid</h3>
 <ul>
-<li><strong>2007-2009</strong> — Higher engine oil consumption complaints, dashboard cracking</li>
-<li><strong>2018</strong> — First year of new generation, typical first-year teething issues</li>
-<li><strong>2002-2003</strong> — Transmission hesitation complaints, some engine sludge reports</li>
+<li><strong>2007 to 2009</strong> , Higher engine oil consumption complaints, dashboard cracking</li>
+<li><strong>2018</strong> , First year of new generation, typical first-year teething issues</li>
+<li><strong>2002 to 2003</strong> , Transmission hesitation complaints, some engine sludge reports</li>
 </ul>
 
 <h2>Most Common Problems</h2>
 <p>Based on NHTSA complaint data, these are the most frequently reported issues:</p>
 <ol>
-<li><strong>Engine</strong> — Oil consumption, especially in 2007-2011 4-cylinder models</li>
-<li><strong>Electrical</strong> — Dashboard rattles, infotainment bugs in newer models</li>
-<li><strong>Transmission</strong> — Hesitation on older models, generally reliable on newer ones</li>
-<li><strong>Brakes</strong> — Brake pulsation/warping, relatively common but inexpensive to fix</li>
+<li><strong>Engine</strong> , Oil consumption, especially in 2007 to 2011 4-cylinder models</li>
+<li><strong>Electrical</strong> , Dashboard rattles, infotainment bugs in newer models</li>
+<li><strong>Transmission</strong> , Hesitation on older models, generally reliable on newer ones</li>
+<li><strong>Brakes</strong> , Brake pulsation/warping, relatively common but inexpensive to fix</li>
 </ol>
 
 <h2>Recall History</h2>
@@ -436,65 +460,51 @@ _BLOG_ARTICLES = {
 <h2>Bottom Line</h2>
 <p>The Toyota Camry remains one of the <strong>most reliable sedans you can buy</strong>. Stick with the recommended model years, avoid first-year redesigns, and always run a <a href="/">risk report</a> before purchasing.</p>
 
-<p><strong>Want to check a specific Camry?</strong> <a href="/">Run a free risk report</a> — it takes 30 seconds and analyzes every complaint, recall, and TSB on record.</p>
-""",
-    },
-    "is-honda-civic-reliable": {
-        "title": "Is the Honda Civic Reliable? NHTSA Complaints, Known Issues & Buying Guide",
-        "excerpt": "The Honda Civic is a perennial favorite for first-time buyers. We analyzed NHTSA data to reveal which model years are safest and which to avoid.",
-        "date": "2026-03-09",
-        "read_time": 7,
-        "category": "Reliability Report",
-        "content": """
+<p><strong>Want to check a specific Camry?</strong> <a href="/">Run a free risk report</a> , it takes 30 seconds and analyzes every complaint, recall, and TSB on record.</p>
+""", }, "is-honda-civic-reliable": {
+        "title": "Is the Honda Civic Reliable? NHTSA Complaints, Known Issues & Buying Guide", "excerpt": "The Honda Civic is a perennial favorite for first-time buyers. We analyzed NHTSA data to reveal which model years are safest and which to avoid.", "date": "2026-03-09", "read_time": 7, "category": "Reliability Report", "content": """
 <p>The Honda Civic is one of the <strong>most popular compact cars</strong> in the world, known for fuel efficiency, low maintenance costs, and strong resale value. But some model years have significant problems. Here's what the NHTSA data tells us.</p>
 
 <h2>Best Civic Model Years</h2>
 <ul>
-<li><strong>2022-2024 (11th gen)</strong> — Excellent reliability, modern safety, refined platform</li>
-<li><strong>2014-2015 (9th gen refresh)</strong> — Proven platform with sorted issues</li>
-<li><strong>2009-2011 (8th gen)</strong> — Simple, reliable, and affordable to maintain</li>
+<li><strong>2022 to 2024 (11th gen)</strong> , Excellent reliability, modern safety, refined platform</li>
+<li><strong>2014 to 2015 (9th gen refresh)</strong> , Proven platform with sorted issues</li>
+<li><strong>2009 to 2011 (8th gen)</strong> , Simple, reliable, and affordable to maintain</li>
 </ul>
 
 <h2>Civic Model Years to Avoid</h2>
 <ul>
-<li><strong>2016-2018 (10th gen)</strong> — Oil dilution in 1.5T engines, AC condenser leaks, infotainment bugs</li>
-<li><strong>2006-2008</strong> — Cracked engine blocks (1.8L), paint peeling issues</li>
-<li><strong>2001-2003</strong> — Transmission failures, especially in automatic models</li>
+<li><strong>2016 to 2018 (10th gen)</strong> , Oil dilution in 1.5T engines, AC condenser leaks, infotainment bugs</li>
+<li><strong>2006 to 2008</strong> , Cracked engine blocks (1.8L), paint peeling issues</li>
+<li><strong>2001 to 2003</strong> , Transmission failures, especially in automatic models</li>
 </ul>
 
 <h2>Most Common Complaints</h2>
 <ol>
-<li><strong>Engine (1.5T Oil Dilution)</strong> — Fuel mixing with oil in cold climates, 2016-2018 models</li>
-<li><strong>AC Condenser</strong> — Premature failure requiring $800-1,200 replacement</li>
-<li><strong>Paint/Clear Coat</strong> — Peeling and fading on 2006-2011 models</li>
-<li><strong>Transmission</strong> — Shuddering in CVT models, some older automatics fail</li>
+<li><strong>Engine (1.5T Oil Dilution)</strong> , Fuel mixing with oil in cold climates, 2016 to 2018 models</li>
+<li><strong>AC Condenser</strong> , Premature failure requiring $800-1,200 replacement</li>
+<li><strong>Paint/Clear Coat</strong> , Peeling and fading on 2006 to 2011 models</li>
+<li><strong>Transmission</strong> , Shuddering in CVT models, some older automatics fail</li>
 </ol>
 
 <h2>Is the Honda Civic a Good Used Car?</h2>
-<p><strong>Yes</strong>, if you pick the right model year. The Civic holds its value exceptionally well and is inexpensive to maintain. Avoid the 2016-2018 1.5-turbo if you live in a cold climate, and always <a href="/">check the risk report</a> before buying.</p>
-""",
-    },
-    "is-ford-f150-reliable": {
-        "title": "Is the Ford F-150 Reliable? Complaints, Common Problems & What to Inspect",
-        "excerpt": "The Ford F-150 is America's best-selling vehicle. We analyzed NHTSA complaints to find which years are bulletproof and which have costly problems.",
-        "date": "2026-03-09",
-        "read_time": 8,
-        "category": "Reliability Report",
-        "content": """
-<p>The Ford F-150 has been <strong>America's best-selling vehicle for over 40 years</strong>. With millions on the road, there's a huge used market. But not all F-150s are created equal — some model years have serious issues.</p>
+<p><strong>Yes</strong>, if you pick the right model year. The Civic holds its value exceptionally well and is inexpensive to maintain. Avoid the 2016 to 2018 1.5-turbo if you live in a cold climate, and always <a href="/">check the risk report</a> before buying.</p>
+""", }, "is-ford-f150-reliable": {
+        "title": "Is the Ford F-150 Reliable? Complaints, Common Problems & What to Inspect", "excerpt": "The Ford F-150 is America's best-selling vehicle. We analyzed NHTSA complaints to find which years are bulletproof and which have costly problems.", "date": "2026-03-09", "read_time": 8, "category": "Reliability Report", "content": """
+<p>The Ford F-150 has been <strong>America's best-selling vehicle for over 40 years</strong>. With millions on the road, there's a huge used market. But not all F-150s are created equal , some model years have serious issues.</p>
 
 <h2>Best F-150 Model Years</h2>
 <ul>
-<li><strong>2021-2023 (14th gen)</strong> — Refined platform, PowerBoost hybrid option, strong reliability</li>
-<li><strong>2018-2020 (13th gen refresh)</strong> — Sorted out early 13th-gen issues, 5.0L V8 is rock-solid</li>
-<li><strong>2012-2014 (12th gen)</strong> — Proven platform, widely available, affordable</li>
+<li><strong>2021 to 2023 (14th gen)</strong> , Refined platform, PowerBoost hybrid option, strong reliability</li>
+<li><strong>2018 to 2020 (13th gen refresh)</strong> , Sorted out early 13th-gen issues, 5.0L V8 is rock-solid</li>
+<li><strong>2012 to 2014 (12th gen)</strong> , Proven platform, widely available, affordable</li>
 </ul>
 
 <h2>F-150 Model Years to Avoid</h2>
 <ul>
-<li><strong>2015-2017</strong> — First aluminum body years, some panel fit issues, 2.7L EcoBoost carbon buildup</li>
-<li><strong>2004-2006</strong> — Spark plug ejection issues (5.4L), cam phaser problems</li>
-<li><strong>2010-2011</strong> — Some powertrain issues, but generally acceptable</li>
+<li><strong>2015 to 2017</strong> , First aluminum body years, some panel fit issues, 2.7L EcoBoost carbon buildup</li>
+<li><strong>2004 to 2006</strong> , Spark plug ejection issues (5.4L), cam phaser problems</li>
+<li><strong>2010 to 2011</strong> , Some powertrain issues, but generally acceptable</li>
 </ul>
 
 <h2>Most Common Complaints by Engine</h2>
@@ -502,7 +512,7 @@ _BLOG_ARTICLES = {
 <p>Generally very reliable. Some oil consumption complaints in early years. Tick noise is common but usually harmless.</p>
 
 <h3>3.5L EcoBoost</h3>
-<p>Powerful and efficient. Watch for timing chain issues in early models (2011-2013) and condensation/intercooler leaks.</p>
+<p>Powerful and efficient. Watch for timing chain issues in early models (2011 to 2013) and condensation/intercooler leaks.</p>
 
 <h3>2.7L EcoBoost</h3>
 <p>Carbon buildup on intake valves is the main concern. Regular maintenance (walnut blasting every 60-80k miles) prevents this.</p>
@@ -511,25 +521,18 @@ _BLOG_ARTICLES = {
 <ol>
 <li>Check for cam phaser noise on startup (5.0L)</li>
 <li>Inspect for oil leaks around the turbo oil lines (EcoBoost)</li>
-<li>Test the transmission — 10-speed should shift smoothly without hunting</li>
+<li>Test the transmission , 10-speed should shift smoothly without hunting</li>
 <li>Check for rust on frame and cab corners (especially northern trucks)</li>
 <li>Verify all recalls have been completed with a <a href="/">free risk report</a></li>
 </ol>
-""",
-    },
-    "free-carfax-alternative": {
-        "title": "Free Carfax Alternative: How to Check a Used Car Without Paying $40",
-        "excerpt": "You don't need to spend $40-$100 on Carfax. Here are free tools and methods to check any used car's history, complaints, and reliability.",
-        "date": "2026-03-09",
-        "read_time": 6,
-        "category": "Buyer Guide",
-        "content": """
-<p>Carfax charges <strong>$39.99 for a single report</strong> or $99.99 for six. If you're shopping for a used car and checking multiple vehicles, those costs add up fast. The good news? You can get most of the same information — and even more — for free.</p>
+""", }, "free-carfax-alternative": {
+        "title": "Free Carfax Alternative: How to Check a Used Car Without Paying $40", "excerpt": "You don't need to spend $40-$100 on Carfax. Here are free tools and methods to check any used car's history, complaints, and reliability.", "date": "2026-03-09", "read_time": 6, "category": "Buyer Guide", "content": """
+<p>Carfax charges <strong>$39.99 for a single report</strong> or $99.99 for six. If you're shopping for a used car and checking multiple vehicles, those costs add up fast. The good news? You can get most of the same information , and even more , for free.</p>
 
 <h2>What Carfax Tells You (and Its Limitations)</h2>
 <p>Carfax provides accident history, ownership count, service records, and title information. However, it has significant gaps:</p>
 <ul>
-<li>Only shows accidents reported to insurance or police — many aren't</li>
+<li>Only shows accidents reported to insurance or police , many aren't</li>
 <li>Service records depend on shops that report to Carfax (many don't)</li>
 <li>Doesn't tell you what <em>will</em> go wrong based on complaint patterns</li>
 <li>Doesn't provide risk scores or reliability ratings</li>
@@ -566,66 +569,58 @@ _BLOG_ARTICLES = {
 <li><strong>Get a pre-purchase inspection</strong> from an independent mechanic ($100-200)</li>
 </ol>
 
-<p>This combination gives you <strong>more actionable information</strong> than a Carfax report — and the only cost is the mechanic inspection.</p>
-""",
-    },
-    "used-car-inspection-checklist": {
-        "title": "How to Inspect a Used Car Before Buying: Complete 2026 Checklist",
-        "excerpt": "Don't buy a used car without checking these 15 critical items. A complete inspection guide that catches problems before they cost you thousands.",
-        "date": "2026-03-09",
-        "read_time": 10,
-        "category": "Buyer Guide",
-        "content": """
-<p>Buying a used car without a proper inspection is like buying a house without a home inspection — it's a gamble that can cost you thousands. This checklist covers <strong>everything you should check</strong> before handing over your money.</p>
+<p>This combination gives you <strong>more actionable information</strong> than a Carfax report , and the only cost is the mechanic inspection.</p>
+""", }, "used-car-inspection-checklist": {
+        "title": "How to Inspect a Used Car Before Buying: Complete 2026 Checklist", "excerpt": "Don't buy a used car without checking these 15 critical items. A complete inspection guide that catches problems before they cost you thousands.", "date": "2026-03-09", "read_time": 10, "category": "Buyer Guide", "content": """
+<p>Buying a used car without a proper inspection is like buying a house without a home inspection , it's a gamble that can cost you thousands. This checklist covers <strong>everything you should check</strong> before handing over your money.</p>
 
 <h2>Before You Visit: Research Phase</h2>
 <ol>
-<li><strong>Run a <a href="/">CarAdvisr risk report</a></strong> — see all NHTSA complaints, recalls, and known issues for the specific year/make/model</li>
+<li><strong>Run a <a href="/">CarAdvisr risk report</a></strong> , see all NHTSA complaints, recalls, and known issues for the specific year/make/model</li>
 <li><strong>Check the VIN</strong> for recalls at NHTSA.gov</li>
-<li><strong>Research fair market price</strong> — know what the car should cost before negotiating</li>
+<li><strong>Research fair market price</strong> , know what the car should cost before negotiating</li>
 </ol>
 
 <h2>Exterior Inspection</h2>
 <ol>
-<li><strong>Paint consistency</strong> — Mismatched colors or texture between panels indicates bodywork/accident repair</li>
-<li><strong>Panel gaps</strong> — Uneven gaps between doors, hood, and trunk suggest collision damage</li>
-<li><strong>Tire wear</strong> — Uneven wear indicates alignment issues or suspension problems. Check all four tires.</li>
-<li><strong>Rust</strong> — Check wheel wells, rocker panels, door bottoms, and under the car. Surface rust is cosmetic; structural rust is a deal-breaker.</li>
-<li><strong>Glass</strong> — Check windshield for chips/cracks. Verify all windows match (same manufacturer stamp).</li>
+<li><strong>Paint consistency</strong> , Mismatched colors or texture between panels indicates bodywork/accident repair</li>
+<li><strong>Panel gaps</strong> , Uneven gaps between doors, hood, and trunk suggest collision damage</li>
+<li><strong>Tire wear</strong> , Uneven wear indicates alignment issues or suspension problems. Check all four tires.</li>
+<li><strong>Rust</strong> , Check wheel wells, rocker panels, door bottoms, and under the car. Surface rust is cosmetic; structural rust is a deal-breaker.</li>
+<li><strong>Glass</strong> , Check windshield for chips/cracks. Verify all windows match (same manufacturer stamp).</li>
 </ol>
 
 <h2>Under the Hood</h2>
 <ol>
-<li><strong>Oil condition</strong> — Pull the dipstick. Black is normal; milky/frothy suggests a head gasket leak (expensive). Low oil suggests consumption issues.</li>
-<li><strong>Coolant</strong> — Should be green, orange, or pink (not brown or milky). Brown coolant means neglected maintenance; milky means oil contamination.</li>
-<li><strong>Belts and hoses</strong> — Look for cracks, fraying, or bulging. Replacement is $200-600.</li>
-<li><strong>Battery terminals</strong> — Heavy corrosion suggests electrical issues or an old battery.</li>
+<li><strong>Oil condition</strong> , Pull the dipstick. Black is normal; milky/frothy suggests a head gasket leak (expensive). Low oil suggests consumption issues.</li>
+<li><strong>Coolant</strong> , Should be green, orange, or pink (not brown or milky). Brown coolant means neglected maintenance; milky means oil contamination.</li>
+<li><strong>Belts and hoses</strong> , Look for cracks, fraying, or bulging. Replacement is $200-600.</li>
+<li><strong>Battery terminals</strong> , Heavy corrosion suggests electrical issues or an old battery.</li>
 </ol>
 
 <h2>Interior Check</h2>
 <ol>
-<li><strong>All electronics</strong> — Test every button, switch, window, lock, mirror, and light</li>
-<li><strong>AC/Heat</strong> — Run the AC on max cold for 5 minutes. Should blow cold within 2 minutes. AC repair is $500-1,500+.</li>
-<li><strong>Odors</strong> — Musty smell means water leaks or flood damage. Sweet smell could be a coolant leak.</li>
+<li><strong>All electronics</strong> , Test every button, switch, window, lock, mirror, and light</li>
+<li><strong>AC/Heat</strong> , Run the AC on max cold for 5 minutes. Should blow cold within 2 minutes. AC repair is $500-1,500+.</li>
+<li><strong>Odors</strong> , Musty smell means water leaks or flood damage. Sweet smell could be a coolant leak.</li>
 </ol>
 
 <h2>Test Drive (Most Important!)</h2>
 <ol>
-<li><strong>Cold start</strong> — Visit when the car hasn't been warmed up. Listen for unusual noises on startup.</li>
-<li><strong>Transmission</strong> — Should shift smoothly. Jerking, hesitation, or slipping needs immediate attention.</li>
-<li><strong>Brakes</strong> — Should stop straight without pulling, pulsation, or grinding</li>
-<li><strong>Steering</strong> — Should track straight on a level road. No vibration at highway speed.</li>
-<li><strong>Highway driving</strong> — Get up to 60+ mph. Listen for wind noise, vibrations, or drone.</li>
+<li><strong>Cold start</strong> , Visit when the car hasn't been warmed up. Listen for unusual noises on startup.</li>
+<li><strong>Transmission</strong> , Should shift smoothly. Jerking, hesitation, or slipping needs immediate attention.</li>
+<li><strong>Brakes</strong> , Should stop straight without pulling, pulsation, or grinding</li>
+<li><strong>Steering</strong> , Should track straight on a level road. No vibration at highway speed.</li>
+<li><strong>Highway driving</strong> , Get up to 60+ mph. Listen for wind noise, vibrations, or drone.</li>
 </ol>
 
 <h2>Final Steps</h2>
 <ul>
 <li><strong>Get a pre-purchase inspection</strong> from an independent mechanic ($100-200). This is the best money you'll spend.</li>
 <li><strong>Review the risk report</strong> from <a href="/">CarAdvisr</a> to understand what issues are most likely at the current mileage</li>
-<li><strong>Negotiate based on findings</strong> — use any issues found as leverage for a lower price</li>
+<li><strong>Negotiate based on findings</strong> , use any issues found as leverage for a lower price</li>
 </ul>
-""",
-    },
+""", },
 }
 
 
@@ -666,9 +661,7 @@ def sitemap_xml():
     now = datetime.utcnow().strftime("%Y-%m-%d")
 
     urls = [
-        {"loc": base + "/", "changefreq": "weekly", "priority": "1.0"},
-        {"loc": base + "/blog", "changefreq": "weekly", "priority": "0.8"},
-    ]
+        {"loc": base + "/", "changefreq": "weekly", "priority": "1.0"}, {"loc": base + "/blog", "changefreq": "weekly", "priority": "0.8"}, ]
 
     for slug in _BLOG_ARTICLES:
         urls.append({"loc": f"{base}/blog/{slug}", "changefreq": "monthly", "priority": "0.7"})
@@ -724,16 +717,7 @@ def _postprocess_current_risk(report: dict):
             continue
         if sys not in merged:
             merged[sys] = {
-                "system": sys,
-                "description": issue.get("description", ""),
-                "probability": issue.get("probability", "Low"),
-                "severity": issue.get("severity", 0),
-                "phase": issue.get("phase", "unknown"),
-                "complaint_count": issue.get("complaint_count", 0),
-                "test_drive_tips": list(issue.get("test_drive_tips") or []),
-                "diagnostic_tests": list(issue.get("diagnostic_tests") or []),
-                "sources": list(issue.get("sources") or []),
-            }
+                "system": sys, "description": issue.get("description", ""), "probability": issue.get("probability", "Low"), "severity": issue.get("severity", 0), "phase": issue.get("phase", "unknown"), "complaint_count": issue.get("complaint_count", 0), "test_drive_tips": list(issue.get("test_drive_tips") or []), "diagnostic_tests": list(issue.get("diagnostic_tests") or []), "sources": list(issue.get("sources") or []), }
         else:
             m = merged[sys]
             m["complaint_count"] += issue.get("complaint_count", 0)
@@ -771,8 +755,7 @@ def _postprocess_current_risk(report: dict):
 
 
 _SAFETY_CATS = {
-    "Engine", "Transmission", "Brakes", "Steering",
-    "Suspension", "Fuel System", "Electrical", "Cooling",
+    "Engine", "Transmission", "Brakes", "Steering", "Suspension", "Fuel System", "Electrical", "Cooling",
 }
 _HIGH_SAFETY_CATS = {"Brakes", "Steering", "Fuel System", "Suspension"}
 
@@ -951,14 +934,7 @@ def api_analyze():
         zip_code = None
 
     options = {
-        "trim": (data.get("trim") or "").strip() or None,
-        "engine": (data.get("engine") or "").strip() or None,
-        "transmission": (data.get("transmission") or "").strip() or None,
-        "drivetrain": (data.get("drivetrain") or "").strip() or None,
-        "asking_price": asking_price,
-        "vin": vin,
-        "zip_code": zip_code,
-    }
+        "trim": (data.get("trim") or "").strip() or None, "engine": (data.get("engine") or "").strip() or None, "transmission": (data.get("transmission") or "").strip() or None, "drivetrain": (data.get("drivetrain") or "").strip() or None, "asking_price": asking_price, "vin": vin, "zip_code": zip_code, }
 
     cache_key = _make_cache_key(make, model, year, mileage, options)
     cached_id = get_cached_report_id(cache_key)
@@ -967,7 +943,7 @@ def api_analyze():
         init_progress(report_id)
         push_progress(report_id, {"source": "Cache", "status": "complete", "message": "Report loaded from cache"})
         push_progress(report_id, {"source": "system", "status": "done", "message": report_id})
-        logger.info("Cache hit for %s — returning report %s", cache_key, report_id)
+        logger.info("Cache hit for %s , returning report %s", cache_key, report_id)
         return jsonify({"report_id": report_id, "cached": True})
 
     with _inflight_lock:
@@ -1043,9 +1019,7 @@ def api_trace(report_id: str):
         return jsonify({"error": "Invalid report ID"}), 400
     if trace_file.exists():
         return Response(
-            trace_file.read_text(encoding="utf-8"),
-            mimetype="application/json",
-        )
+            trace_file.read_text(encoding="utf-8"), mimetype="application/json", )
 
     return jsonify({"error": "Trace not found"}), 404
 
@@ -1072,28 +1046,17 @@ def _make_cache_key(
 ) -> str:
     """Build a deterministic cache key from vehicle parameters."""
     parts = [
-        make.upper(), model.upper(), str(year), str(mileage),
-        (options.get("trim") or "").upper(),
-        (options.get("engine") or "").upper(),
-        (options.get("transmission") or "").upper(),
-        (options.get("drivetrain") or "").upper(),
-        str(options.get("asking_price") or ""),
-        str(options.get("zip_code") or ""),
-    ]
+        make.upper(), model.upper(), str(year), str(mileage), (options.get("trim") or "").upper(), (options.get("engine") or "").upper(), (options.get("transmission") or "").upper(), (options.get("drivetrain") or "").upper(), str(options.get("asking_price") or ""), str(options.get("zip_code") or ""), ]
     return "|".join(parts)
 
 
 def _emit(report_id: str, source: str, status: str, message: str = ""):
     push_progress(report_id, {
-        "source": source,
-        "status": status,
-        "message": message,
-    })
+        "source": source, "status": status, "message": message, })
 
 
 def _run_analysis(
-    report_id: str, make: str, model: str, year: int, mileage: int,
-    options: dict | None = None, cache_key: str | None = None,
+    report_id: str, make: str, model: str, year: int, mileage: int, options: dict | None = None, cache_key: str | None = None,
 ):
     """Run scraping + analysis in a background thread."""
     acquired = _REPORT_SEMAPHORE.acquire(timeout=60)
@@ -1110,13 +1073,11 @@ def _run_analysis(
 
 
 def _run_analysis_inner(
-    report_id: str, make: str, model: str, year: int, mileage: int,
-    options: dict, cache_key: str | None = None,
+    report_id: str, make: str, model: str, year: int, mileage: int, options: dict, cache_key: str | None = None,
 ):
     trace = start_trace(report_id)
     trace.log_user_query(
-        make=make, model=model, year=year, mileage=mileage, options=options,
-    )
+        make=make, model=model, year=year, mileage=mileage, options=options, )
 
     results = []
 
@@ -1152,41 +1113,22 @@ def _run_analysis_inner(
     try:
         agg = aggregate(results)
         ma = analyze_mileage(agg, mileage)
-        vs = score_vehicle(ma, make=make, model=model, year=year,
-                          num_recalls=len(agg.recalls),
-                          sales_volume=sales_vol,
-                          complaint_dates=agg.complaint_dates)
+        vs = score_vehicle(ma, make=make, model=model, year=year, num_recalls=len(agg.recalls), sales_volume=sales_vol, complaint_dates=agg.complaint_dates)
 
         v2 = score_vehicle_v2(
-            nhtsa_risk_score=vs.reliability_risk_score,
-            make=make, model=model, year=year, mileage=mileage,
-        )
+            nhtsa_risk_score=vs.reliability_risk_score, make=make, model=model, year=year, mileage=mileage, )
         vs.reliability_risk_score = v2.risk_score_v2
         vs.letter_grade = v2.letter_grade
 
         v2_signals = get_v2_signal_details(make, model, year)
         v2_signals["score_components"] = {
-            "nhtsa": {"score": v2.nhtsa_component, "weight": 35, "label": "NHTSA Complaints"},
-            "tsb": {"score": v2.tsb_component, "weight": 25, "label": "Technical Service Bulletins"},
-            "investigation": {"score": v2.investigation_component, "weight": 15, "label": "NHTSA Investigations"},
-            "mfr_comm": {"score": v2.mfr_comm_component, "weight": 10, "label": "Manufacturer Communications"},
-            "brand_reliability": {"score": v2.dl_qir_component, "weight": 15, "label": "Brand Reliability Index"},
-        }
+            "nhtsa": {"score": v2.nhtsa_component, "weight": 35, "label": "NHTSA Complaints"}, "tsb": {"score": v2.tsb_component, "weight": 25, "label": "Technical Service Bulletins"}, "investigation": {"score": v2.investigation_component, "weight": 15, "label": "NHTSA Investigations"}, "mfr_comm": {"score": v2.mfr_comm_component, "weight": 10, "label": "Manufacturer Communications"}, "brand_reliability": {"score": v2.dl_qir_component, "weight": 15, "label": "Brand Reliability Index"}, }
         v2_signals["wear_factor"] = v2.wear_factor
         v2_signals["mileage_floor"] = v2.mileage_floor
         v2_signals["weighted_contributions"] = v2.weighted_contributions
 
         trace.log_analysis(
-            total_complaints=agg.total_complaints,
-            total_problems=len(agg.problems),
-            total_recalls=len(agg.recalls),
-            sources_used=agg.sources_used,
-            mileage_bracket=ma.bracket,
-            phase_counts=ma.phase_counts,
-            reliability_risk_score=vs.reliability_risk_score,
-            letter_grade=vs.letter_grade,
-            top_issues_count=len(vs.top_issues),
-        )
+            total_complaints=agg.total_complaints, total_problems=len(agg.problems), total_recalls=len(agg.recalls), sources_used=agg.sources_used, mileage_bracket=ma.bracket, phase_counts=ma.phase_counts, reliability_risk_score=vs.reliability_risk_score, letter_grade=vs.letter_grade, top_issues_count=len(vs.top_issues), )
 
         _emit(report_id, "Analysis", "complete", "Data analysis complete")
 
@@ -1199,10 +1141,7 @@ def _run_analysis_inner(
                 stats = get_model_stats(make, model, year)
                 if stats:
                     logger.info(
-                        "Bulk stats found: %d complaints, %sth percentile",
-                        stats.get("total_complaints", 0),
-                        stats.get("complaints_percentile", "?"),
-                    )
+                        "Bulk stats found: %d complaints, %sth percentile", stats.get("total_complaints", 0), stats.get("complaints_percentile", "?"), )
                 _emit(report_id, "Bulk Data", "complete", "Bulk data retrieved")
                 return stats
             except Exception as exc:
@@ -1215,14 +1154,8 @@ def _run_analysis_inner(
             try:
                 from scrapers.price_scraper import fetch_avg_price
                 pd = fetch_avg_price(
-                    make, model, year, mileage,
-                    trim=options.get("trim"),
-                    engine=options.get("engine"),
-                    vin=options.get("vin"),
-                    zip_code=options.get("zip_code"),
-                )
-                _emit(report_id, "Pricing", "complete",
-                      "Market pricing data collected")
+                    make, model, year, mileage, trim=options.get("trim"), engine=options.get("engine"), vin=options.get("vin"), zip_code=options.get("zip_code"), )
+                _emit(report_id, "Pricing", "complete", "Market pricing data collected")
                 return pd
             except Exception as exc:
                 logger.warning("Price fetch failed: %s", exc)
@@ -1238,11 +1171,7 @@ def _run_analysis_inner(
 
         _emit(report_id, "AI Insights", "scraping", "Generating AI-powered insights and guidance...")
         report = generate_report(
-            agg, ma, vs, mileage, options=options,
-            bulk_stats=bulk_stats,
-            price_data=price_data,
-            v2_signals=v2_signals,
-        )
+            agg, ma, vs, mileage, options=options, bulk_stats=bulk_stats, price_data=price_data, v2_signals=v2_signals, )
         _emit(report_id, "AI Insights", "complete", "AI insights generated")
 
         set_report(report_id, report)
@@ -1273,10 +1202,7 @@ def _fuel_eco_get(path: str) -> list[dict]:
     from urllib.parse import quote
 
     resp = http_client.get(
-        f"{_FUEL_ECO_BASE}/{path}",
-        headers=_FUEL_ECO_HEADERS,
-        timeout=10,
-    )
+        f"{_FUEL_ECO_BASE}/{path}", headers=_FUEL_ECO_HEADERS, timeout=10, )
     resp.raise_for_status()
     data = resp.json()
     if not data:
@@ -1361,10 +1287,7 @@ def _decode_vin(vin: str) -> dict | None:
     import requests as http_client
 
     resp = http_client.get(
-        f"{_VIN_DECODE_URL}/{vin}",
-        params={"format": "json"},
-        timeout=10,
-    )
+        f"{_VIN_DECODE_URL}/{vin}", params={"format": "json"}, timeout=10, )
     resp.raise_for_status()
     data = resp.json()
 
@@ -1437,18 +1360,7 @@ def _decode_vin(vin: str) -> dict | None:
         trim = raw_trim
 
     return {
-        "vin": vin,
-        "year": year,
-        "make": make.upper(),
-        "model": model.upper(),
-        "trim": trim,
-        "engine": " ".join(engine_parts) if engine_parts else "",
-        "transmission": transmission,
-        "drivetrain": drivetrain,
-        "body_class": (r.get("BodyClass") or "").strip(),
-        "vehicle_type": (r.get("VehicleType") or "").strip(),
-        "plant_country": (r.get("PlantCountry") or "").strip(),
-    }
+        "vin": vin, "year": year, "make": make.upper(), "model": model.upper(), "trim": trim, "engine": " ".join(engine_parts) if engine_parts else "", "transmission": transmission, "drivetrain": drivetrain, "body_class": (r.get("BodyClass") or "").strip(), "vehicle_type": (r.get("VehicleType") or "").strip(), "plant_country": (r.get("PlantCountry") or "").strip(), }
 
 
 # ------------------------------------------------------------------
@@ -1461,10 +1373,7 @@ def create_app() -> Flask:
     if sentry_dsn:
         import sentry_sdk
         sentry_sdk.init(
-            dsn=sentry_dsn,
-            traces_sample_rate=0.1,
-            send_default_pii=False,
-        )
+            dsn=sentry_dsn, traces_sample_rate=0.1, send_default_pii=False, )
         logger.info("Sentry error tracking enabled")
 
     from config.settings import GA_MEASUREMENT_ID, CLARITY_PROJECT_ID

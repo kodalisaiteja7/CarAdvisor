@@ -315,21 +315,21 @@ def _build_html(all_data: dict) -> str:
 
 <!-- ALL VEHICLES MILEAGE -->
 <section id="all-mileage">
-  <h2 class="text-2xl font-bold mb-6">All Vehicles — Mileage vs Risk Score</h2>
+  <h2 class="text-2xl font-bold mb-6">All Vehicles: Mileage vs Risk Score</h2>
   <div class="card">
     <div class="flex gap-4 mb-4 flex-wrap items-center">
       <select id="allmi-tier" onchange="updateAllMileage()" class="text-sm">
         <option value="0">All Tiers</option>
-        <option value="1">Tier 1 — Reliable</option>
-        <option value="2">Tier 2 — Above Avg</option>
-        <option value="3">Tier 3 — Average</option>
-        <option value="4">Tier 4 — Below Avg</option>
-        <option value="5">Tier 5 — Unreliable</option>
+        <option value="1">Tier 1: Reliable</option>
+        <option value="2">Tier 2: Above Avg</option>
+        <option value="3">Tier 3: Average</option>
+        <option value="4">Tier 4: Below Avg</option>
+        <option value="5">Tier 5: Unreliable</option>
       </select>
       <span class="text-xs text-slate-400">
         <span class="inline-block w-8 border-t-2 border-solid border-blue-500 mr-1 align-middle"></span> V1
         <span class="inline-block w-8 border-t-2 border-dashed border-purple-500 ml-3 mr-1 align-middle"></span> V2
-        &nbsp;&mdash;&nbsp; thick lines = tier average
+        · thick lines = tier average
       </span>
     </div>
     <canvas id="allMileageChart" height="400"></canvas>
@@ -357,11 +357,11 @@ def _build_html(all_data: dict) -> str:
       <input id="table-search" type="text" placeholder="Search make/model..." oninput="updateTable()" class="text-sm w-48">
       <select id="table-tier" onchange="updateTable()" class="text-sm">
         <option value="">All Tiers</option>
-        <option value="1">Tier 1 - Reliable</option>
-        <option value="2">Tier 2 - Above Avg</option>
-        <option value="3">Tier 3 - Average</option>
-        <option value="4">Tier 4 - Below Avg</option>
-        <option value="5">Tier 5 - Unreliable</option>
+        <option value="1">Tier 1: Reliable</option>
+        <option value="2">Tier 2: Above Avg</option>
+        <option value="3">Tier 3: Average</option>
+        <option value="4">Tier 4: Below Avg</option>
+        <option value="5">Tier 5: Unreliable</option>
       </select>
       <label class="text-sm flex items-center gap-2">
         <input type="checkbox" id="table-outliers" onchange="updateTable()"> Show outliers only

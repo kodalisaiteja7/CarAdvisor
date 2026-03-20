@@ -1,4 +1,4 @@
-# Second-Hand Car Buying Advisor — Full Project Prompt
+# Second-Hand Car Buying Advisor : Full Project Prompt
 
 ## PROJECT OVERVIEW
 
@@ -18,74 +18,51 @@ The system then:
 
 ## PHASE 1: DATA COLLECTION & WEB SCRAPING
 
-Build robust, polite scrapers (with rate limiting, retries, User-Agent rotation, and caching) for the following sources. Each scraper should be its own module under `scrapers/`:
-
-### Primary Sources (structured complaint/recall data):
-
-1. **NHTSA (nhtsa.gov)** — Use their public API (https://api.nhtsa.gov/). Pull:
-   - Recalls by make/model/year
+Build robust, polite scrapers (with rate limiting, retries, User-Agent rotation, and caching) for the following sources. Each scraper should be its own module under `scrapers/`: ### Primary Sources (structured complaint/recall data): 1. **NHTSA (nhtsa.gov)** : Use their public API (https://api.nhtsa.gov/). Pull: - Recalls by make/model/year
    - Complaints (TSBs, investigations, defect reports)
    - Crash ratings
 
-2. **CarComplaints.com** — Scrape:
-   - Common problems by make/model/year
+2. **CarComplaints.com** : Scrape: - Common problems by make/model/year
    - "Worst model year" badges
    - Problem severity ratings, typical mileage at failure, repair costs
    - "CarComplaints Seal of Awesome" or warnings
 
-3. **RepairPal.com** — Scrape:
-   - Reliability ratings
+3. **RepairPal.com** : Scrape: - Reliability ratings
    - Common problems with frequency and severity
    - Estimated repair costs
    - Maintenance schedules
 
-### Community & Forum Sources (real owner experiences):
-
-4. **Reddit** — Use Reddit API (or PRAW library). Search subreddits:
-   - r/MechanicAdvice, r/UsedCars, r/Cartalk, r/AskMechanics, r/[make-specific subs like r/Toyota, r/BMW]
+### Community & Forum Sources (real owner experiences): 4. **Reddit** : Use Reddit API (or PRAW library). Search subreddits: - r/MechanicAdvice, r/UsedCars, r/Cartalk, r/AskMechanics, r/[make-specific subs like r/Toyota, r/BMW]
    - Search queries: "{year} {make} {model} problems", "{make} {model} reliability", "{make} {model} things to check"
    - Extract and categorize recurring complaints, mileage-specific warnings, and buying tips
 
-5. **JustAnswer.com** — Scrape mechanic Q&A threads related to the make/model/year for expert-level diagnostic insights
+5. **JustAnswer.com** : Scrape mechanic Q&A threads related to the make/model/year for expert-level diagnostic insights
 
-### Vehicle History & Cost Sources:
-
-6. **Carfax / AutoCheck** — Note: these are paywalled. Build a module that:
-   - Scrapes any publicly available summary data
+### Vehicle History & Cost Sources: 6. **Carfax / AutoCheck** : Note: these are paywalled. Build a module that: - Scrapes any publicly available summary data
    - Flags common Carfax-reported issues for the model (flood damage prevalence, salvage title rates, etc.)
    - Documents what the user should look for in a Carfax report
 
-7. **Edmunds.com** — Scrape:
-   - Long-term road test reports
+7. **Edmunds.com** : Scrape: - Long-term road test reports
    - Consumer reviews with problem mentions
    - True Cost to Own (TCO) data
    - Common problems listed in editorial reviews
 
-8. **Consumer Reports** — Note: paywalled. Scrape any publicly available reliability verdicts, or document what to look for
+8. **Consumer Reports** : Note: paywalled. Scrape any publicly available reliability verdicts, or document what to look for
 
-### Technical & Diagnostic Sources:
-
-9. **OBD-Codes.com** — Scrape:
-   - Common OBD-II codes for the specific engine/model
+### Technical & Diagnostic Sources: 9. **OBD-Codes.com** : Scrape: - Common OBD-II codes for the specific engine/model
    - What each code means, severity, and likely root causes
 
-10. **AutoMD.com** — Scrape:
-    - Common repairs and symptoms
+10. **AutoMD.com** : Scrape: - Common repairs and symptoms
     - Diagnostic guidance
 
-11. **TrueDelta.com** — Scrape:
-    - Reliability statistics (repair frequency by system)
+11. **TrueDelta.com** : Scrape: - Reliability statistics (repair frequency by system)
     - Comparison with competitors
     - Repair cost data
 
-### Consumer Review Sources:
-
-12. **CarSurvey.org** — Scrape:
-    - Owner satisfaction ratings
+### Consumer Review Sources: 12. **CarSurvey.org** : Scrape: - Owner satisfaction ratings
     - Reported faults by category
 
-13. **ConsumerAffairs.com** — Scrape:
-    - Consumer reviews and complaints
+13. **ConsumerAffairs.com** : Scrape: - Consumer reviews and complaints
     - Common issue themes
 
 ### Scraper Requirements:
@@ -93,9 +70,7 @@ Build robust, polite scrapers (with rate limiting, retries, User-Agent rotation,
 - Use `playwright` or `selenium` for JavaScript-rendered pages
 - Implement `scrapy` pipelines where appropriate for large-scale crawls
 - All scraped data must be cached locally in a SQLite database to avoid redundant requests
-- Each scraper must output a standardized JSON schema:
-
-```json
+- Each scraper must output a standardized JSON schema: ```json
 {
   "source": "carcomplaints.com",
   "make": "Toyota",
@@ -122,9 +97,7 @@ Build robust, polite scrapers (with rate limiting, retries, User-Agent rotation,
 
 ## PHASE 2: DATA PROCESSING & ANALYSIS
 
-Build an analysis engine under `analysis/` that:
-
-### 2.1 Data Normalization
+Build an analysis engine under `analysis/` that: ### 2.1 Data Normalization
 - Merge data from all sources into a unified schema
 - Deduplicate similar complaints across sources
 - Normalize severity ratings to a common scale (1-10)
@@ -135,8 +108,7 @@ Build an analysis engine under `analysis/` that:
 The output MUST be heavily influenced by the user's input mileage. Build a mileage-aware model:
 - Create mileage brackets: 0-30k, 30k-60k, 60k-90k, 90k-120k, 120k-150k, 150k+
 - For each known issue, determine the typical mileage range at which it manifests
-- When the user inputs mileage, highlight:
-  - Issues that commonly appear AT their current mileage (imminent concerns)
+- When the user inputs mileage, highlight: - Issues that commonly appear AT their current mileage (imminent concerns)
   - Issues they've likely already passed (lower risk but verify)
   - Issues approaching in the next 20k-40k miles (upcoming risks)
 - If the user changes only the mileage (same make/model/year), the report must meaningfully change to reflect the new mileage context
@@ -148,8 +120,7 @@ The output MUST be heavily influenced by the user's input mileage. Build a milea
 - Rank the top 10 issues by likelihood at the given mileage
 
 ### 2.4 Pattern Recognition
-- Use NLP (spaCy or similar) on scraped complaint text to:
-  - Extract common failure symptoms
+- Use NLP (spaCy or similar) on scraped complaint text to: - Extract common failure symptoms
   - Identify early warning signs / indicators
   - Cluster similar complaints
   - Extract mileage mentions from free-text complaints
@@ -158,9 +129,7 @@ The output MUST be heavily influenced by the user's input mileage. Build a milea
 
 ## PHASE 3: REPORT GENERATION
 
-Generate a detailed, structured report with these sections:
-
-### 3.1 Vehicle Summary
+Generate a detailed, structured report with these sections: ### 3.1 Vehicle Summary
 - Make/Model/Year overview
 - Overall reliability rating (aggregated from all sources)
 - How this model year compares to adjacent years (is this a "good year" or "bad year"?)
@@ -220,9 +189,7 @@ Build a clean web interface using **Streamlit** or **Flask + a modern frontend**
 - **Language**: Python 3.11+
 - **Database**: SQLite for scraped data cache, with option to upgrade to PostgreSQL
 
-### Project Structure:
-
-```
+### Project Structure: ```
 car-advisor/
 ├── scrapers/
 │   ├── base.py               # Base scraper class
@@ -263,36 +230,34 @@ car-advisor/
 ```
 
 ### Key Libraries:
-- `requests` — HTTP requests
-- `beautifulsoup4` — HTML parsing
-- `playwright` or `selenium` — JavaScript-rendered pages
-- `scrapy` — Large-scale crawling pipelines
-- `praw` — Reddit API
-- `spacy` — NLP on complaint text
-- `pandas` — Data manipulation
-- `sqlalchemy` — Database ORM
-- `streamlit` or `flask` — Web UI
-- `pdfkit` — PDF export
-- `tenacity` — Retry logic
-- `fake-useragent` — User-Agent rotation
+- `requests` : HTTP requests
+- `beautifulsoup4` : HTML parsing
+- `playwright` or `selenium` : JavaScript-rendered pages
+- `scrapy` : Large-scale crawling pipelines
+- `praw` : Reddit API
+- `spacy` : NLP on complaint text
+- `pandas` : Data manipulation
+- `sqlalchemy` : Database ORM
+- `streamlit` or `flask` : Web UI
+- `pdfkit` : PDF export
+- `tenacity` : Retry logic
+- `fake-useragent` : User-Agent rotation
 
 ### Error Handling:
-- Graceful degradation — if one source fails, still generate report from remaining sources
+- Graceful degradation : if one source fails, still generate report from remaining sources
 - Log all failures with source name, URL, and error message
 
 ### Rate Limiting:
-- Respectful scraping — minimum 2-second delay between requests per domain
+- Respectful scraping : minimum 2-second delay between requests per domain
 - Honor robots.txt where applicable
 
 ---
 
 ## IMPLEMENTATION ORDER
 
-Build in this sequence to ensure a solid foundation before adding complexity:
-
-1. Database schema and models
+Build in this sequence to ensure a solid foundation before adding complexity: 1. Database schema and models
 2. Base scraper class with caching, rate limiting, retries
-3. NHTSA scraper (public API — easiest starting point)
+3. NHTSA scraper (public API : easiest starting point)
 4. CarComplaints scraper (richest complaint data)
 5. Data normalizer and aggregator
 6. Mileage-based analysis engine
@@ -307,8 +272,8 @@ Build in this sequence to ensure a solid foundation before adding complexity:
 
 ## KEY DESIGN PRINCIPLES
 
-- **Mileage is the primary filter**: The same make/model/year with different mileage should produce meaningfully different reports — different risk assessments, different inspection priorities, different cost forecasts.
+- **Mileage is the primary filter**: The same make/model/year with different mileage should produce meaningfully different reports : different risk assessments, different inspection priorities, different cost forecasts.
 - **Source diversity**: No single source is authoritative. Weight and cross-reference across all available sources.
-- **Extensibility**: Adding a new data source should only require creating a new scraper module that extends the base class — no changes to core analysis logic.
+- **Extensibility**: Adding a new data source should only require creating a new scraper module that extends the base class : no changes to core analysis logic.
 - **Transparency**: Always show which sources contributed to each finding so the user understands where the data came from.
 - **Graceful degradation**: Paywalled or blocked sources should not break the system. The report should still generate with whatever data is available.

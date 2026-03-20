@@ -18,6 +18,7 @@ import threading
 import anthropic
 
 from config.settings import LLM_MODEL, LLM_MAX_TOKENS
+from utils.display_text import sanitize_nested, sanitize_user_visible_text
 from utils.trace import get_trace
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,7 @@ def _extract_json(text: str) -> dict | list | None:
 
 
 def _extract_list(text: str) -> list | None:
-    """Extract a JSON list from LLM output — tries [ first, then unwraps from dict."""
+    """Extract a JSON list from LLM output; tries [ first, then unwraps from dict."""
     text = text.strip()
 
     fence = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL | re.IGNORECASE)
@@ -151,23 +152,17 @@ def _llm_call(prompt: str, max_tokens: int | None = None, cache_key: str | None 
     try:
         client = _get_client()
     except ValueError:
-        logger.warning("Anthropic API key not set — skipping LLM call")
+        logger.warning("Anthropic API key not set; skipping LLM call")
         return None
 
     try:
         response = client.messages.create(
-            model=LLM_MODEL,
-            max_tokens=max_tokens or LLM_MAX_TOKENS,
-            timeout=120.0,
-            messages=[{"role": "user", "content": prompt}],
-        )
+            model=LLM_MODEL, max_tokens=max_tokens or LLM_MAX_TOKENS, timeout=120.0, messages=[{"role": "user", "content": prompt}], )
 
         text = response.content[0].text.strip()
         stop_reason = response.stop_reason
         logger.info(
-            "LLM response: stop_reason=%s, length=%d, first 200 chars: %.200s",
-            stop_reason, len(text), text[:200],
-        )
+            "LLM response: stop_reason=%s, length=%d, first 200 chars: %.200s", stop_reason, len(text), text[:200], )
 
         if stop_reason not in ("end_turn", "stop_sequence"):
             logger.warning("LLM response truncated (stop_reason=%s)", stop_reason)
@@ -216,12 +211,14 @@ def _build_checklist_prompt(vehicle: dict, items_for_prompt: list[dict]) -> str:
 
 Below is a list of inspection items generated from complaint data. Each item has raw technical data that is NOT user-friendly.
 
+FORMATTING (strict): Never use hyphens (-), en dashes, or em dashes in any user visible text. Use commas or periods. For spans use the word "to" (example: 5 to 10 words). Use a space in compound phrases (example: walk away, not a hyphenated word).
+
 Your job: For EACH item, produce:
-1. "title" — A short, clear title (5-10 words)
-2. "why_it_matters" — One sentence explaining why this matters to a buyer
-3. "how_to_check" — 3-4 concise, specific steps a non-mechanic can follow on the spot
-4. "red_flags" — 2-3 specific warning signs that mean "walk away" or "negotiate hard"
-5. "ask_the_seller" — 1-2 specific questions to ask the seller about this issue
+1. "title": A short, clear title (5 to 10 words)
+2. "why_it_matters": One sentence explaining why this matters to a buyer
+3. "how_to_check": 3 to 4 concise, specific steps a non-mechanic can follow on the spot
+4. "red_flags": 2 to 3 specific warning signs that mean walk away or negotiate hard
+5. "ask_the_seller": 1 to 2 specific questions to ask the seller about this issue
 
 Be specific to this vehicle. For how_to_check, give steps someone with zero car knowledge can actually do (e.g., "Look under the car near the front for puddles of green or orange fluid" rather than "Check coolant level").
 
@@ -246,20 +243,12 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
 
     items_for_prompt = [
         {
-            "index": idx,
-            "system": item.get("system", ""),
-            "raw_description": item.get("description", ""),
-            "raw_guidance": item.get("what_to_look_for", ""),
-            "estimated_cost": item.get("estimated_cost_if_bad"),
-        }
+            "index": idx, "system": item.get("system", ""), "raw_description": item.get("description", ""), "raw_guidance": item.get("what_to_look_for", ""), "estimated_cost": item.get("estimated_cost_if_bad"), }
         for idx, item in enumerate(all_items)
     ]
 
     logger.info(
-        "Checklist enhancement: %d items, payload %d chars",
-        len(items_for_prompt),
-        len(json.dumps(items_for_prompt)),
-    )
+        "Checklist enhancement: %d items, payload %d chars", len(items_for_prompt), len(json.dumps(items_for_prompt)), )
 
     # Split into batches to avoid token-limit truncation
     enhanced_map: dict[int, dict] = {}
@@ -282,39 +271,22 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
             logger.warning("Checklist batch %d: LLM call returned None", batch_num)
             if trace:
                 trace.log_llm_call(
-                    purpose=f"inspection_checklist_batch_{batch_num}",
-                    prompt=prompt,
-                    response_raw=None,
-                    response_parsed=None,
-                    status="llm_returned_none",
-                )
+                    purpose=f"inspection_checklist_batch_{batch_num}", prompt=prompt, response_raw=None, response_parsed=None, status="llm_returned_none", )
             continue
 
         items = _extract_list(text)
         if items is None:
             logger.warning(
-                "Checklist batch %d: failed to parse response. First 300 chars: %.300s",
-                batch_num, text[:300],
-            )
+                "Checklist batch %d: failed to parse response. First 300 chars: %.300s", batch_num, text[:300], )
             if trace:
                 trace.log_llm_call(
-                    purpose=f"inspection_checklist_batch_{batch_num}",
-                    prompt=prompt,
-                    response_raw=text,
-                    response_parsed=None,
-                    status="parse_failed",
-                )
+                    purpose=f"inspection_checklist_batch_{batch_num}", prompt=prompt, response_raw=text, response_parsed=None, status="parse_failed", )
             continue
 
         logger.info("Checklist batch %d: successfully parsed %d items", batch_num, len(items))
         if trace:
             trace.log_llm_call(
-                purpose=f"inspection_checklist_batch_{batch_num}",
-                prompt=prompt,
-                response_raw=text,
-                response_parsed=items,
-                status="success",
-            )
+                purpose=f"inspection_checklist_batch_{batch_num}", prompt=prompt, response_raw=text, response_parsed=items, status="success", )
         for item in items:
             if isinstance(item, dict) and "index" in item:
                 enhanced_map[item["index"]] = item
@@ -335,6 +307,14 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
             original["red_flags"] = enh.get("red_flags", [])
             original["ask_the_seller"] = enh.get("ask_the_seller", [])
             original["llm_enhanced"] = True
+            _fb = {
+                "title": original.get("title", ""), "why_it_matters": original.get("why_it_matters", ""), "how_to_check": original.get("how_to_check", []), "red_flags": original.get("red_flags", []), "ask_the_seller": original.get("ask_the_seller", []), }
+            _fb = sanitize_nested(_fb)
+            original["title"] = _fb["title"]
+            original["why_it_matters"] = _fb["why_it_matters"]
+            original["how_to_check"] = _fb["how_to_check"]
+            original["red_flags"] = _fb["red_flags"]
+            original["ask_the_seller"] = _fb["ask_the_seller"]
 
     return checklist
 
@@ -347,8 +327,7 @@ def enhance_inspection_checklist(vehicle: dict, checklist: dict) -> dict:
 def _mileage_assessment(mileage: int, risk_score: float, phase_summary: dict) -> dict:
     """Build a structured mileage assessment for the LLM.
 
-    This ensures the LLM understands that lower mileage = better buy,
-    and higher mileage = more accumulated risk, regardless of how the
+    This ensures the LLM understands that lower mileage = better buy, and higher mileage = more accumulated risk, regardless of how the
     individual issues are phased.
     """
     if mileage <= 30_000:
@@ -397,18 +376,14 @@ def _mileage_assessment(mileage: int, risk_score: float, phase_summary: dict) ->
         )
 
     return {
-        "tier": tier,
-        "tier_label": tier_label,
-        "guidance": guidance,
-        "risk_score_out_of_100": round(risk_score, 1),
-    }
+        "tier": tier, "tier_label": tier_label, "guidance": guidance, "risk_score_out_of_100": round(risk_score, 1), }
 
 
 def _analyze_dominant_factors(v2_signals: dict | None, risk_score: float, mileage: int) -> str:
     """Analyze which factors are actually driving the risk score and build
     a focused 'dominant factors' section for the LLM prompt.
 
-    This prevents the AI from dumping all constraints — it only talks about
+    This prevents the AI from dumping all constraints; it only talks about
     the factors that materially contribute to the score.
     """
     if not v2_signals:
@@ -427,20 +402,12 @@ def _analyze_dominant_factors(v2_signals: dict | None, risk_score: float, mileag
         return ""
 
     factor_labels = {
-        "nhtsa": "NHTSA complaints",
-        "tsb": "Technical Service Bulletins",
-        "investigation": "NHTSA investigations",
-        "mfr_comm": "manufacturer communications",
-        "brand_reliability": "brand reliability index",
-        "mileage_floor": "mileage-based wear floor",
-    }
+        "nhtsa": "NHTSA complaints", "tsb": "Technical Service Bulletins", "investigation": "NHTSA investigations", "mfr_comm": "manufacturer communications", "brand_reliability": "brand reliability index", "mileage_floor": "mileage-based wear floor", }
 
     ranked = sorted(
-        [(k, v) for k, v in wc.items() if v > 0],
-        key=lambda x: x[1], reverse=True,
-    )
+        [(k, v) for k, v in wc.items() if v > 0], key=lambda x: x[1], reverse=True, )
 
-    lines = ["\nDOMINANT SCORE FACTORS (focus your verdict on THESE — ignore minor contributors):"]
+    lines = ["\nDOMINANT SCORE FACTORS (focus your verdict on THESE; ignore minor contributors):"]
 
     mileage_is_dominant = False
     if wear >= 1.3:
@@ -488,7 +455,7 @@ def _analyze_dominant_factors(v2_signals: dict | None, risk_score: float, mileag
             "\nIMPORTANT: Since mileage wear is a major amplifier, frame your verdict around "
             "the high mileage rather than listing individual system problems. For example: "
             "'While this model has strong reliability fundamentals, at 150,000 miles the accumulated "
-            "wear means you should budget for age-related maintenance' — NOT a list of every TSB."
+            "wear means you should budget for age-related maintenance', NOT a list of every TSB."
         )
 
     tsb_systems = v2_signals.get("tsb_by_system", [])
@@ -519,22 +486,22 @@ def _get_tier_config(risk_score: float) -> tuple[str, str, str, str]:
 
     if risk_score <= 20:
         tier_label = "Excellent"
-        tone_rules = """TONE RULES (EXCELLENT — score 1-20 — strictly follow):
+        tone_rules = """TONE RULES (EXCELLENT, score 1 to 20, strictly follow):
 - This vehicle is an EXCELLENT buy. Your verdict MUST be enthusiastically positive.
 - ABSOLUTELY DO NOT mention ANY specific problems, failure modes, system issues, complaint counts, TSBs, or investigations.
-- NEVER reference brake issues, engine problems, electrical concerns, or ANY specific component failures — not even as "things to watch."
+- NEVER reference brake issues, engine problems, electrical concerns, or ANY specific component failures, not even as "things to watch."
 - The buyer should walk away feeling fully CONFIDENT about this purchase.
-- Focus ONLY on positives: excellent reliability profile, strong brand quality, favorable mileage, well-suited for purchase.
-- The ONLY caveat you may include is a standard recommendation for a pre-purchase inspection (which applies to ANY used car)."""
+- Focus ONLY on positives: excellent reliability profile, strong brand quality, favorable mileage, well suited for purchase.
+- The ONLY caveat you may include is a standard recommendation for a pre purchase inspection (which applies to ANY used car)."""
         summary_instruction = (
-            '"executive_summary" — 3-4 sentences. Start by enthusiastically stating this is an excellent buy. '
+            '"executive_summary": 3 to 4 sentences. Start by enthusiastically stating this is an excellent buy. '
             'Highlight ONLY positives: outstanding reliability, strong brand reputation, favorable mileage. '
             'NEVER mention any specific problems, complaints, systems, TSBs, or failure modes. '
             'End with an encouraging recommendation to buy with high confidence. '
             'Talk directly to the buyer. No numeric scores or letter grades.'
         )
         reasoning_instruction = (
-            '"verdict_reasoning" — Array of 3-4 short bullet strings explaining WHY this is an excellent buy. '
+            '"verdict_reasoning": Array of 3 to 4 short bullet strings explaining WHY this is an excellent buy. '
             'ONLY mention positives: very low risk, mileage advantage, brand reliability, minimal service bulletins. '
             'NEVER mention specific problems, failure types, or complaint counts for any system. '
             'Include one bullet about how the mileage works in the buyer\'s favor.'
@@ -542,95 +509,95 @@ def _get_tier_config(risk_score: float) -> tuple[str, str, str, str]:
 
     elif risk_score <= 30:
         tier_label = "Great"
-        tone_rules = """TONE RULES (GREAT — score 20-30 — strictly follow):
+        tone_rules = """TONE RULES (GREAT, score 20 to 30, strictly follow):
 - This vehicle is a GREAT buy. Your verdict should be positive and reassuring.
 - Do NOT mention specific problems, failure modes, or complaint counts.
 - You may briefly mention the brand's general reliability standing if it's positive.
 - The buyer should feel confident about this purchase.
-- The only caveat is a standard pre-purchase inspection recommendation."""
+- The only caveat is a standard pre purchase inspection recommendation."""
         summary_instruction = (
-            '"executive_summary" — 3-4 sentences. Start by stating this is a great buy. '
+            '"executive_summary": 3 to 4 sentences. Start by stating this is a great buy. '
             'Emphasize positives: solid reliability, good brand standing, reasonable mileage. '
             'Do NOT mention specific problems or complaint counts. '
             'End with a confident recommendation to proceed. '
             'Talk directly to the buyer. No numeric scores or letter grades.'
         )
         reasoning_instruction = (
-            '"verdict_reasoning" — Array of 3-4 short bullet strings explaining WHY this is a great buy. '
+            '"verdict_reasoning": Array of 3 to 4 short bullet strings explaining WHY this is a great buy. '
             'Focus on positives: low risk profile, brand reliability, mileage condition. '
             'Do NOT list any specific system failures or complaint data. '
             'Include one bullet about mileage impact.'
         )
 
     elif risk_score <= 45:
-        tier_label = "Good — Be Cautious"
-        tone_rules = """TONE RULES (GOOD BUT CAUTIOUS — score 30-45 — strictly follow):
+        tier_label = "Good, be cautious"
+        tone_rules = """TONE RULES (GOOD BUT CAUTIOUS, score 30 to 45, strictly follow):
 - This vehicle is a GOOD buy, but the buyer should exercise caution.
 - ONLY mention the DOMINANT factors from the score breakdown below. Do NOT list every constraint.
-- If mileage wear is the dominant factor, frame the caution around high mileage and age-related wear — do NOT enumerate every TSB or system.
+- If mileage wear is the dominant factor, frame the caution around high mileage and age related wear; do NOT enumerate every TSB or system.
 - If a specific system (e.g., engine, transmission) is the dominant factor, mention ONLY that system.
-- Keep the tone balanced and informative — the buyer should feel this is still a solid choice.
+- Keep the tone balanced and informative; the buyer should feel this is still a solid choice.
 - Do NOT be alarmist. Do NOT list complaint counts for every system.
-- End with a positive recommendation to proceed with a pre-purchase inspection."""
+- End with a positive recommendation to proceed with a pre purchase inspection."""
         summary_instruction = (
-            '"executive_summary" — 3-4 sentences. Start by saying this is a good buy overall. '
-            'Mention ONLY the 1-2 dominant factors that are actually driving the risk score (see DOMINANT SCORE FACTORS section). '
-            'If mileage is the dominant factor, say something like "at this mileage, budgeting for routine wear items is wise" — '
+            '"executive_summary": 3 to 4 sentences. Start by saying this is a good buy overall. '
+            'Mention ONLY the 1 to 2 dominant factors that are actually driving the risk score (see DOMINANT SCORE FACTORS section). '
+            'If mileage is the dominant factor, say something like "at this mileage, budgeting for routine wear items is wise"; '
             'do NOT list specific TSBs or complaint systems. '
-            'End with a recommendation to get a pre-purchase inspection. '
+            'End with a recommendation to get a pre purchase inspection. '
             'Talk directly to the buyer. No numeric scores or letter grades.'
         )
         reasoning_instruction = (
-            '"verdict_reasoning" — Array of 3-5 short bullet strings. '
+            '"verdict_reasoning": Array of 3 to 5 short bullet strings. '
             'Start with positives (overall reliability, brand quality). '
-            'Then mention ONLY the dominant factors from the score breakdown — NOT every constraint. '
-            'If mileage wear is the biggest factor, dedicate a bullet to that and be lighter on system-specific issues. '
+            'Then mention ONLY the dominant factors from the score breakdown, NOT every constraint. '
+            'If mileage wear is the biggest factor, dedicate a bullet to that and be lighter on system specific issues. '
             'End with a reassuring note about the vehicle still being a good choice.'
         )
 
     elif risk_score <= 60:
-        tier_label = "Fair — More Caution Needed"
-        tone_rules = """TONE RULES (FAIR — score 45-60 — strictly follow):
+        tier_label = "Fair, more caution needed"
+        tone_rules = """TONE RULES (FAIR, score 45 to 60, strictly follow):
 - This vehicle is a FAIR buy, but the buyer needs to exercise extra caution.
-- Focus your verdict on the DOMINANT factors from the score breakdown — NOT every signal.
-- If mileage wear is the primary driver (e.g., a reliable brand at very high mileage), frame it as: "This is fundamentally a reliable model, but at this mileage you should budget for age-related maintenance and wear."
+- Focus your verdict on the DOMINANT factors from the score breakdown, NOT every signal.
+- If mileage wear is the primary driver (e.g., a reliable brand at very high mileage), frame it as: "This is fundamentally a reliable model, but at this mileage you should budget for age related maintenance and wear."
 - If specific system problems (NHTSA complaints, TSBs, investigations) are the primary drivers, mention THOSE specific systems.
 - Do NOT list every TSB system, every complaint count, and every investigation if they are minor contributors.
-- Recommend a thorough pre-purchase inspection AND budgeting for potential repairs."""
+- Recommend a thorough pre purchase inspection AND budgeting for potential repairs."""
         summary_instruction = (
-            '"executive_summary" — 3-4 sentences. Start by saying this is a fair buy that requires extra caution. '
+            '"executive_summary": 3 to 4 sentences. Start by saying this is a fair buy that requires extra caution. '
             'Mention ONLY the dominant factors driving the score (see DOMINANT SCORE FACTORS section). '
-            'If mileage wear is the biggest driver, acknowledge the brand reliability but emphasize the high-mileage wear risk. '
-            'If system-specific issues are dominant, mention those 1-2 systems specifically. '
+            'If mileage wear is the biggest driver, acknowledge the brand reliability but emphasize the high mileage wear risk. '
+            'If system specific issues are dominant, mention those 1 to 2 systems specifically. '
             'End with a recommendation to get a thorough inspection and budget for potential repairs. '
             'Talk directly to the buyer. No numeric scores or letter grades.'
         )
         reasoning_instruction = (
-            '"verdict_reasoning" — Array of 3-5 short bullet strings explaining WHY extra caution is needed. '
+            '"verdict_reasoning": Array of 3 to 5 short bullet strings explaining WHY extra caution is needed. '
             'Focus ONLY on the dominant contributors to the score. '
-            'If mileage is the primary driver, lead with that and keep system-specific bullets brief. '
+            'If mileage is the primary driver, lead with that and keep system specific bullets brief. '
             'If a specific system is the primary driver, give it a detailed bullet. '
-            'Do NOT add a bullet for every signal — only the ones marked as dominant or significant.'
+            'Do NOT add a bullet for every signal; only the ones marked as dominant or significant.'
         )
 
     elif risk_score <= 75:
         tier_label = "Bad"
-        tone_rules = """TONE RULES (BAD — score 60-75 — strictly follow):
+        tone_rules = """TONE RULES (BAD, score 60 to 75, strictly follow):
 - This vehicle poses SIGNIFICANT risk. Be direct and serious.
 - Focus on the DOMINANT factors driving the score (see breakdown below).
 - If mileage wear is a major amplifier, acknowledge it but also call out the specific system issues that are being amplified.
-- Reference SPECIFIC failure modes from the dominant contributors — not every minor signal.
+- Reference SPECIFIC failure modes from the dominant contributors, not every minor signal.
 - The buyer needs to understand exactly what the main risks are.
 - Recommend the buyer strongly consider alternatives OR budget heavily for repairs."""
         summary_instruction = (
-            '"executive_summary" — 3-4 sentences. Start by clearly stating this vehicle poses significant risk. '
-            'Focus on the 2-3 DOMINANT factors driving the score. '
-            'If mileage is a major amplifier, mention both the mileage concern and the top 1-2 system issues. '
+            '"executive_summary": 3 to 4 sentences. Start by clearly stating this vehicle poses significant risk. '
+            'Focus on the 2 to 3 DOMINANT factors driving the score. '
+            'If mileage is a major amplifier, mention both the mileage concern and the top 1 to 2 system issues. '
             'End with a clear recommendation to either look elsewhere or budget heavily for repairs. '
             'Talk directly to the buyer. No numeric scores or letter grades.'
         )
         reasoning_instruction = (
-            '"verdict_reasoning" — Array of 4-5 short bullet strings explaining WHY this is a bad buy. '
+            '"verdict_reasoning": Array of 4 to 5 short bullet strings explaining WHY this is a bad buy. '
             'Focus on the dominant score contributors. Give detailed bullets only for significant factors. '
             'Include one bullet about mileage impact if the wear factor is high. '
             'Include one bullet about expected repair costs for the dominant problem areas.'
@@ -638,22 +605,22 @@ def _get_tier_config(risk_score: float) -> tuple[str, str, str, str]:
 
     else:
         tier_label = "Critical Risk"
-        tone_rules = """TONE RULES (CRITICAL RISK — score >75 — strictly follow):
+        tone_rules = """TONE RULES (CRITICAL RISK, score above 75, strictly follow):
 - This vehicle is at CRITICAL risk level. Give the strongest possible warning.
 - Be completely direct about the MAJOR problems driving the score.
-- Focus on the dominant factors — even at critical risk, prioritize the biggest contributors rather than listing everything.
-- Explain the real-world consequences of the dominant failures (safety hazards, expensive repairs, stranding risk).
+- Focus on the dominant factors; even at critical risk, prioritize the biggest contributors rather than listing everything.
+- Explain the real world consequences of the dominant failures (safety hazards, expensive repairs, stranding risk).
 - STRONGLY recommend the buyer look at alternative vehicles instead."""
         summary_instruction = (
-            '"executive_summary" — 3-4 sentences. Start with a strong warning that this vehicle carries critical risk. '
-            'Reference the top 2-3 dominant factors driving the score with specifics. '
-            'Explain real-world consequences (safety, reliability, cost). '
+            '"executive_summary": 3 to 4 sentences. Start with a strong warning that this vehicle carries critical risk. '
+            'Reference the top 2 to 3 dominant factors driving the score with specifics. '
+            'Explain real world consequences (safety, reliability, cost). '
             'End by strongly recommending the buyer consider alternative vehicles. '
             'Talk directly to the buyer. No numeric scores or letter grades.'
         )
         reasoning_instruction = (
-            '"verdict_reasoning" — Array of 4-5 short bullet strings with detail on the dominant risk factors. '
-            'Focus on the biggest contributors — not every minor signal. '
+            '"verdict_reasoning": Array of 4 to 5 short bullet strings with detail on the dominant risk factors. '
+            'Focus on the biggest contributors, not every minor signal. '
             'Include one bullet about safety implications if relevant. '
             'Include one bullet about financial risk (expected repair costs). '
             'Include one bullet about mileage if the wear factor is high.'
@@ -663,12 +630,7 @@ def _get_tier_config(risk_score: float) -> tuple[str, str, str, str]:
 
 
 def enhance_report_sections(
-    vehicle: dict,
-    report: dict,
-    vector_complaints: list[dict] | None = None,
-    bulk_stats: dict | None = None,
-    price_data: dict | None = None,
-    v2_signals: dict | None = None,
+    vehicle: dict, report: dict, vector_complaints: list[dict] | None = None, bulk_stats: dict | None = None, price_data: dict | None = None, v2_signals: dict | None = None,
 ) -> dict:
     """Generate the Buyer's Verdict (executive_summary + verdict_reasoning).
 
@@ -682,13 +644,7 @@ def enhance_report_sections(
 
     top_issues_detail = [
         {
-            "system": i.get("system"),
-            "description": i.get("description", "")[:250],
-            "probability": i.get("probability"),
-            "complaint_count": i.get("complaint_count", 0),
-            "severity": i.get("severity", 0),
-            "phase": i.get("phase", "unknown"),
-        }
+            "system": i.get("system"), "description": i.get("description", "")[:250], "probability": i.get("probability"), "complaint_count": i.get("complaint_count", 0), "severity": i.get("severity", 0), "phase": i.get("phase", "unknown"), }
         for i in cr.get("top_issues", [])[:5]
     ]
 
@@ -714,16 +670,7 @@ def enhance_report_sections(
     tier_label, tone_rules, summary_instruction, reasoning_instruction = _get_tier_config(risk_score)
 
     context = {
-        "vehicle": _vehicle_str(vehicle),
-        "mileage": mileage,
-        "mileage_assessment": mileage_assessment,
-        "risk_tier": tier_label,
-        "internal_risk_score": risk_score,
-        "phase_distribution": phase_summary,
-        "total_complaints": vs.get("total_complaints"),
-        "total_recalls": vs.get("total_recalls"),
-        "open_recalls": recalls_brief,
-    }
+        "vehicle": _vehicle_str(vehicle), "mileage": mileage, "mileage_assessment": mileage_assessment, "risk_tier": tier_label, "internal_risk_score": risk_score, "phase_distribution": phase_summary, "total_complaints": vs.get("total_complaints"), "total_recalls": vs.get("total_recalls"), "open_recalls": recalls_brief, }
 
     if risk_score > 45:
         context["top_issues"] = top_issues_detail
@@ -770,11 +717,11 @@ def enhance_report_sections(
         dom = pricing.get("days_on_market")
         if dom:
             if dom > 60:
-                pricing_section += f" These vehicles sit on the market an average of {dom} days — slow sellers, which gives buyers negotiating leverage."
+                pricing_section += f" These vehicles sit on the market an average of {dom} days; slow sellers, which gives buyers negotiating leverage."
             elif dom > 30:
-                pricing_section += f" Average days on market is {dom} — moderate demand."
+                pricing_section += f" Average days on market is {dom}; moderate demand."
             else:
-                pricing_section += f" Average days on market is only {dom} — high demand, these sell fast."
+                pricing_section += f" Average days on market is only {dom}; high demand, these sell fast."
 
         pp = pricing.get("price_position")
         if pp:
@@ -795,7 +742,7 @@ def enhance_report_sections(
             pos_hint = ""
             pp = pricing.get("price_position")
             if pp:
-                pos_hint = f' The asking price is at the {pp["percentile"]:.0f}th percentile ({pp["label"]}) of comparable listings — mention this.'
+                pos_hint = f' The asking price is at the {pp["percentile"]:.0f}th percentile ({pp["label"]}) of comparable listings; mention this.'
             price_instruction = (
                 '\nPRICING: Market price data is available. Include a brief comment on '
                 'the asking price vs market average in your executive_summary (e.g. "priced '
@@ -810,22 +757,24 @@ def enhance_report_sections(
 
     prompt = f"""You are an expert automotive advisor helping a car buyer evaluate a used {_vehicle_str(vehicle)}.
 
-RISK TIER: {tier_label} (score: {risk_score}/100 — higher = more risky)
-Risk score ranges: 1-20 Excellent, 20-30 Great, 30-45 Good (be cautious), 45-60 Fair (more caution), 60-75 Bad, >75 Critical Risk.
+FORMATTING (strict): Never use hyphens (-), en dashes, or em dashes in executive_summary or verdict_reasoning. Use commas, semicolons, or periods. For number ranges use the word "to" (example: 1 to 20). No hyphenated compounds; use a space (example: pre purchase inspection).
+
+RISK TIER: {tier_label} (score: {risk_score}/100; higher means more risky)
+Risk score ranges: 1 to 20 Excellent, 20 to 30 Great, 30 to 45 Good (be cautious), 45 to 60 Fair (more caution), 60 to 75 Bad, above 75 Critical Risk.
 
 MILEAGE RULES (strictly follow):
 - Mileage tier: "{mileage_assessment['tier_label']}" ({mileage:,} miles)
 - {mileage_assessment['guidance']}
-- Lower mileage = more favorable verdict. Never call a low-mileage car "risky" when the same car at higher mileage would be rated better.
-- "Upcoming" issues on a low-mileage car are FUTURE concerns, not current problems. This is positive.
-- "Past" issues on a high-mileage car represent accumulated wear.
+- Lower mileage = more favorable verdict. Never call a low mileage car "risky" when the same car at higher mileage would be rated better.
+- "Upcoming" issues on a low mileage car are FUTURE concerns, not current problems. This is positive.
+- "Past" issues on a high mileage car represent accumulated wear.
 
 {tone_rules}
 
-CRITICAL RULE — FOCUS ON DOMINANT FACTORS ONLY:
+CRITICAL RULE, FOCUS ON DOMINANT FACTORS ONLY:
 Your verdict MUST focus on the factors that are actually driving the risk score, NOT list every constraint.
 The "DOMINANT SCORE FACTORS" section below tells you exactly which factors matter most.
-If mileage wear is the dominant factor, frame your verdict around mileage — do NOT list every TSB or complaint.
+If mileage wear is the dominant factor, frame your verdict around mileage; do NOT list every TSB or complaint.
 If NHTSA complaints are the dominant factor, focus on the specific complaint patterns.
 Only mention a factor if it is marked as "DOMINANT" or "significant" below.
 Minor contributors should be ignored in your verdict text.
@@ -851,12 +800,7 @@ Return ONLY a valid JSON object with exactly these two keys:
     if text is None:
         if trace:
             trace.log_llm_call(
-                purpose="buyers_verdict",
-                prompt=prompt,
-                response_raw=None,
-                response_parsed=None,
-                status="llm_returned_none",
-            )
+                purpose="buyers_verdict", prompt=prompt, response_raw=None, response_parsed=None, status="llm_returned_none", )
         return report
 
     result = _extract_json(text)
@@ -864,29 +808,22 @@ Return ONLY a valid JSON object with exactly these two keys:
         logger.warning("Could not parse buyer's verdict LLM response")
         if trace:
             trace.log_llm_call(
-                purpose="buyers_verdict",
-                prompt=prompt,
-                response_raw=text,
-                response_parsed=None,
-                status="parse_failed",
-            )
+                purpose="buyers_verdict", prompt=prompt, response_raw=text, response_parsed=None, status="parse_failed", )
         return report
 
     logger.info("Buyer's verdict generated successfully")
     if trace:
         trace.log_llm_call(
-            purpose="buyers_verdict",
-            prompt=prompt,
-            response_raw=text,
-            response_parsed=result,
-            status="success",
-        )
+            purpose="buyers_verdict", prompt=prompt, response_raw=text, response_parsed=result, status="success", )
 
     if result.get("executive_summary"):
+        _vr = result.get("verdict_reasoning", [])
+        if isinstance(_vr, list):
+            _vr = [
+                sanitize_user_visible_text(x) if isinstance(x, str) else x
+                for x in _vr
+            ]
         sections["executive_summary"] = {
-            "text": result["executive_summary"],
-            "verdict_reasoning": result.get("verdict_reasoning", []),
-            "llm_enhanced": True,
-        }
+            "text": sanitize_user_visible_text(result["executive_summary"]), "verdict_reasoning": _vr, "llm_enhanced": True, }
 
     return report

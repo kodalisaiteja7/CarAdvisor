@@ -60,7 +60,7 @@ if not cached:
                 break
     assert done, "ERROR: Never received 'done' event!"
 else:
-    print(f"\n[4] Cached result — skipping SSE test")
+    print(f"\n[4] Cached result; skipping SSE test")
 
 # 5. Fetch report
 print(f"\n[5] Fetching report...")

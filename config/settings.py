@@ -25,34 +25,15 @@ FLASK_HOST = os.getenv("FLASK_HOST", "0.0.0.0")
 FLASK_PORT = int(os.getenv("FLASK_PORT", 5000))
 
 VEHICLE_SYSTEMS = [
-    "Engine",
-    "Transmission",
-    "Electrical",
-    "Suspension",
-    "Brakes",
-    "Body/Paint",
-    "Interior",
-    "HVAC",
-    "Steering",
-    "Fuel System",
-    "Exhaust",
-    "Cooling",
+    "Engine", "Transmission", "Electrical", "Suspension", "Brakes", "Body/Paint", "Interior", "HVAC", "Steering", "Fuel System", "Exhaust", "Cooling",
 ]
 
 MILEAGE_BRACKETS = [
-    (0, 30_000),
-    (30_000, 60_000),
-    (60_000, 90_000),
-    (90_000, 120_000),
-    (120_000, 150_000),
-    (150_000, float("inf")),
+    (0, 30_000), (30_000, 60_000), (60_000, 90_000), (90_000, 120_000), (120_000, 150_000), (150_000, float("inf")),
 ]
 
 SEVERITY_WEIGHTS = {
-    "complaint_count": 0.30,
-    "severity": 0.25,
-    "safety_impact": 0.25,
-    "repair_cost": 0.20,
+    "complaint_count": 0.30, "severity": 0.25, "safety_impact": 0.25, "repair_cost": 0.20,
 }
 
 NHTSA_API_BASE = "https://api.nhtsa.gov"

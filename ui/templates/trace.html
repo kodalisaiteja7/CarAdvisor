@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Debug Trace — {{ report_id }}{% endblock %}
+{% block title %}Debug Trace ({{ report_id }}){% endblock %}
 
 {% block content %}
 <div x-data="traceViewer()" class="max-w-7xl mx-auto">
@@ -70,8 +70,7 @@
                             <div class="flex items-center gap-4 text-sm text-gray-500">
                                 <template x-if="data.summary">
                                     <span>
-                                        <span x-text="data.summary.problems_count"></span> problems,
-                                        <span x-text="data.summary.recalls_count"></span> recalls
+                                        <span x-text="data.summary.problems_count"></span> problems, <span x-text="data.summary.recalls_count"></span> recalls
                                     </span>
                                 </template>
                                 <svg :class="data._open ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
@@ -123,8 +122,7 @@
                                 <span class="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded text-xs font-mono" x-text="'#' + call.call_number"></span>
                                 <span class="font-semibold" x-text="call.purpose"></span>
                                 <span :class="{
-                                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400': call.status === 'success',
-                                    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': call.status !== 'success'
+                                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400': call.status === 'success', 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400': call.status !== 'success'
                                 }" class="px-2 py-0.5 rounded text-xs font-medium" x-text="call.status"></span>
                             </div>
                             <div class="flex items-center gap-4 text-xs text-gray-500">
@@ -162,7 +160,7 @@
                                     <pre class="text-xs font-mono whitespace-pre-wrap max-h-80 overflow-y-auto bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 p-4 rounded-lg" x-text="JSON.stringify(call.response_parsed, null, 2)"></pre>
                                 </template>
                                 <template x-if="!call.response_parsed">
-                                    <p class="text-sm text-red-500 italic">Parsing failed — no structured data extracted</p>
+                                    <p class="text-sm text-red-500 italic">Parsing failed: no structured data extracted</p>
                                 </template>
                             </div>
                         </div>
@@ -177,7 +175,7 @@
 
             <!-- 5. Sections Before LLM -->
             <div x-show="activeTab === 'pre_llm'" class="space-y-4 fade-in">
-                <h2 class="text-lg font-semibold">Sections — Before LLM Enhancement</h2>
+                <h2 class="text-lg font-semibold">Sections ,  Before LLM Enhancement</h2>
                 <p class="text-sm text-gray-500">Raw data-driven sections before any LLM enhancement was applied.</p>
                 <template x-for="(data, name) in (trace.sections_pre_llm || {})" :key="name">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
@@ -194,7 +192,7 @@
 
             <!-- 6. Sections After LLM -->
             <div x-show="activeTab === 'post_llm'" class="space-y-4 fade-in">
-                <h2 class="text-lg font-semibold">Sections — After LLM Enhancement</h2>
+                <h2 class="text-lg font-semibold">Sections: After LLM Enhancement</h2>
                 <p class="text-sm text-gray-500">Final sections with LLM-generated content merged in.</p>
                 <template x-for="(data, name) in (trace.sections_post_llm || {})" :key="name">
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
@@ -216,20 +214,8 @@
 <script>
 function traceViewer() {
     return {
-        trace: null,
-        loading: true,
-        error: null,
-        activeTab: 'query',
-        tabs: [
-            { id: 'query', label: 'User Query' },
-            { id: 'scrapers', label: 'Scrapers' },
-            { id: 'analysis', label: 'Analysis' },
-            { id: 'llm', label: 'LLM Calls' },
-            { id: 'pre_llm', label: 'Before LLM' },
-            { id: 'post_llm', label: 'After LLM' },
-        ],
-
-        async init() {
+        trace: null, loading: true, error: null, activeTab: 'query', tabs: [
+            { id: 'query', label: 'User Query' }, { id: 'scrapers', label: 'Scrapers' }, { id: 'analysis', label: 'Analysis' }, { id: 'llm', label: 'LLM Calls' }, { id: 'pre_llm', label: 'Before LLM' }, { id: 'post_llm', label: 'After LLM' }, ], async init() {
             try {
                 const resp = await fetch('/api/trace/{{ report_id }}');
                 if (!resp.ok) {
