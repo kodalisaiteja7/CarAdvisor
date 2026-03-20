@@ -1221,10 +1221,8 @@ def _run_analysis_inner(
                     vin=options.get("vin"),
                     zip_code=options.get("zip_code"),
                 )
-                source = pd.get("source", "estimate")
-                match = pd.get("match_level", "estimate")
                 _emit(report_id, "Pricing", "complete",
-                      f"Market price: ${pd.get('avg_price', 0):,} ({source}, {match})")
+                      "Market pricing data collected")
                 return pd
             except Exception as exc:
                 logger.warning("Price fetch failed: %s", exc)

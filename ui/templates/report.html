@@ -176,7 +176,7 @@
                     <span class="w-2 h-2 rounded-full
                         {% if risk_score > 75 %}bg-red-500{% elif risk_score > 60 %}bg-red-400{% elif risk_score > 45 %}bg-orange-400{% elif risk_score > 30 %}bg-[#FFC700]{% elif risk_score > 20 %}bg-lime-500{% else %}bg-green-400{% endif %}"></span>
                     <span class="text-xs font-medium text-gray-300">
-                        {% if risk_score > 75 %}Critical Risk{% elif risk_score > 60 %}Bad{% elif risk_score > 45 %}Fair Risk{% elif risk_score > 30 %}Good — Be Cautious{% elif risk_score > 20 %}Great{% else %}Excellent{% endif %}
+                        {% if risk_score > 75 %}Critical Risk{% elif risk_score > 60 %}High Risk{% elif risk_score > 45 %}Moderate Risk{% elif risk_score > 30 %}Low Risk{% elif risk_score > 20 %}Minimal Risk{% else %}Excellent{% endif %}
                     </span>
                 </div>
                 <h1 class="text-3xl sm:text-4xl font-black tracking-tight">
@@ -342,7 +342,7 @@
                                 {% elif risk_score > 30 %}bg-[#FFF8D4] text-[#CC9F00] dark:bg-brand-900/20 dark:text-brand-200
                                 {% elif risk_score > 20 %}bg-lime-50 text-lime-600 dark:bg-lime-900/20 dark:text-lime-400
                                 {% else %}bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400{% endif %}">
-                                {% if risk_score > 75 %}Critical Risk{% elif risk_score > 60 %}Bad{% elif risk_score > 45 %}Fair{% elif risk_score > 30 %}Good — Caution{% elif risk_score > 20 %}Great{% else %}Excellent{% endif %}
+                                {% if risk_score > 75 %}Critical Risk{% elif risk_score > 60 %}High Risk{% elif risk_score > 45 %}Moderate Risk{% elif risk_score > 30 %}Low Risk{% elif risk_score > 20 %}Minimal Risk{% else %}Excellent{% endif %}
                             </span>
                         </div>
 
