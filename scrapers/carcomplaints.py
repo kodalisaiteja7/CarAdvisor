@@ -1,4 +1,4 @@
-"""CarComplaints.com scraper — overview page plus problem sub-pages."""
+"""CarComplaints.com scraper: overview page plus problem sub-pages."""
 
 import logging
 import re
@@ -419,7 +419,7 @@ class CarComplaintsScraper(BaseScraper):
 
             data["problems"].append({
                 "category": category,
-                "description": f"{raw} — {year} {make} {model}",
+                "description": f"{raw} ({year} {make} {model})",
                 "typical_mileage_range": None,
                 "severity": "medium" if count > 10 else "low",
                 "frequency": "moderate" if count > 10 else "rare",

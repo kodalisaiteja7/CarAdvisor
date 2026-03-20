@@ -1,4 +1,4 @@
-"""Edmunds.com scraper — consumer reviews, common problems, and TCO data."""
+"""Edmunds.com scraper: consumer reviews, common problems, and TCO data."""
 
 import logging
 import re

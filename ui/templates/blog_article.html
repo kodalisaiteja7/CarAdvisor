@@ -10,14 +10,7 @@
 {% block structured_data %}
 <script type="application/ld+json">
 {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    "headline": "{{ article.title }}",
-    "description": "{{ article.excerpt }}",
-    "author": {"@type": "Organization", "name": "CarAdvisr"},
-    "publisher": {"@type": "Organization", "name": "CarAdvisr"},
-    "datePublished": "{{ article.date }}",
-    "mainEntityOfPage": "{{ request.url }}"
+    "@context": "https://schema.org", "@type": "Article", "headline": "{{ article.title }}", "description": "{{ article.excerpt }}", "author": {"@type": "Organization", "name": "CarAdvisr"}, "publisher": {"@type": "Organization", "name": "CarAdvisr"}, "datePublished": "{{ article.date }}", "mainEntityOfPage": "{{ request.url }}"
 }
 </script>
 {% endblock %}

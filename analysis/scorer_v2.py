@@ -190,7 +190,7 @@ def _build_model_where(make: str, model: str) -> tuple[str, list]:
     Handles four patterns:
     1. Exact match (always tried)
     2. Substring/prefix match (model appears in DB model, or vice versa)
-    3. Reverse contains (DB model appears in input — catches NHTSA suffixes)
+    3. Reverse contains (DB model appears in input; catches NHTSA suffixes)
     4. Series prefix expansion (BMW '3 SERIES' → '320%', '330%', etc.)
 
     Also normalizes input by stripping parenthetical body-style suffixes
@@ -280,7 +280,7 @@ def _signal_wear_factor(mileage: int, make: str = "") -> float:
     """Mileage-based multiplier for non-NHTSA signals (TSB/INV/MFR/DL).
 
     Uses a power curve anchored at 75k miles (factor = 1.0). Below 75k the
-    factor drops sharply — a 10k-mile car gets signals cut by 55-70%.
+    factor drops sharply; a 10k-mile car gets signals cut by 55-70%.
     Above 75k the factor rises to max_f at 200k.
 
     The exponent is derived so that factor(200k) = max_f exactly:

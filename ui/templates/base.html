@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}CarAdvisr — Free Used Car Risk Report | Know Before You Buy{% endblock %}</title>
+    <title>{% block title %}CarAdvisr | Free Used Car Risk Report | Know Before You Buy{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}Analyze any used car for free. See NHTSA complaints, recalls, risk scores, and an AI-powered inspection checklist. The free alternative to Carfax.{% endblock %}">
     <meta name="keywords" content="used car report, car risk score, free carfax alternative, NHTSA complaints, used car inspection, car reliability, recall check">
     <meta name="author" content="CarAdvisr">
@@ -13,7 +13,7 @@
     <!-- Open Graph -->
     <meta property="og:type" content="{% block og_type %}website{% endblock %}">
     <meta property="og:site_name" content="CarAdvisr">
-    <meta property="og:title" content="{% block og_title %}CarAdvisr — Free Used Car Risk Report{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}CarAdvisr, Free Used Car Risk Report{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Analyze any used car for free. See NHTSA complaints, recalls, risk scores, and an AI-powered inspection checklist.{% endblock %}">
     <meta property="og:url" content="{{ request.url }}">
     <meta property="og:image" content="{% block og_image %}{{ url_for('static', filename='logo.png', _external=True) }}{% endblock %}">
@@ -21,7 +21,7 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{% block twitter_title %}CarAdvisr — Free Used Car Risk Report{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}CarAdvisr, Free Used Car Risk Report{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}Analyze any used car for free. 2.18M NHTSA complaints analyzed. Know before you buy.{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}{{ url_for('static', filename='logo.png', _external=True) }}{% endblock %}">
 
@@ -32,22 +32,10 @@
     {% block structured_data %}
     <script type="application/ld+json">
     {
-        "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "CarAdvisr",
-        "url": "{{ request.host_url }}",
-        "description": "Free used car risk intelligence tool. Analyze NHTSA complaints, recalls, and get AI-powered inspection checklists.",
-        "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "Web",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        },
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.8",
-            "ratingCount": "1"
+        "@context": "https://schema.org", "@type": "WebApplication", "name": "CarAdvisr", "url": "{{ request.host_url }}", "description": "Free used car risk intelligence tool. Analyze NHTSA complaints, recalls, and get AI-powered inspection checklists.", "applicationCategory": "UtilitiesApplication", "operatingSystem": "Web", "offers": {
+            "@type": "Offer", "price": "0", "priceCurrency": "USD"
+        }, "aggregateRating": {
+            "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "1"
         }
     }
     </script>
@@ -56,7 +44,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <!-- Google Analytics 4 — replace GA_MEASUREMENT_ID with your actual ID -->
+    <!-- Google Analytics 4, replace GA_MEASUREMENT_ID with your actual ID -->
     {% if config.GA_MEASUREMENT_ID %}
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ config.GA_MEASUREMENT_ID }}"></script>
     <script>
@@ -67,7 +55,7 @@
     </script>
     {% endif %}
 
-    <!-- Microsoft Clarity — replace CLARITY_PROJECT_ID with your actual ID -->
+    <!-- Microsoft Clarity, replace CLARITY_PROJECT_ID with your actual ID -->
     {% if config.CLARITY_PROJECT_ID %}
     <script type="text/javascript">
         (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -82,21 +70,12 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
-            theme: {
+            darkMode: 'class', theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-                    colors: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }, colors: {
                         brand: {
-                            50: '#FFFDF0', 100: '#FFF8D4', 200: '#FFDE69',
-                            300: '#FFD233', 400: '#FFC700', 500: '#E6B300',
-                            600: '#CC9F00', 700: '#997A00', 800: '#664F00',
-                            900: '#4D3B00',
-                        },
-                        surface: {
-                            50: '#fafbfc', 100: '#f4f5f7', 200: '#e8eaed',
-                            300: '#d1d5db', 400: '#9ca3af',
-                        }
+                            50: '#FFFDF0', 100: '#FFF8D4', 200: '#FFDE69', 300: '#FFD233', 400: '#FFC700', 500: '#E6B300', 600: '#CC9F00', 700: '#997A00', 800: '#664F00', 900: '#4D3B00', }, surface: {
+                            50: '#fafbfc', 100: '#f4f5f7', 200: '#e8eaed', 300: '#d1d5db', 400: '#9ca3af', }
                     }
                 }
             }

@@ -34,11 +34,11 @@ from data.sales_data import get_sales_volume
 
 MILEAGE = 75_000
 
-# Tier 1: Known reliable — expected score <= 35 (grade A/B)
-# Tier 2: Above average — expected score 25-45 (grade B/C)
-# Tier 3: Average — expected score 35-55 (grade C)
-# Tier 4: Below average — expected score 50-70 (grade C/D)
-# Tier 5: Known unreliable — expected score >= 60 (grade D/F)
+# Tier 1: Known reliable; expected score <= 35 (grade A/B)
+# Tier 2: Above average; expected score 25-45 (grade B/C)
+# Tier 3: Average; expected score 35-55 (grade C)
+# Tier 4: Below average; expected score 50-70 (grade C/D)
+# Tier 5: Known unreliable; expected score >= 60 (grade D/F)
 
 @dataclass
 class BenchmarkVehicle:

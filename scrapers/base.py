@@ -91,7 +91,7 @@ class BaseScraper(ABC):
         """GET with rate-limiting, UA rotation, retries, and robots check.
 
         Only retries on 5xx server errors and connection/timeout errors.
-        4xx client errors (400, 404) fail immediately — retrying won't help.
+        4xx client errors (400, 404) fail immediately; retrying won't help.
         """
         self._respect_rate_limit()
         self._rotate_ua()

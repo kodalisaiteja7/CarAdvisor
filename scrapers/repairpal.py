@@ -1,4 +1,4 @@
-"""RepairPal.com scraper — reliability ratings, common problems, and repair costs."""
+"""RepairPal.com scraper: reliability ratings, common problems, and repair costs."""
 
 import logging
 import re

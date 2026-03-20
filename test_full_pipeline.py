@@ -1,4 +1,4 @@
-"""Comprehensive pipeline test — tests every layer from imports to end-to-end report."""
+"""Comprehensive pipeline test: every layer from imports to end-to-end report."""
 
 import json
 import sys
@@ -168,7 +168,7 @@ def test_vector_search():
     assert results, "Vector search returned no results for Toyota Camry 2018 Engine"
     print(f"  Found {len(results)} similar complaints:")
     for r in results[:3]:
-        print(f"    [{r['system']}] mile={r.get('mileage',0)} dist={r.get('distance',0):.4f} — {r['narrative'][:80]}...")
+        print(f"    [{r['system']}] mile={r.get('mileage',0)} dist={r.get('distance',0):.4f} | {r['narrative'][:80]}...")
 
 
 # ---------------------------------------------------------------
@@ -201,7 +201,7 @@ def test_carcomplaints_scraper():
     assert "problems" in data, "Missing 'problems' key"
     print(f"  Problems: {len(data['problems'])}")
     for p in data['problems'][:2]:
-        print(f"    [{p['category']}] count={p.get('complaint_count',0)} — {p['description'][:80]}...")
+        print(f"    [{p['category']}] count={p.get('complaint_count',0)} | {p['description'][:80]}...")
 
 
 # ---------------------------------------------------------------
@@ -422,7 +422,7 @@ def test_api_analyze():
 
         if waited % 10 == 0:
             latest = events[-1] if events else {}
-            print(f"  ... waiting ({waited}s), latest: {latest.get('source','?')} — {latest.get('message','')[:60]}")
+            print(f"  ... waiting ({waited}s), latest: {latest.get('source','?')} | {latest.get('message','')[:60]}")
 
     print(f"  WARNING: Analysis did not complete within {max_wait}s")
 

@@ -1,7 +1,7 @@
 """Debug tracing for the analysis pipeline.
 
-Captures every step of a report generation — user query, scraper outputs,
-LLM prompts/responses, and section data — for testing and debugging.
+Captures every step of a report generation: user query, scraper outputs,
+LLM prompts/responses, and section data, for testing and debugging.
 
 Uses thread-local storage so traces are automatically scoped to the
 background analysis thread without passing objects through the call stack.

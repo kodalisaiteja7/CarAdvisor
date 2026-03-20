@@ -1,4 +1,4 @@
-"""Vehicle price estimator — MarketCheck API with MSRP-based fallback.
+"""Vehicle price estimator: MarketCheck API with MSRP-based fallback.
 
 Uses MarketCheck's professional automotive data API:
   1. MarketCheck Price endpoint (ML-predicted, requires VIN)
@@ -132,7 +132,7 @@ def fetch_market_volume(make: str, model: str, year: int) -> int | None:
 
 
 # ------------------------------------------------------------------
-# Strategy 1 — MarketCheck Price (ML prediction, requires VIN)
+# Strategy 1: MarketCheck Price (ML prediction, requires VIN)
 # ------------------------------------------------------------------
 
 
@@ -291,7 +291,7 @@ def _try_mc_search(
 
 
 # ------------------------------------------------------------------
-# Strategy 3 — MSRP depreciation estimate (guaranteed)
+# Strategy 3: MSRP depreciation estimate (guaranteed)
 # ------------------------------------------------------------------
 
 _SEGMENT_MSRP: dict[str, int] = {
