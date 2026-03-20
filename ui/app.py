@@ -1429,12 +1429,19 @@ def _decode_vin(vin: str) -> dict | None:
     elif "dual" in tl or "dct" in tl:
         transmission = "DCT"
 
+    raw_trim = (r.get("Trim") or "").strip()
+    series = (r.get("Series") or "").strip()
+    if "," in raw_trim:
+        trim = series if series and "," not in series else raw_trim.split(",")[0].strip()
+    else:
+        trim = raw_trim
+
     return {
         "vin": vin,
         "year": year,
         "make": make.upper(),
         "model": model.upper(),
-        "trim": (r.get("Trim") or "").strip(),
+        "trim": trim,
         "engine": " ".join(engine_parts) if engine_parts else "",
         "transmission": transmission,
         "drivetrain": drivetrain,
